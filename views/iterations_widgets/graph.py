@@ -35,23 +35,19 @@ def streamlit_flow_graph(iteration_graph: IterationGraph) -> StreamlitFlowState:
             node_type = 'default'
 
         if iteration.name == "":
-            node_content = f"""
-                <p>
-                    <strong>Iteration #{node_id}</strong>
-                    <br />
-                    <i>{iteration.variable.name}</i>
-                </p>
-            """
+            node_content = f"""<p>
+                <strong>Iteration #{node_id}</strong>
+                <br />
+                <i>{iteration.variable.name}</i>
+            </p>"""
         else:
-            node_content = f"""
-                <p>
-                    <strong>Iteration #{node_id}</strong>
-                    <br />
-                    {iteration.name}
-                    <br />
-                    <i>{iteration.variable.name}</i>
-                </p>
-            """
+            node_content = f"""<p>
+                <strong>Iteration #{node_id}</strong>
+                <br />
+                {iteration.name}
+                <br />
+                <i>{iteration.variable.name}</i>
+            </p>"""
 
         nodes.append(StreamlitFlowNode(
             id=f"{node_id}",
@@ -72,11 +68,12 @@ def streamlit_flow_graph(iteration_graph: IterationGraph) -> StreamlitFlowState:
                 id=f"{node_id}-{child_id}",
                 source=node_id,
                 target=child_id,
-                edge_type='step',
+                edge_type='simplebezier',
                 animated=True,
             ))
 
     state = StreamlitFlowState(nodes, edges, selected_node_id)
+    state.timestamp = 0
 
     new_state = streamlit_flow(
         key=f'iteration_flow-{len(iterations)}',

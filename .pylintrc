@@ -9,3 +9,4 @@ disable=
   missing-class-docstring,
   useless-parent-delegation,
   too-many-locals,
+  too-many-instance-attributes,

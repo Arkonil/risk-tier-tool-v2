@@ -13,10 +13,11 @@ def annualizing_factor_calculation(scalar: Scalar) -> Scalar:
         "loss_rates": [scalar.period1_rate, scalar.period2_rate]
     })
 
-    def year_transformer(
-        y): return f"{int(y) if float(y).is_integer() else y} Years"
+    def year_transformer(y):
+        return f"{int(y) if float(y).is_integer() else y} Years"
 
-    def year_inv_transformer(s): return float(s.split(" ")[0])
+    def year_inv_transformer(s):
+        return float(s.split(" ")[0])
 
     df['years'] = df['years'].map(year_transformer)
     df['loss_rates'] = df['loss_rates'] * 100
@@ -41,7 +42,7 @@ def annualizing_factor_calculation(scalar: Scalar) -> Scalar:
         use_container_width=True,
         key=f"annualizing-factor-{scalar.loss_rate_type}",
     )
-    
+
     if not edited_df.equals(df):
 
         edited_df['years'] = edited_df['years'].map(year_inv_transformer)
@@ -52,7 +53,7 @@ def annualizing_factor_calculation(scalar: Scalar) -> Scalar:
 
         scalar.period1_rate = edited_df.loc[0, 'loss_rates']
         scalar.period2_rate = edited_df.loc[1, 'loss_rates']
-        
+
         st.rerun()
 
 def risk_scalar_factor_calculation(scalar: Scalar) -> Scalar:
@@ -83,11 +84,11 @@ def risk_scalar_factor_calculation(scalar: Scalar) -> Scalar:
 
     if not edited_df.equals(df):
         scalar.maturity_adjustment_factor = edited_df['Maturity Adjustment Factor'] / 100
-        
+
         st.rerun()
 
 def scalar_edit_widget(scalars: Scalar) -> Scalar:
-    
+
     annualizing_factor_calculation(scalars)
 
     st.write("Portfolio Scalar:", scalars.portfolio_scalar)

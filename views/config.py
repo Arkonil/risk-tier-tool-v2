@@ -8,7 +8,7 @@ from classes.session import Session
 def set_page_config():
     st.set_page_config(layout="wide")
 
-    with open(pathlib.Path("assets/style.css")) as file:
+    with open(pathlib.Path("assets/style.css"), encoding="utf-8") as file:
         st.html(f"<style>{file.read()}</style>")
 
 def _add_sesion_state_attr(name: str, obj: t.Any) -> None:

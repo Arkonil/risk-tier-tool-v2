@@ -1,5 +1,5 @@
 from views import set_page_navigation
-from classes.config import set_page_config, initialize_session
+from views.config import set_page_config, initialize_session
 
 def main():
     initialize_session()

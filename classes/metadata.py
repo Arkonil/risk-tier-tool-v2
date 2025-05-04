@@ -1,4 +1,3 @@
-import typing as t
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -8,8 +7,8 @@ class Variable:
     id: int
     name: str
     dtype: np.dtype
-    
-    
+
+
 @dataclass
 class Metadata:
-    variables: t.List[Variable] = field(default_factory=list)
+    variables: list[Variable] = field(default_factory=list)

@@ -6,10 +6,10 @@ from views.iterations_widgets import show_iteration_graph_widgets, show_iteratio
 def show_iterations_page():
     session = st.session_state['session']
     iteration_graph: IterationGraph = session.iteration_graph
-    
-    if iteration_graph.viewing_node_id is None:
+
+    if iteration_graph.current_node_id is None:
         show_iteration_graph_widgets()
     else:
         show_iteration_widgets()
-    
+
 show_iterations_page()

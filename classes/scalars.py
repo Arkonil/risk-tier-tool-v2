@@ -7,8 +7,8 @@ import pandas as pd
 
 @dataclass
 class Scalar:
-    period_options: t.ClassVar[t.List[float]] = [1.0, 1.5, 2.0, 2.5, 3.0]
-    
+    period_options: t.ClassVar[list[float]] = [1.0, 1.5, 2.0, 2.5, 3.0]
+
     loss_rate_type: t.Literal["dlr", "ulr"]
     period1: float = 2
     period2: float = 3
@@ -39,8 +39,8 @@ class Scalar:
     def portfolio_scalar(self) -> float:
         if self.period1 <= self.period2:
             return self.period2_rate / self.period1_rate
-        else:
-            return self.period1_rate / self.period2_rate
+
+        return self.period1_rate / self.period2_rate
 
     @property
     def risk_scalar_factor(self):

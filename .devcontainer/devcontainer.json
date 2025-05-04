@@ -1,11 +1,11 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
 {
-  "name": "python-uv-container",
+  "name": "risk-tier-tool",
   "image": "mcr.microsoft.com/devcontainers/base:jammy",
-  "runArgs": ["--name", "python-uv-container"],
-  "workspaceMount": "source=${localWorkspaceFolder},target=/python-uv-container,type=bind,consistency=delegated",
-  "workspaceFolder": "/python-uv-container",
+  "runArgs": ["--name", "risk-tier-tool"],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/risk-tier-tool,type=bind,consistency=delegated",
+  "workspaceFolder": "/risk-tier-tool",
   "customizations": {
     "vscode": {
       "extensions": [

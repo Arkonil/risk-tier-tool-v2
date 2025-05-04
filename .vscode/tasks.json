@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+      {
+          "label": "Run Streamlit App",
+          "type": "shell",
+          "command": "bash",
+          "args": [
+            "./scripts/run.sh",
+          ],
+          "group": "build",
+          "presentation": {
+              "reveal": "always"
+          }
+      }
+  ]
+}

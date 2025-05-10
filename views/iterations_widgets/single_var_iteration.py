@@ -32,58 +32,6 @@ def set_risk_tiers(iteration_graph: IterationGraph):
     )
     new_labels = list(sorted(new_labels))
 
-    # if iteration_graph.current_iteration_type == "categorical":
-    #     current_labels = iteration_graph.current_iteration_labels
-    #     groups = iteration_graph.current_iteration.groups
-
-    #     retained_labels = set(new_labels).intersection(set(current_labels))
-    #     added_labels = set(new_labels) - set(current_labels)
-
-    #     retained_labels_index = [index for index, value in enumerate(current_labels) if value in retained_labels]
-
-    #     all_categories = set(iteration_graph.current_iteration.variable.cat.categories)
-    #     assigned_categories = set(groups.loc[retained_labels_index].explode())
-    #     unassigned_categories = all_categories - assigned_categories
-
-    #     @st.fragment
-    #     def foo():
-    #         print("Rerunning foo")
-    #         new_groups = {}
-
-    #         for label in new_labels:
-    #             if label in retained_labels:
-    #                 group_index = current_labels.index(label)
-    #                 label_categories = set(groups.loc[group_index])
-
-    #                 new_groups[group_index] = set(st.multiselect(
-    #                     label=label,
-    #                     options=label_categories.union(unassigned_categories),
-    #                     default=label_categories,
-    #                     # on_change=st.rerun,
-    #                     # kwargs={'scope': 'fragment'},
-    #                 ))
-
-    #                 unassigned_categories.update(label_categories - new_groups[group_index])
-    #                 unassigned_categories.difference_update(new_groups[group_index])
-
-    #             elif label in added_labels:
-    #                 new_groups[group_index] = set(st.multiselect(
-    #                     label=label,
-    #                     options=unassigned_categories,
-    #                     default=[],
-    #                     # on_change=st.rerun,
-    #                     # kwargs={'scope': 'fragment'},
-    #                 ))
-
-    #                 unassigned_categories.update(label_categories - new_groups[group_index])
-    #                 unassigned_categories.difference_update(new_groups[group_index])
-
-    #         return new_groups
-
-    #     new_groups = foo()
-
-    #     st.write(new_groups)
-
     submitted = st.button("Submit")
     if submitted:
         iteration_graph.set_labels(new_labels)

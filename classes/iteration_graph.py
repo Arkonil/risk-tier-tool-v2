@@ -11,7 +11,7 @@ from classes.iteration import (
     CategoricalSingleVarIteration,
     CategoricalDoubleVarIteration,
 )
-
+from classes.common import SUB_RISK_TIERS
 
 def __integer_generator():
     current = 0
@@ -30,7 +30,6 @@ class IterationGraph:
 
     def __init__(self) -> None:
         self.iterations: dict[str, IterationBase] = {}
-        self._iteration_labels: dict[str, list[str]] = {}
 
         self.connections: dict[str, list[str]] = {}
         self._iteration_outputs: dict[str, pd.Series] = {}
@@ -62,14 +61,6 @@ class IterationGraph:
     @property
     def current_iteration(self):
         return self.iterations[self.current_node_id]
-
-    @property
-    def current_iteration_labels(self):
-        return self._iteration_labels[self.current_node_id]
-
-    @current_iteration_labels.setter
-    def current_iteration_labels(self, labels: list[str]):
-        self._iteration_labels[self.current_node_id] = labels
 
     @property
     def current_iteration_type(self) -> Literal["numerical", "categorical"]:
@@ -142,12 +133,11 @@ class IterationGraph:
         self,
         name: str,
         variable: pd.Series,
-        variable_dtype: Literal["numerical", "categorical"],
-        labels: list[str]):
+        variable_dtype: Literal["numerical", "categorical"]):
 
         new_node_id = new_id()
 
-        initial_group_count = len(labels)
+        initial_group_count = len(SUB_RISK_TIERS)
 
         if variable_dtype == "numerical":
             iteration = NumericalSingleVarIteration(
@@ -167,7 +157,6 @@ class IterationGraph:
             raise ValueError(f"Invalid variable type: {variable_dtype}")
 
         self.iterations[new_node_id] = iteration
-        self._iteration_labels[new_node_id] = list(sorted(labels))
         self._recalculation_required.add(new_node_id)
 
         # self.select_node_id(new_node_id)
@@ -230,24 +219,6 @@ class IterationGraph:
         self._recalculation_required.add(node_id)
         for descendant in self.get_descendants(node_id):
             self._recalculation_required.add(descendant)
-
-    def set_labels(self, new_labels: list[str]):
-        node_id = self.current_node_id
-        iteration = self.current_iteration
-        old_labels = self.current_iteration_labels
-
-        diff = len(new_labels) - len(old_labels)
-        print(diff)
-
-        if diff > 0:
-            for _ in range(diff):
-                iteration.add_group(0)
-        elif diff < 0:
-            for _ in range(-diff):
-                iteration.remove_group(0)
-
-        self.current_iteration_labels = list(sorted(new_labels))
-        self.add_to_calculation_queue(node_id)
 
     def get_risk_tiers(self, node_id: str = None) -> tuple[pd.Series, list[str], list[str], list]:
         invalid_groups = []

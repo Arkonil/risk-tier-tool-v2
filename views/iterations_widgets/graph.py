@@ -7,7 +7,6 @@ from streamlit_flow.elements import StreamlitFlowNode, StreamlitFlowEdge
 from streamlit_flow.state import StreamlitFlowState
 from streamlit_flow.layouts import TreeLayout
 
-from classes.common import SUB_RISK_TIERS
 from classes.iteration_graph import IterationGraph
 from classes.session import Session
 
@@ -110,7 +109,6 @@ def show_primary_iter_var_selection_dialog():
     variable_name = st.selectbox("Select a variable", data.sample_df.columns)
     iteration_name = st.text_input("Iteration Name")
     variable_dtype = st.selectbox("Variable Type", ["numerical", "categorical"])
-    labels = st.multiselect("Risk Tiers", SUB_RISK_TIERS, default=SUB_RISK_TIERS)
 
     if st.button("Select"):
         variable = data.load_column(variable_name)
@@ -122,7 +120,6 @@ def show_primary_iter_var_selection_dialog():
             name=iteration_name,
             variable=variable,
             variable_dtype=variable_dtype,
-            labels=labels,
         )
 
         st.rerun()

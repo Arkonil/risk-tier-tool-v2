@@ -23,18 +23,26 @@ color_map = {
 
 @st.dialog("Set Risk Tiers")
 def set_risk_tiers(iteration_graph: IterationGraph):
-    print("Rerunning Dialog")
+
+    current_labels = SUB_RISK_TIERS.loc[iteration_graph.current_iteration.groups.index]
+
     new_labels = st.multiselect(
         label="Risk Tiers",
         options=SUB_RISK_TIERS,
-        default=iteration_graph.current_iteration_labels,
-        on_change=st.rerun,
+        default=current_labels,
+        # on_change=st.rerun,
     )
-    new_labels = list(sorted(new_labels))
 
     submitted = st.button("Submit")
     if submitted:
-        iteration_graph.set_labels(new_labels)
+
+        for i in range(iteration_graph.current_iteration.num_groups):
+            if SUB_RISK_TIERS.loc[i] not in new_labels:
+                iteration_graph.current_iteration.remove_group(i)
+            else:
+                iteration_graph.current_iteration.add_group(i)
+
+        iteration_graph.add_to_calculation_queue()
         st.rerun()
 
 def show_edited_range(show_all: bool):
@@ -43,7 +51,7 @@ def show_edited_range(show_all: bool):
     data = session.data
 
     iteration = iteration_graph.current_iteration
-    labels = iteration_graph.current_iteration_labels
+    # labels = iteration_graph.current_iteration_labels
 
     groups = iteration.groups
     groups = pd.DataFrame({'groups' : groups})
@@ -56,13 +64,13 @@ def show_edited_range(show_all: bool):
             assigned_categories = set(groups['groups'].explode())
             unassigned_categories = all_categories - assigned_categories
 
-            for row in groups.itertuples():
+            for i, row in enumerate(groups.itertuples()):
                 group_index = row.Index
                 group = set(row.groups)
 
-                with columns[group_index % len(columns)]:
+                with columns[i % len(columns)]:
                     new_group = set(st.multiselect(
-                        label=labels[group_index],
+                        label=SUB_RISK_TIERS.loc[group_index],
                         options=sorted(list(group.union(unassigned_categories))),
                         default=sorted(list(group),
                         # disabled=True,
@@ -98,9 +106,12 @@ def show_edited_range(show_all: bool):
         how='left',
         left_index=True,
         right_index=True,
+    ).merge(
+        SUB_RISK_TIERS,
+        how='left',
+        left_index=True,
+        right_index=True,
     )
-
-    calculated_df['risk_tier'] = labels
 
     columns = ['risk_tier']
 

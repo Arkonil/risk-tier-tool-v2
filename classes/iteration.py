@@ -4,6 +4,9 @@ import numpy as np
 import pandas as pd
 
 
+MAX_SINGLE_VAR_GROUP_COUNT = 10
+
+
 class IterationBase(ABC):
     @staticmethod
     def _new_group_default_value_factory() -> None:
@@ -15,8 +18,10 @@ class IterationBase(ABC):
         self.id = _id
         self.name = name
         self._variable = variable
+        self._groups = pd.Series()
 
         self._create_initial_groups(initial_group_count)
+        self._group_mask = pd.Series(True, index=self._groups.index)
 
     @property
     def variable(self) -> pd.Series:
@@ -27,11 +32,11 @@ class IterationBase(ABC):
 
     @property
     def groups(self) -> pd.Series:
-        return self._groups
+        return self._groups.loc[self._group_mask]
 
     @property
     def num_groups(self) -> int:
-        return len(self.groups)
+        return len(self._groups)
 
     def _check_group_index(self, group_index: int) -> None:
         if group_index < 0 or group_index >= self.num_groups:
@@ -39,29 +44,21 @@ class IterationBase(ABC):
                              f"Provided value: {group_index}")
 
     def add_group(self, group_index: int) -> None:
-        self._check_group_index(group_index)
+        if group_index < 0:
+            raise ValueError(f"Invalid argument for 'group_index': {group_index}")
 
-        group_index = max(1, group_index)
-        mask = self._groups.index
-        mask1 = mask[mask < group_index]
-        mask2 = mask[mask == group_index]
-        mask3 = mask[mask >= group_index]
+        if group_index >= self.num_groups:
+            self._groups.loc[self.num_groups] = self._new_group_default_value_factory()
 
-        part1 = self._groups.iloc[mask1].copy()
-        part2 = self._groups.iloc[mask2].copy()
-        part3 = self._groups.iloc[mask3].copy()
-
-        part2.loc[group_index] = self._new_group_default_value_factory()
-
-        self._groups = pd.concat([part1, part2, part3], axis=0).reset_index(drop=True)
+        self._group_mask.iloc[min(group_index, self.num_groups)] = True
 
     def remove_group(self, group_index: int) -> None:
         self._check_group_index(group_index)
 
-        if self.num_groups <= 1:
-            raise ValueError("Cannot remove the last group.")
-
-        self._groups = self._groups.drop(index=group_index).reset_index(drop=True)
+        if self._group_mask.drop(group_index).any():
+            self._group_mask.iloc[group_index] = False
+        else:
+            raise ValueError("Can not remove the last group.")
 
     @abstractmethod
     def _create_initial_groups(self, initial_group_count: int):
@@ -84,8 +81,8 @@ class SingleVarIteration(IterationBase):
         super().__init__(*args, **kwargs)
 
     def add_group(self, group_index: int) -> None:
-        if self.num_groups >= 10:
-            raise ValueError("Maximum number of groups reached.")
+        if group_index >= MAX_SINGLE_VAR_GROUP_COUNT:
+            raise ValueError(f"Can not add more than {MAX_SINGLE_VAR_GROUP_COUNT} groups.")
 
         return super().add_group(group_index)
 
@@ -106,22 +103,11 @@ class DoubleVarIteration(IterationBase):
     def add_group(self, group_index):
         super().add_group(group_index)
 
-        group_index = max(1, group_index)
-        mask = self.risk_tier_grid.index
-        mask1 = mask[mask < group_index]
-        mask2 = mask[mask == group_index]
-        mask3 = mask[mask >= group_index]
+        if len(self.risk_tier_grid) == len(self._groups):
+            return
 
-        part1 = self.risk_tier_grid.iloc[mask1].copy()
-        part2 = self.risk_tier_grid.iloc[mask2].copy()
-        part3 = self.risk_tier_grid.iloc[mask3].copy()
-
-        self.risk_tier_grid = pd.concat([part1, part2, part3], axis=0).reset_index(drop=True)
-
-    def remove_group(self, group_index):
-        super().remove_group(group_index)
-
-        self.risk_tier_grid = self.risk_tier_grid.drop(index=group_index).reset_index(drop=True)
+        last_row = self.risk_tier_grid.iloc[[-1]]
+        self.risk_tier_grid = pd.concat([self.risk_tier_grid, last_row], ignore_index=True)
 
 class NumericalIteration(IterationBase):
     @staticmethod
@@ -139,7 +125,7 @@ class NumericalIteration(IterationBase):
         self._groups = pd.Series(pairs, name=self.variable.name)
 
     def _validate(self) -> tuple[list[str], list[str], list]:
-        groups = self.groups
+        groups = self._groups.loc[self._group_mask]
 
         invalid_groups = []
         warnings = []
@@ -208,7 +194,7 @@ class CategoricalIteration(IterationBase):
         self._groups = pd.Series(groups, name=self.variable.name)
 
     def _validate(self) -> tuple[list[str], list[str], list]:
-        groups = self.groups
+        groups = self._groups.loc[self._group_mask]
 
         invalid_groups = []
         warnings = []
@@ -263,7 +249,7 @@ class NumericalSingleVarIteration(NumericalIteration, SingleVarIteration):
         super().__init__(_id, name, variable, initial_group_count)
 
     def get_risk_tiers(self, previous_risk_tiers: pd.Series = None) -> tuple[pd.Series, list[str], list[str], list]:
-        groups = self.groups
+        groups = self._groups.loc[self._group_mask]
 
         warnings, error, invalid_groups = self._validate()
         risk_tier_column = pd.Series(index=self.variable.index)
@@ -285,7 +271,7 @@ class CategoricalSingleVarIteration(CategoricalIteration, SingleVarIteration):
         super().__init__(_id, name, variable, initial_group_count)
 
     def get_risk_tiers(self, previous_risk_tiers: pd.Series = None) -> tuple[pd.Series, list[str], list[str], list]:
-        groups = self.groups
+        groups = self._groups.loc[self._group_mask]
 
         warnings, error, invalid_groups = self._validate()
         risk_tier_column = pd.Series(index=self.variable.index)
@@ -306,7 +292,7 @@ class NumericalDoubleVarIteration(NumericalIteration, DoubleVarIteration):
         super().__init__(_id, name, variable, initial_group_count)
 
     def get_risk_tiers(self, previous_risk_tiers: pd.Series = None) -> tuple[pd.Series, list[str], list[str], list]:
-        groups = self.groups
+        groups = self._groups.loc[self._group_mask]
 
         warnings, error, invalid_groups = self._validate()
         risk_tier_column = pd.Series(index=self.variable.index)
@@ -331,7 +317,7 @@ class CategoricalDoubleVarIteration(CategoricalIteration, DoubleVarIteration):
         super().__init__(_id, name, variable, initial_group_count)
 
     def get_risk_tiers(self, previous_risk_tiers: pd.Series = None) -> tuple[pd.Series, list[str], list[str], list]:
-        groups = self.groups
+        groups = self._groups.loc[self._group_mask]
 
         warnings, error, invalid_groups = self._validate()
         risk_tier_column = pd.Series(index=self.variable.index)

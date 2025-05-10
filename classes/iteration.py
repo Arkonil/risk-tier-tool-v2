@@ -6,7 +6,7 @@ import pandas as pd
 
 class IterationBase(ABC):
     @staticmethod
-    def new_group_default_value_factory() -> None:
+    def _new_group_default_value_factory() -> None:
         return None
 
     def __init__(self, _id, name: str, variable: pd.Series, initial_group_count: int) -> None:
@@ -35,8 +35,8 @@ class IterationBase(ABC):
 
     def _check_group_index(self, group_index: int) -> None:
         if group_index < 0 or group_index >= self.num_groups:
-            raise ValueError(
-                f"Value of colidx out of range [0, {self.num_groups - 1}]. Provided value: {group_index}")
+            raise ValueError(f"Value of colidx out of range [0, {self.num_groups - 1}]. "
+                             f"Provided value: {group_index}")
 
     def add_group(self, group_index: int) -> None:
         self._check_group_index(group_index)
@@ -51,7 +51,7 @@ class IterationBase(ABC):
         part2 = self._groups.iloc[mask2].copy()
         part3 = self._groups.iloc[mask3].copy()
 
-        part2.loc[group_index] = self.new_group_default_value_factory()
+        part2.loc[group_index] = self._new_group_default_value_factory()
 
         self._groups = pd.concat([part1, part2, part3], axis=0).reset_index(drop=True)
 
@@ -64,11 +64,11 @@ class IterationBase(ABC):
         self._groups = self._groups.drop(index=group_index).reset_index(drop=True)
 
     @abstractmethod
-    def _create_initial_groups(self, *args, **kwargs):
+    def _create_initial_groups(self, initial_group_count: int):
         raise NotImplementedError()
 
     @abstractmethod
-    def validate(self) -> tuple[list[str], list[str], list]:
+    def _validate(self) -> tuple[list[str], list[str], list]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -125,22 +125,20 @@ class DoubleVarIteration(IterationBase):
 
 class NumericalIteration(IterationBase):
     @staticmethod
-    def new_group_default_value_factory():
+    def _new_group_default_value_factory():
         return (np.nan, np.nan)
 
     def __init__(self, _id, name, variable, initial_group_count):
         super().__init__(_id, name, variable, initial_group_count)
 
-    # pylint: disable=arguments-differ
-    def _create_initial_groups(self, initial_group_count):
+    def _create_initial_groups(self, initial_group_count: int):
         quantiles = np.linspace(0, 1, initial_group_count + 1)
         percentiles = self.variable.quantile(quantiles)
         pairs = list(zip(percentiles.iloc[:-1], percentiles.iloc[1:]))
 
         self._groups = pd.Series(pairs, name=self.variable.name)
-    # pylint: enable=arguments-differ
 
-    def validate(self) -> tuple[list[str], list[str], list]:
+    def _validate(self) -> tuple[list[str], list[str], list]:
         groups = self.groups
 
         invalid_groups = []
@@ -163,7 +161,7 @@ class NumericalIteration(IterationBase):
 
             if not missing_bound and lower_bound >= upper_bound:
                 warnings.append(f"Invalid bounds in row {group_index}: "
-                                "lower bound ({lower_bound}) >= upper bound ({upper_bound})")
+                                f"lower bound ({lower_bound}) >= upper bound ({upper_bound})")
                 invalid_groups.append(group_index)
 
             if group_index not in invalid_groups:
@@ -175,7 +173,7 @@ class NumericalIteration(IterationBase):
         for i in range(len(intervals) - 1):
             if intervals[i][1].overlaps(intervals[i + 1][1]):
                 overlaps.append(f"{intervals[i][0]}. {intervals[i][1]} "
-                                "and {intervals[i + 1][0]}. {intervals[i + 1][1]}")
+                                f"and {intervals[i + 1][0]}. {intervals[i + 1][1]}")
 
         if overlaps:
             errors.append(f"Following intervals overlap: {overlaps}")
@@ -191,14 +189,13 @@ class NumericalIteration(IterationBase):
 
 class CategoricalIteration(IterationBase):
     @staticmethod
-    def new_group_default_value_factory():
+    def _new_group_default_value_factory():
         return []
 
     def __init__(self, _id, name, variable, initial_group_count):
         super().__init__(_id, name, variable, initial_group_count)
 
-    # pylint: disable=arguments-differ
-    def _create_initial_groups(self, initial_group_count):
+    def _create_initial_groups(self, initial_group_count: int):
         unique_values = list(self.variable.unique())
         groups = [set() for _ in range(initial_group_count)]
 
@@ -209,9 +206,8 @@ class CategoricalIteration(IterationBase):
                     break
 
         self._groups = pd.Series(groups, name=self.variable.name)
-    # pylint: enable=arguments-differ
 
-    def validate(self) -> tuple[list[str], list[str], list]:
+    def _validate(self) -> tuple[list[str], list[str], list]:
         groups = self.groups
 
         invalid_groups = []
@@ -235,7 +231,7 @@ class CategoricalIteration(IterationBase):
             for category in category_list:
                 if not isinstance(category, type(self.variable.iloc[0])):
                     warnings.append(f"Invalid type {type(category)} for category {category} "
-                                    "in group at index {group_index}")
+                                    f"in group at index {group_index}")
                     invalid_groups.append(group_index)
 
                 if category not in all_categories:
@@ -249,8 +245,8 @@ class CategoricalIteration(IterationBase):
                 assigned_categories.add(category)
 
         if len(all_categories - assigned_categories) > 0:
-            warnings.append("The following categories are not assigned to any group: "
-                            "{all_categories - assigned_categories}")
+            warnings.append(f"The following categories are not assigned to any group: "
+                            f"{', '.join(all_categories - assigned_categories)}")
 
         return warnings, errors, invalid_groups
 
@@ -269,7 +265,7 @@ class NumericalSingleVarIteration(NumericalIteration, SingleVarIteration):
     def get_risk_tiers(self, previous_risk_tiers: pd.Series = None) -> tuple[pd.Series, list[str], list[str], list]:
         groups = self.groups
 
-        warnings, error, invalid_groups = self.validate()
+        warnings, error, invalid_groups = self._validate()
         risk_tier_column = pd.Series(index=self.variable.index)
 
         if error:
@@ -291,7 +287,7 @@ class CategoricalSingleVarIteration(CategoricalIteration, SingleVarIteration):
     def get_risk_tiers(self, previous_risk_tiers: pd.Series = None) -> tuple[pd.Series, list[str], list[str], list]:
         groups = self.groups
 
-        warnings, error, invalid_groups = self.validate()
+        warnings, error, invalid_groups = self._validate()
         risk_tier_column = pd.Series(index=self.variable.index)
 
         if error:
@@ -312,7 +308,7 @@ class NumericalDoubleVarIteration(NumericalIteration, DoubleVarIteration):
     def get_risk_tiers(self, previous_risk_tiers: pd.Series = None) -> tuple[pd.Series, list[str], list[str], list]:
         groups = self.groups
 
-        warnings, error, invalid_groups = self.validate()
+        warnings, error, invalid_groups = self._validate()
         risk_tier_column = pd.Series(index=self.variable.index)
 
         if error:
@@ -337,7 +333,7 @@ class CategoricalDoubleVarIteration(CategoricalIteration, DoubleVarIteration):
     def get_risk_tiers(self, previous_risk_tiers: pd.Series = None) -> tuple[pd.Series, list[str], list[str], list]:
         groups = self.groups
 
-        warnings, error, invalid_groups = self.validate()
+        warnings, error, invalid_groups = self._validate()
         risk_tier_column = pd.Series(index=self.variable.index)
 
         if error:

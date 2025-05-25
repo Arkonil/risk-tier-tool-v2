@@ -185,7 +185,7 @@ def show_iteration_graph_widgets():
         ):
             show_primary_iter_var_selection_dialog()
     else:
-        if iteration_graph.iteration_depth(new_state.selected_id) < 3:
+        if iteration_graph.iteration_depth(new_state.selected_id) < iteration_graph.MAX_DEPTH:
             if st.sidebar.button(
                 label="Add Child Iteration",
                 icon=":material/add:",

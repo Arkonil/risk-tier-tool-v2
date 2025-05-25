@@ -4,6 +4,7 @@ import typing as t
 import streamlit as st
 
 from classes.data import Data
+from views.variable_selector import show_variable_selector
 
 def filepath_input(default_value=None) -> pathlib.Path:
     st.markdown("##### File Path:")
@@ -135,11 +136,10 @@ def show_data_importer_page():
     st.write("")
 
     # Info Validation
-    validation_result = data.validate_read_config(filepath, read_mode)
-    if not validation_result:
+    if not filepath:
         return
 
-    valid, display_message = validation_result
+    valid, display_message = data.validate_read_config(filepath, read_mode)
 
     # UI - Info Validation
     if not valid:
@@ -159,7 +159,7 @@ def show_data_importer_page():
         button_type = "primary"
 
     if st.button(button_text, icon=button_icon, type=button_type):
-        with st.status('Importing data...') as status:
+        with st.status('Importing data...', state="running") as status:
             try:
                 data.reset()
                 data.load_sample(
@@ -184,92 +184,5 @@ def show_data_importer_page():
 
     st.markdown("#### Sample Data")
     st.dataframe(data.sample_df, width=2000)
-
-    st.markdown("#### Variables")
-
-    with st.container(border=True, key="final_application_status"):
-        st.markdown("###### Application Status Variable")
-        data.var_app_status = st.selectbox(
-            label="Application Status",
-            options=data.sample_df.columns,
-            index=data.get_col_pos(data.var_app_status),
-            label_visibility="collapsed"
-        )
-
-        if data.var_app_status is not None:
-            unq_vals = set(data.load_column(data.var_app_status).unique())
-
-            col1, col2 = st.columns(2, vertical_alignment="bottom")
-
-            with col1:
-                selected_vals = st.multiselect("Approved", options=unq_vals, default=unq_vals)
-                data.var_app_status_accepted = set(selected_vals)
-                data.var_app_status_declined = unq_vals - data.var_app_status_accepted
-
-            with col2:
-                if data.var_app_status_declined:
-                    selected_vals = st.multiselect(
-                        "Declined",
-                        options=data.var_app_status_declined,
-                        disabled=True,
-                        default=data.var_app_status_declined
-                    )
-                else:
-                    st.write("All values are selected.")
-
-            if not data.var_app_status_accepted:
-                st.error("Please select at least one value for `Approved`.")
-
-        st.divider()
-
-        col1, col2, col3, col4, col5 = st.columns(5)
-
-        with col1:
-            st.markdown("###### # Write Off flag")
-            data.var_unt_wrt_off = st.selectbox(
-                label="#WO",
-                options=data.sample_df.columns,
-                index=data.get_col_pos(data.var_unt_wrt_off),
-                label_visibility="collapsed"
-            )
-
-        with col2:
-            st.markdown("###### $ Write Off Balance")
-            data.var_dlr_wrt_off = st.selectbox(
-                label="$WO",
-                options=data.sample_df.columns,
-                index=data.get_col_pos(data.var_dlr_wrt_off),
-                label_visibility="collapsed"
-            )
-
-        with col3:
-            st.markdown("###### Average Recievable")
-            data.var_avg_bal = st.selectbox(
-                label="avg_bal",
-                options=data.sample_df.columns,
-                index=data.get_col_pos(data.var_avg_bal),
-                label_visibility="collapsed"
-            )
-
-        with col4:
-            st.markdown("###### MOB")
-            data.mob = int(st.number_input(
-                label="mob",
-                label_visibility="collapsed",
-                min_value=1, value=data.mob
-            ))
-
-        with col5:
-            st.markdown("###### Revenue")
-            data.var_revenue = st.selectbox(
-                label="revenue",
-                options=data.sample_df.columns,
-                index=data.get_col_pos(data.var_revenue),
-                label_visibility="collapsed"
-            )
-
-        if not data.all_variable_selected():
-            st.error("Please select all variables.")
-
 
 show_data_importer_page()

@@ -1,9 +1,12 @@
 from typing import Literal, Union
 
+import numpy as np
 import pandas as pd
 
 from classes.iteration import (
     IterationBase,
+    SingleVarIteration,
+    DoubleVarIteration,
     NumericalIteration,
     CategoricalIteration,
     NumericalSingleVarIteration,
@@ -11,7 +14,7 @@ from classes.iteration import (
     CategoricalSingleVarIteration,
     CategoricalDoubleVarIteration,
 )
-from classes.common import SUB_RISK_TIERS
+from classes.common import SUB_RISK_TIERS, Names
 
 def __integer_generator():
     current = 0
@@ -28,15 +31,24 @@ def new_id():
 
 class IterationGraph:
 
+    MAX_DEPTH = 10
+
     def __init__(self) -> None:
         self.iterations: dict[str, IterationBase] = {}
 
         self.connections: dict[str, list[str]] = {}
         self._iteration_outputs: dict[str, pd.Series] = {}
+        self.iteration_metrics: dict[str, pd.Series] = {}
 
         self._selected_node_id = None
         self._current_node_id = None
         self._recalculation_required = set()
+
+        self.__default_metric_df = pd.DataFrame({
+            "metric": [Names.VOLUME, Names.AVG_BAL, Names.WO_COUNT, Names.WO_COUNT_PCT, Names.WO_BAL, Names.WO_BAL_PCT],
+            "order": [0, 1, 2, 3, 4, 5],
+            "showing": [True, True, True, True, True, True],
+        })
 
     @property
     def selected_node_id(self):
@@ -62,15 +74,17 @@ class IterationGraph:
     def current_iteration(self):
         return self.iterations[self.current_node_id]
 
-    @property
-    def current_iteration_type(self) -> Literal["numerical", "categorical"]:
-        if isinstance(self.current_iteration, NumericalIteration):
-            return "numerical"
-        elif isinstance(self.current_iteration, CategoricalIteration):
-            return "categorical"
-        else:
-            raise ValueError(f"Invalid iteration type: {type(self.current_iteration)}")
+    def get_iteration_type(self, node_id: str = None) -> Literal["numerical", "categorical"]:
+        if node_id is None:
+            node_id = self.current_node_id
 
+        if isinstance(self.iterations[node_id], NumericalIteration):
+            return "numerical"
+
+        if isinstance(self.iterations[node_id], CategoricalIteration):
+            return "categorical"
+
+        raise ValueError(f"Invalid iteration type: {type(self.iterations[node_id])}")
 
     def get_parent(self, node_id: str = None) -> Union[str, None]:
         if node_id is None:
@@ -117,6 +131,24 @@ class IterationGraph:
 
         return descendants
 
+    def get_parent_tiers(self, node_id: str = None) -> list[int]:
+        if node_id is None:
+            node_id = self.current_node_id
+
+        if self.is_root(node_id):
+            return []
+
+        parent_node_id = self.get_parent(node_id)
+        parent_node = self.iterations[parent_node_id]
+
+        if isinstance(parent_node, SingleVarIteration):
+            return parent_node.groups.index.tolist()
+
+        if isinstance(parent_node, DoubleVarIteration):
+            return np.unique(parent_node.risk_tier_grid.values.flatten()).tolist()
+
+        raise ValueError(f"Invalid iteration type: {type(parent_node)}")
+
     def is_root(self, node_id: str = None) -> bool:
         if node_id is None:
             node_id = self.current_node_id
@@ -157,6 +189,7 @@ class IterationGraph:
             raise ValueError(f"Invalid variable type: {variable_dtype}")
 
         self.iterations[new_node_id] = iteration
+        self.iteration_metrics[new_node_id] = self.__default_metric_df.copy()
         self._recalculation_required.add(new_node_id)
 
         # self.select_node_id(new_node_id)
@@ -188,6 +221,7 @@ class IterationGraph:
             raise ValueError(f"Invalid variable type: {variable_dtype}")
 
         self.iterations[new_node_id] = iteration
+        self.iteration_metrics[new_node_id] = self.__default_metric_df.copy()
 
         self.connections.setdefault(previous_node_id, []).append(new_node_id)
 
@@ -227,6 +261,9 @@ class IterationGraph:
 
         if node_id is None:
             node_id = self.current_node_id
+
+        if node_id not in self._iteration_outputs:
+            self._recalculation_required.add(node_id)
 
         if node_id not in self._recalculation_required:
             return self._iteration_outputs[node_id], errors, warnings, invalid_groups

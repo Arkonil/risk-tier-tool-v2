@@ -2,6 +2,7 @@ import pathlib
 import typing as t
 import collections.abc
 
+import numpy as np
 import pandas as pd
 
 from classes.metadata import Metadata
@@ -33,6 +34,7 @@ class Data:
         self.sample_df: pd.DataFrame | None = None
         self.raw_csv_lines: list[str] = []
         self.df: pd.DataFrame | None = None
+        self.df_size: int | None = None
 
         self.var_app_status: str | None = None
         self.var_app_status_accepted: set[str] = set()
@@ -59,7 +61,7 @@ class Data:
             self.mob is not None,
         ])
 
-    def get_col_pos(self, col_name: str) -> int:
+    def get_col_pos(self, col_name: str | None) -> int:
         if col_name is None or col_name not in self.sample_df.columns:
             return None
         return self.sample_df.columns.get_loc(col_name)
@@ -103,24 +105,12 @@ class Data:
         Returns:
         pd.DataFrame: The DataFrame containing the data read from the file.
         """
-
+        
         if read_mode == "CSV":
-            df = pd.read_csv(
-                filepath,
-                delimiter=delimiter,
-                header=header_row,
-                nrows=nrows,
-                usecols=usecols
-            ).convert_dtypes()
+            df = pd.read_csv(filepath, delimiter=delimiter, header=header_row, nrows=nrows, usecols=usecols).convert_dtypes()
         elif read_mode == "EXCEL":
             try:
-                df = pd.read_excel(
-                    filepath,
-                    sheet_name=sheet_name,
-                    header=header_row,
-                    nrows=nrows,
-                    usecols=usecols
-                ).convert_dtypes()
+                df = pd.read_excel(filepath, sheet_name=sheet_name, header=header_row, nrows=nrows, usecols=usecols).convert_dtypes()
             except ValueError as error:
                 if sheet_name.isdigit():
                     df = pd.read_excel(
@@ -167,6 +157,8 @@ class Data:
 
         self.sample_df = self._read_data(
             filepath, read_mode, delimiter, sheet_name, header_row, nrows)
+        
+        self.df_size = len(self._read_data(filepath, read_mode, delimiter, sheet_name, header_row, usecols=[0]))
 
         self.filepath = filepath
         self.read_mode = read_mode
@@ -175,9 +167,9 @@ class Data:
         self.header_row = header_row
         self.sample_row_count = nrows if nrows is not None else self.sample_row_count
 
-    def load_column(self, column_name: str) -> pd.Series:
+    def load_column(self, column_name: str | None) -> pd.Series:
         if column_name is None:
-            raise ValueError("Column name cannot be None.")
+            return pd.Series(index=np.arange(self.df_size))
 
         if self.df is None:
             self.df = pd.DataFrame()

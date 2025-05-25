@@ -227,6 +227,18 @@ class IterationGraph:
 
         self.select_node_id(new_node_id)
 
+    def add_node(
+        self,
+        name: str,
+        variable: pd.Series,
+        variable_dtype: Literal["numerical", "categorical"],
+        previous_node_id: str = None):
+
+        if previous_node_id is None:
+            self.add_single_var_node(name, variable, variable_dtype)
+        else:
+            self.add_double_var_node(name, variable, variable_dtype, previous_node_id)
+
     def delete_iteration(self, node_id: str):
         nodes_to_delete = [node_id] + self.get_descendants(node_id)
 

@@ -96,7 +96,7 @@ def streamlit_flow_graph(iteration_graph: IterationGraph) -> StreamlitFlowState:
     return new_state
 
 @st.dialog("Choose a variable")
-def show_primary_iter_var_selection_dialog():
+def show_add_iter_dialog(parent_node_id: str | None = None):
     session: Session = st.session_state['session']
     data = session.data
 
@@ -116,30 +116,7 @@ def show_primary_iter_var_selection_dialog():
         if not pd.api.types.is_numeric_dtype(variable):
             variable_dtype = "categorical"
 
-        session.iteration_graph.add_single_var_node(
-            name=iteration_name,
-            variable=variable,
-            variable_dtype=variable_dtype,
-        )
-
-        st.rerun()
-
-@st.dialog("Choose a variable")
-def show_secondary_iter_var_selection_dialog(parent_node_id: str):
-    session: Session = st.session_state['session']
-    data = session.data
-
-    variable_name = st.selectbox("Select a variable", data.sample_df.columns)
-    iteration_name = st.text_input("Iteration Name")
-    variable_dtype = st.selectbox("Variable Type", ["numerical", "categorical"])
-
-    if st.button("Select"):
-        variable = data.load_column(variable_name)
-
-        if not pd.api.types.is_numeric_dtype(variable):
-            variable_dtype = "categorical"
-
-        session.iteration_graph.add_double_var_node(
+        session.iteration_graph.add_node(
             name=iteration_name,
             variable=variable,
             variable_dtype=variable_dtype,
@@ -152,7 +129,14 @@ def show_delete_confirmation_dialog(node_id: str):
     session: Session = st.session_state['session']
     iteration_graph = session.iteration_graph
 
-    st.write("Are you sure you want to delete this iteration?")
+    st.write(f"Are you sure you want to delete iteration #{iteration_graph.iterations[node_id].id}?")
+
+    children = iteration_graph.get_descendants(node_id)
+    if children:
+        st.markdown("The following iterations will also be deleted:")
+        st.markdown("\n".join([f"* `Iteration #{child}`" for child in children]))
+
+    st.write("This action cannot be undone.")
     if st.button("Delete"):
         iteration_graph.delete_iteration(node_id)
         st.rerun()
@@ -183,7 +167,7 @@ def show_iteration_graph_widgets():
             use_container_width=True,
             type="secondary"
         ):
-            show_primary_iter_var_selection_dialog()
+            show_add_iter_dialog()
     else:
         if iteration_graph.iteration_depth(new_state.selected_id) < iteration_graph.MAX_DEPTH:
             if st.sidebar.button(
@@ -192,7 +176,7 @@ def show_iteration_graph_widgets():
                 use_container_width=True,
                 type="secondary"
             ):
-                show_secondary_iter_var_selection_dialog(new_state.selected_id)
+                show_add_iter_dialog(new_state.selected_id)
 
         if st.sidebar.button(
             label="Delete Iteration",

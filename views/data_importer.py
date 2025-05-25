@@ -182,7 +182,14 @@ def show_data_importer_page():
     if not data.sample_loaded:
         return
 
+    st.divider()
     st.markdown("#### Sample Data")
     st.dataframe(data.sample_df, width=2000)
+
+    st.divider()
+    st.markdown("#### Variable Selector")
+    with st.container(border=True):
+        st.write(" ")
+        show_variable_selector()
 
 show_data_importer_page()

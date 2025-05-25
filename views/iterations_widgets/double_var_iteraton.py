@@ -44,9 +44,7 @@ def show_metric_selector(iteration_graph: IterationGraph):
         metrics_df.loc[index, 'order'] = order
         st.rerun(scope="fragment")
 
-    _, col2 = st.columns([3, 1])
-
-    if col2.button("Submit", type="primary", use_container_width=True):
+    if st.button("Submit"):
         st.rerun()
 
 def show_edited_grid(split_view: bool, show_all: bool):

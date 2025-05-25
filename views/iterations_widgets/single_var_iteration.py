@@ -19,12 +19,9 @@ def set_risk_tiers(iteration_graph: IterationGraph):
         label="Risk Tiers",
         options=SUB_RISK_TIERS,
         default=current_labels,
-        # on_change=st.rerun,
     )
 
-    submitted = st.button("Submit")
-    if submitted:
-
+    if st.button("Submit"):
         for i in range(iteration_graph.current_iteration.num_groups):
             if SUB_RISK_TIERS.loc[i] not in new_labels:
                 iteration_graph.current_iteration.remove_group(i)

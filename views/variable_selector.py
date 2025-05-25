@@ -12,19 +12,18 @@ def show_text(column, text: str):
         """
     )
 
-
 def show_unit_wrt_off_selector(data: Data):
-    col1, col2, col3, col4 = st.columns([5, 5, 1, 5])
+    col1, col2, col3, col4, col5 = st.columns([4, 1, 5, 1, 5])
 
-    show_text(col1, "# Write Off % = ")
-
+    show_text(col1, "# Write Off %")
+    show_text(col2, "=")
     options = [None] + data.sample_df.columns.to_list()
     current_index = data.get_col_pos(data.var_unt_wrt_off)
 
     if current_index is not None:
         current_index += 1
 
-    data.var_unt_wrt_off = col2.selectbox(
+    data.var_unt_wrt_off = col3.selectbox(
         label="#WO_var",
         options=options,
         label_visibility="collapsed",
@@ -32,21 +31,21 @@ def show_unit_wrt_off_selector(data: Data):
         format_func=lambda v: "" if v is None else v,
         placeholder="# Write Off Variable"
     )
-    show_text(col3, "/")
-    show_text(col4, "# Accounts")
+    show_text(col4, "/")
+    show_text(col5, "# Accounts")
 
 def show_dlr_wrt_off_selector(data: Data):
-    col1, col2, col3, col4 = st.columns([5, 5, 1, 5])
+    col1, col2, col3, col4, col5 = st.columns([4, 1, 5, 1, 5])
 
-    show_text(col1, "$ Write Off % = ")
-
+    show_text(col1, "$ Write Off %")
+    show_text(col2, "=")
     options = [None] + data.sample_df.columns.to_list()
     current_index = data.get_col_pos(data.var_dlr_wrt_off)
 
     if current_index is not None:
         current_index += 1
 
-    data.var_dlr_wrt_off = col2.selectbox(
+    data.var_dlr_wrt_off = col3.selectbox(
         label="$WO_var",
         options=options,
         label_visibility="collapsed",
@@ -55,7 +54,7 @@ def show_dlr_wrt_off_selector(data: Data):
         placeholder="$ Write Off Variable"
     )
 
-    show_text(col3, "/")
+    show_text(col4, "/")
 
     options = [None] + data.sample_df.columns.to_list()
     current_index = data.get_col_pos(data.var_avg_bal)
@@ -63,7 +62,7 @@ def show_dlr_wrt_off_selector(data: Data):
     if current_index is not None:
         current_index += 1
 
-    data.var_avg_bal = col4.selectbox(
+    data.var_avg_bal = col5.selectbox(
         label="Avg_Bal",
         options=options,
         label_visibility="collapsed",
@@ -82,11 +81,8 @@ def show_variable_selector():
 
 @st.dialog("Set Variables", width="large")
 def show_variable_selector_dialog():
-    show_variable_selector()
+    with st.container(border=True):
+        show_variable_selector()
 
-    st.divider()
-
-    _, col2 = st.columns([5, 1])
-
-    if col2.button("Submit", type="primary"):
+    if st.button("Submit"):
         st.rerun()

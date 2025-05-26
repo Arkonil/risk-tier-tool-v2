@@ -3,76 +3,79 @@ import pandas as pd
 import streamlit as st
 
 from classes.common import SUB_RISK_TIERS, color_map, Names
-from classes.iteration import DoubleVarIteration, SingleVarIteration
-from classes.iteration_graph import IterationGraph
 from classes.session import Session
 
+from views.iterations_widgets.dialogs import set_risk_tiers, show_metric_selector
 from views.iterations_widgets.navigation import show_navigation_buttons
 from views.variable_selector import show_variable_selector_dialog
 
-@st.dialog("Set Risk Tiers")
-def set_risk_tiers(iteration_graph: IterationGraph):
+def show_category_editor(node_id: str):
+    session: Session = st.session_state['session']
+    iteration_graph = session.iteration_graph
 
-    current_labels = SUB_RISK_TIERS.loc[iteration_graph.current_iteration.groups.index]
+    iteration = iteration_graph.iterations[node_id]
 
-    new_labels = st.multiselect(
-        label="Risk Tiers",
-        options=SUB_RISK_TIERS,
-        default=current_labels,
-    )
+    if iteration.var_type != "categorical":
+        st.error("Group editor is only available for categorical variables.", icon=":material/error:")
+        return
 
-    if st.button("Submit"):
-        for i in range(iteration_graph.current_iteration.num_groups):
-            if SUB_RISK_TIERS.loc[i] not in new_labels:
-                iteration_graph.current_iteration.remove_group(i)
-            else:
-                iteration_graph.current_iteration.add_group(i)
+    groups = iteration.groups
+    groups = pd.DataFrame({Names.GROUPS : groups})
 
-        iteration_graph.add_to_calculation_queue()
-        st.rerun()
+    with st.expander("Edit Groups"):
+        columns = st.columns(min(5, len(groups)))
 
-def show_edited_range(iteration_id: str, show_all: bool, editable: bool = True):
+        all_categories = set(iteration.variable.cat.categories)
+        assigned_categories = set(groups[Names.GROUPS].explode())
+        unassigned_categories = all_categories - assigned_categories
+
+        for i, row in enumerate(groups.itertuples()):
+            group_index = row.Index
+            group = set(row[1])
+
+            with columns[i % len(columns)]:
+                new_group = set(st.multiselect(
+                    label=SUB_RISK_TIERS.loc[group_index],
+                    options=sorted(list(group.union(unassigned_categories))),
+                    default=sorted(list(group),
+                )))
+
+                if group != new_group:
+                    iteration.set_group(group_index, new_group)
+                    iteration_graph.add_to_calculation_queue(iteration.id)
+                    st.rerun()
+
+def show_edited_range(iteration_id: str, editable: bool = True):
     session: Session = st.session_state['session']
     iteration_graph = session.iteration_graph
     data = session.data
 
     iteration = iteration_graph.iterations[iteration_id]
-    iteration_type = iteration_graph.get_iteration_type(iteration.id)
 
-    groups = iteration.groups
-    groups = pd.DataFrame({Names.GROUPS : groups})
-
-    if isinstance(iteration, DoubleVarIteration):
+    if iteration.var_count == 2:
         editable = False
 
-    if editable and iteration_type == "categorical":
-        with st.expander("Edit Groups"):
-            columns = st.columns(min(5, len(groups)))
-
-            all_categories = set(iteration.variable.cat.categories)
-            assigned_categories = set(groups[Names.GROUPS].explode())
-            unassigned_categories = all_categories - assigned_categories
-
-            for i, row in enumerate(groups.itertuples()):
-                group_index = row.Index
-                group = set(row.groups)
-
-                with columns[i % len(columns)]:
-                    new_group = set(st.multiselect(
-                        label=SUB_RISK_TIERS.loc[group_index],
-                        options=sorted(list(group.union(unassigned_categories))),
-                        default=sorted(list(group),
-                        # disabled=True,
-                    )))
-
-                    if group != new_group:
-                        iteration.set_group(group_index, new_group)
-                        iteration_graph.add_to_calculation_queue(iteration.id)
-                        st.rerun()
-
+    if editable and iteration.var_type == "categorical":
+        show_category_editor(iteration.id)
         st.divider()
 
     new_risk_tiers, errors, warnings, _ = iteration_graph.get_risk_tiers(iteration.id)
+
+    if iteration.var_count == 1:
+        groups = iteration.groups
+        groups = pd.DataFrame({Names.GROUPS : groups}) \
+            .merge(SUB_RISK_TIERS, how='left', left_index=True, right_index=True)
+
+        if iteration.var_type == "numerical":
+            groups[Names.LOWER_BOUND] = groups[Names.GROUPS].map(lambda bounds: bounds[0])
+            groups[Names.UPPER_BOUND] = groups[Names.GROUPS].map(lambda bounds: bounds[1])
+        else:
+            groups[Names.CATEGORIES] = groups[Names.GROUPS]
+    else:
+        groups = pd.DataFrame({
+            Names.RISK_TIER: SUB_RISK_TIERS.loc[SUB_RISK_TIERS.index.isin(new_risk_tiers)]
+        })
+
     base_df = pd.DataFrame({
         Names.RISK_TIER_VALUE: new_risk_tiers,
         Names.VOLUME: 1,
@@ -86,14 +89,7 @@ def show_edited_range(iteration_id: str, show_all: bool, editable: bool = True):
     summ_df[Names.WO_BAL_PCT] = 100 * summ_df[Names.WO_BAL] / summ_df[Names.AVG_BAL]
     summ_df[Names.WO_COUNT_PCT] = 100 * summ_df[Names.WO_COUNT] / summ_df[Names.VOLUME]
 
-    calculated_df = groups.merge(summ_df, how='left', left_index=True, right_index=True) \
-                          .merge(SUB_RISK_TIERS, how='left', left_index=True, right_index=True)
-
-    if iteration_type == "numerical":
-        calculated_df[Names.LOWER_BOUND] = calculated_df[Names.GROUPS].map(lambda bounds: bounds[0])
-        calculated_df[Names.UPPER_BOUND] = calculated_df[Names.GROUPS].map(lambda bounds: bounds[1])
-    else:
-        calculated_df[Names.CATEGORIES] = calculated_df[Names.GROUPS]
+    calculated_df = groups.merge(summ_df, how='left', left_index=True, right_index=True)
 
     int_cols = [Names.VOLUME, Names.WO_COUNT]
     dec_cols = [Names.WO_BAL, Names.AVG_BAL]
@@ -105,11 +101,12 @@ def show_edited_range(iteration_id: str, show_all: bool, editable: bool = True):
         .format(precision=2, thousands=',', subset=dec_cols) \
         .format('{:.2f} %', subset=perc_cols)
 
+    disabled = not editable
     column_config = {
         Names.RISK_TIER: st.column_config.TextColumn(label=Names.RISK_TIER, disabled=True),
         Names.CATEGORIES: st.column_config.ListColumn(label=Names.CATEGORIES, width="large"),
-        Names.LOWER_BOUND: st.column_config.NumberColumn(label=Names.LOWER_BOUND, disabled=not editable, format="compact"),
-        Names.UPPER_BOUND: st.column_config.NumberColumn(label=Names.UPPER_BOUND, disabled=not editable, format="compact"),
+        Names.LOWER_BOUND: st.column_config.NumberColumn(label=Names.LOWER_BOUND, disabled=disabled, format="compact"),
+        Names.UPPER_BOUND: st.column_config.NumberColumn(label=Names.UPPER_BOUND, disabled=disabled, format="compact"),
         Names.VOLUME: st.column_config.NumberColumn(label=Names.VOLUME, disabled=True),
         Names.WO_BAL: st.column_config.NumberColumn(label=Names.WO_BAL, disabled=True),
         Names.WO_BAL_PCT: st.column_config.NumberColumn(label=Names.WO_BAL_PCT, disabled=True),
@@ -118,17 +115,18 @@ def show_edited_range(iteration_id: str, show_all: bool, editable: bool = True):
         Names.AVG_BAL: st.column_config.NumberColumn(label=Names.AVG_BAL, disabled=True),
     }
 
+    metrics_df = iteration_graph.iteration_metadata[iteration_graph.current_node_id]['metrics']
+    showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
+
     columns = [Names.RISK_TIER]
-    if isinstance(iteration, SingleVarIteration):
-        if iteration_type == "numerical":
+    if iteration.var_count == 1:
+        if iteration.var_type == "numerical":
             columns += [Names.LOWER_BOUND, Names.UPPER_BOUND]
         else:
             columns += [Names.CATEGORIES]
 
-    columns += [Names.VOLUME, Names.WO_BAL, Names.WO_BAL_PCT, Names.WO_COUNT, Names.WO_COUNT_PCT, Names.AVG_BAL]
+    columns += showing_metrics.to_list()
 
-    if not show_all:
-        columns = [col for col in columns if col not in [Names.WO_BAL, Names.WO_COUNT, Names.AVG_BAL]]
 
     edited_df = st.data_editor(
         calculated_df,
@@ -138,7 +136,7 @@ def show_edited_range(iteration_id: str, show_all: bool, editable: bool = True):
         use_container_width=True
     )
 
-    if editable and iteration_type == "numerical":
+    if editable and iteration.var_type == "numerical":
 
         edited_groups = edited_df[[Names.RISK_TIER, Names.LOWER_BOUND, Names.UPPER_BOUND]]
 
@@ -179,10 +177,11 @@ def show_single_var_iteration_widgets():
     show_navigation_buttons()
 
     with st.sidebar:
-        show_all = st.checkbox("Show all metrics")
+        if st.button("Set Metrics", use_container_width=True):
+            show_metric_selector(iteration.id)
 
         if st.button("Set Risk Tiers", use_container_width=True):
-            set_risk_tiers(iteration_graph)
+            set_risk_tiers(iteration.id)
 
         if st.button("Set Variables", use_container_width=True):
             show_variable_selector_dialog()
@@ -191,7 +190,6 @@ def show_single_var_iteration_widgets():
     st.write(f"##### Variable: `{iteration.variable.name}`")
 
     show_edited_range(
-        iteration_id=iteration_graph.current_node_id,
-        show_all=show_all,
+        iteration_id=iteration.id,
         editable=True,
     )

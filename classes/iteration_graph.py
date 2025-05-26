@@ -1,14 +1,10 @@
-from typing import Literal, Union
+from typing import Literal, Union, TypedDict
 
 import numpy as np
 import pandas as pd
 
 from classes.iteration import (
     IterationBase,
-    SingleVarIteration,
-    DoubleVarIteration,
-    NumericalIteration,
-    CategoricalIteration,
     NumericalSingleVarIteration,
     NumericalDoubleVarIteration,
     CategoricalSingleVarIteration,
@@ -29,6 +25,12 @@ __generator = __integer_generator()
 def new_id():
     return str(next(__generator))
 
+class IterationMetadata(TypedDict):
+    metrics: pd.DataFrame
+    annualized_rates: bool
+    scalar_multiplied_rates: bool
+
+
 class IterationGraph:
 
     MAX_DEPTH = 10
@@ -38,7 +40,7 @@ class IterationGraph:
 
         self.connections: dict[str, list[str]] = {}
         self._iteration_outputs: dict[str, pd.Series] = {}
-        self.iteration_metrics: dict[str, pd.Series] = {}
+        self.iteration_metadata: dict[str, IterationMetadata] = {}
 
         self._selected_node_id = None
         self._current_node_id = None
@@ -78,10 +80,10 @@ class IterationGraph:
         if node_id is None:
             node_id = self.current_node_id
 
-        if isinstance(self.iterations[node_id], NumericalIteration):
+        if self.iterations[node_id].var_type == "numerical":
             return "numerical"
 
-        if isinstance(self.iterations[node_id], CategoricalIteration):
+        if self.iterations[node_id].var_type == "categorical":
             return "categorical"
 
         raise ValueError(f"Invalid iteration type: {type(self.iterations[node_id])}")
@@ -141,10 +143,10 @@ class IterationGraph:
         parent_node_id = self.get_parent(node_id)
         parent_node = self.iterations[parent_node_id]
 
-        if isinstance(parent_node, SingleVarIteration):
+        if parent_node.var_count == 1:
             return parent_node.groups.index.tolist()
 
-        if isinstance(parent_node, DoubleVarIteration):
+        if parent_node.var_count == 2:
             return np.unique(parent_node.risk_tier_grid.values.flatten()).tolist()
 
         raise ValueError(f"Invalid iteration type: {type(parent_node)}")
@@ -189,7 +191,11 @@ class IterationGraph:
             raise ValueError(f"Invalid variable type: {variable_dtype}")
 
         self.iterations[new_node_id] = iteration
-        self.iteration_metrics[new_node_id] = self.__default_metric_df.copy()
+        self.iteration_metadata[new_node_id] = {
+            "metrics": self.__default_metric_df.copy(),
+            "annualized_rates": False,
+            "scalar_multiplied_rates": False,
+        }
         self._recalculation_required.add(new_node_id)
 
         # self.select_node_id(new_node_id)
@@ -221,8 +227,11 @@ class IterationGraph:
             raise ValueError(f"Invalid variable type: {variable_dtype}")
 
         self.iterations[new_node_id] = iteration
-        self.iteration_metrics[new_node_id] = self.__default_metric_df.copy()
-
+        self.iteration_metadata[new_node_id] = {
+            "metrics": self.__default_metric_df.copy(),
+            "annualized_rates": False,
+            "scalar_multiplied_rates": False,
+        }
         self.connections.setdefault(previous_node_id, []).append(new_node_id)
 
         self.select_node_id(new_node_id)

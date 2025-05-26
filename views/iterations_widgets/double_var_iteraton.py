@@ -1,53 +1,17 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
-from streamlit_sortables import sort_items
 
 from classes.common import SUB_RISK_TIERS, SUB_RT_INV_MAP, Names, color_map
 from classes.iteration_graph import IterationGraph
 from classes.session import Session
 
+from views.iterations_widgets.dialogs import set_groups, show_metric_selector
 from views.iterations_widgets.navigation import show_navigation_buttons
 from views.iterations_widgets.single_var_iteration import show_edited_range
 from views.variable_selector import show_variable_selector_dialog
 
-@st.dialog("Set Metrics")
-def show_metric_selector(iteration_graph: IterationGraph):
-    metrics_df = iteration_graph.iteration_metrics[iteration_graph.current_node_id]
-
-    st.write("Select Metrics:")
-
-    selected_metrics = st.multiselect(
-        label="Metrics",
-        options=metrics_df['metric'].to_list(),
-        default=metrics_df.loc[metrics_df['showing'], 'metric'],
-        label_visibility="collapsed"
-    )
-
-    if set(selected_metrics) != set(metrics_df.loc[metrics_df['showing'], 'metric']):
-        metrics_df.loc[metrics_df['metric'].isin(selected_metrics), 'showing'] = True
-        metrics_df.loc[~metrics_df['metric'].isin(selected_metrics), 'showing'] = False
-        st.rerun(scope="fragment")
-
-    st.write("Reorder Metrics:")
-
-    sorted_metrics = sort_items(metrics_df.sort_values('order').loc[metrics_df['showing'], 'metric'].to_list())
-    sorted_metrics = pd.DataFrame({
-        'metric': sorted_metrics,
-        'new_order': range(len(sorted_metrics)),
-    })
-    temp = pd.merge(metrics_df, sorted_metrics, how='left', on='metric').dropna().sort_values('new_order')
-
-    if not temp['order'].is_monotonic_increasing and not temp['order'].is_monotonic_decreasing:
-        index = temp.index
-        order = temp['order'].sort_values().to_list()
-        metrics_df.loc[index, 'order'] = order
-        st.rerun(scope="fragment")
-
-    if st.button("Submit"):
-        st.rerun()
-
-def show_edited_grid(split_view: bool, show_all: bool):
+def show_edited_grid(split_view: bool):
     session: Session = st.session_state['session']
     iteration_graph: IterationGraph = session.iteration_graph
     data = session.data
@@ -109,8 +73,8 @@ def show_edited_grid(split_view: bool, show_all: bool):
     ).rename(columns=grid_columns)
 
     column_config = {
-        Names.LOWER_BOUND: st.column_config.NumberColumn(label=Names.LOWER_BOUND, disabled=False),
-        Names.UPPER_BOUND: st.column_config.NumberColumn(label=Names.UPPER_BOUND, disabled=False),
+        Names.LOWER_BOUND: st.column_config.NumberColumn(label=Names.LOWER_BOUND, disabled=False, format="plain"),
+        Names.UPPER_BOUND: st.column_config.NumberColumn(label=Names.UPPER_BOUND, disabled=False, format="plain"),
     }
 
     selectbox_columns = grid_df.columns.to_series().filter(SUB_RISK_TIERS)
@@ -182,7 +146,8 @@ def show_edited_grid(split_view: bool, show_all: bool):
 
     if errors:
         message = "Errors: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", errors))
-        st.error(message, icon=":material/error:")
+        # st.error(message, icon=":material/error:")
+        return message
 
     if warnings:
         message = "Warnings: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", warnings))
@@ -192,7 +157,8 @@ def show_edited_grid(split_view: bool, show_all: bool):
 
     if errors:
         message = "Errors: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", errors))
-        st.error(message, icon=":material/error:")
+        # st.error(message, icon=":material/error:")
+        return message
 
     if warnings:
         message = "Warnings: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", warnings))
@@ -236,11 +202,11 @@ def show_edited_grid(split_view: bool, show_all: bool):
 
         return metric_summary
 
-    metrics_df = iteration_graph.iteration_metrics[iteration_graph.current_node_id]
+    metrics_df = iteration_graph.iteration_metadata[iteration_graph.current_node_id]['metrics']
 
     column_config = {
-        Names.LOWER_BOUND: st.column_config.NumberColumn(label=Names.LOWER_BOUND, disabled=False),
-        Names.UPPER_BOUND: st.column_config.NumberColumn(label=Names.UPPER_BOUND, disabled=False),
+        Names.LOWER_BOUND: st.column_config.NumberColumn(label=Names.LOWER_BOUND, disabled=False, format="plain"),
+        Names.UPPER_BOUND: st.column_config.NumberColumn(label=Names.UPPER_BOUND, disabled=False, format="plain"),
     }
 
     showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
@@ -294,14 +260,6 @@ def show_edited_grid(split_view: bool, show_all: bool):
                 new_column.markdown(f"### {Names.WO_BAL_PCT}")
                 new_column.dataframe(wo_bal_perc_summary, hide_index=True, column_config=column_config, use_container_width=True)
 
-    with st.expander("Final Risk Tier View"):
-        iter_id = iteration.id
-
-        while iter_id is not None:
-            st.title(f"Iteration #{iter_id}")
-            st.markdown(f"##### Variable: `{iteration_graph.iterations[iter_id].variable.name}`")
-            show_edited_range(iter_id, show_all=show_all, editable=False)
-            iter_id = iteration_graph.get_parent(iter_id)
 
 def show_double_var_iteration_widgets():
     session: Session = st.session_state['session']
@@ -311,16 +269,37 @@ def show_double_var_iteration_widgets():
     show_navigation_buttons()
 
     with st.sidebar:
-        split_view = st.checkbox("Split into columns")
-        show_all = st.checkbox("Show all metrics")
-
         if st.button("Set Metrics", use_container_width=True):
-            show_metric_selector(iteration_graph)
+            show_metric_selector(iteration.id)
+
+        col1, col2 = st.columns([3, 1])
+        if col1.button("Edit Groups", use_container_width=True):
+            set_groups(iteration.id)
+
+        if col2.button("", use_container_width=True, icon=":material/add:", key="Add Group"):
+            iteration.add_group(iteration.num_groups)
+            iteration_graph.add_to_calculation_queue(iteration.id)
+            st.rerun()
 
         if st.button("Set Variables", use_container_width=True):
             show_variable_selector_dialog()
 
+        split_view = st.checkbox("Split into columns")
+
     st.title(f"Iteration #{iteration.id}")
     st.write(f"##### Variable: `{iteration.variable.name}`")
 
-    show_edited_grid(split_view, show_all)
+    error_message = show_edited_grid(split_view)
+
+    if error_message:
+        st.error(error_message, icon=":material/error:")
+        return
+
+    with st.expander("Final Risk Tier View"):
+        iter_id = iteration.id
+
+        while iter_id is not None:
+            st.title(f"Iteration #{iter_id}")
+            st.markdown(f"##### Variable: `{iteration_graph.iterations[iter_id].variable.name}`")
+            show_edited_range(iter_id, editable=False)
+            iter_id = iteration_graph.get_parent(iter_id)

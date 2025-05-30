@@ -79,6 +79,11 @@ class IterationBase(ABC):
     def get_risk_tiers(self, previous_risk_tiers: pd.Series = None) -> tuple[pd.Series, list[str], list[str], list]:
         raise NotImplementedError()
 
+    def reverse_group_order(self) -> None:
+        """Reverses the order of groups."""
+        self._groups = self._groups.iloc[::-1].reset_index(drop=True)
+        self._group_mask = self._group_mask.iloc[::-1].reset_index(drop=True)
+
 class SingleVarIteration(IterationBase):
     var_count = 1
 
@@ -120,6 +125,11 @@ class DoubleVarIteration(IterationBase):
         last_row = self._risk_tier_grid.iloc[[-1]].copy()
         self._risk_tier_grid = pd.concat([self._risk_tier_grid, last_row], ignore_index=True)
 
+    def reverse_group_order(self):
+        """Reverses the order of groups and risk tier grid."""
+        super().reverse_group_order()
+        self._risk_tier_grid = self._risk_tier_grid.iloc[::-1].reset_index(drop=True)
+
 class NumericalIteration(IterationBase):
     var_type = 'numerical'
 
@@ -135,6 +145,8 @@ class NumericalIteration(IterationBase):
         percentiles = self.variable.quantile(quantiles)
         pairs = list(zip(percentiles.iloc[:-1], percentiles.iloc[1:]))
 
+        pairs[0] = (pairs[0][0] - 1, pairs[0][1])
+
         self._groups = pd.Series(pairs, name=self.variable.name)
 
     def _validate(self) -> tuple[list[str], list[str], list]:
@@ -144,6 +156,8 @@ class NumericalIteration(IterationBase):
         warnings = []
         errors = []
         intervals = []
+
+        mask = pd.Series(False, index=self.variable.index)
 
         for group_index, (lower_bound, upper_bound) in groups.items():
             missing_bound = False
@@ -165,6 +179,7 @@ class NumericalIteration(IterationBase):
 
             if group_index not in invalid_groups:
                 intervals.append((group_index, pd.Interval(lower_bound, upper_bound, closed='right')))
+                mask |= (self.variable > lower_bound) & (self.variable <= upper_bound)
 
         intervals.sort(key=lambda t: t[1].left)
 
@@ -176,6 +191,10 @@ class NumericalIteration(IterationBase):
 
         if overlaps:
             errors.append(f"Following intervals overlap: {overlaps}")
+
+        if not mask.all():
+            warnings.append(f"Some values in the variable are not covered by any group: "
+                            f"{self.variable[~mask].drop_duplicates().sort_values().tolist()}")
 
         return warnings, errors, invalid_groups
 

@@ -10,7 +10,7 @@ from classes.iteration import (
     CategoricalSingleVarIteration,
     CategoricalDoubleVarIteration,
 )
-from classes.common import SUB_RISK_TIERS, Names
+from classes.common import SUB_RISK_TIERS, Metric
 
 def __integer_generator():
     current = 0
@@ -47,7 +47,8 @@ class IterationGraph:
         self._recalculation_required = set()
 
         self.__default_metric_df = pd.DataFrame({
-            "metric": [Names.VOLUME, Names.AVG_BAL, Names.WO_COUNT, Names.WO_COUNT_PCT, Names.WO_BAL, Names.WO_BAL_PCT],
+            "metric": list(Metric),
+            "metric_name": [m.value for m in Metric],
             "order": [0, 1, 2, 3, 4, 5],
             "showing": [True, True, True, True, True, True],
         })
@@ -75,18 +76,6 @@ class IterationGraph:
     @property
     def current_iteration(self):
         return self.iterations[self.current_node_id]
-
-    def get_iteration_type(self, node_id: str = None) -> Literal["numerical", "categorical"]:
-        if node_id is None:
-            node_id = self.current_node_id
-
-        if self.iterations[node_id].var_type == "numerical":
-            return "numerical"
-
-        if self.iterations[node_id].var_type == "categorical":
-            return "categorical"
-
-        raise ValueError(f"Invalid iteration type: {type(self.iterations[node_id])}")
 
     def get_parent(self, node_id: str = None) -> Union[str, None]:
         if node_id is None:

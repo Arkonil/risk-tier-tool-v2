@@ -5,6 +5,7 @@ import collections.abc
 import numpy as np
 import pandas as pd
 
+from classes.common import Metric
 from classes.metadata import Metadata
 
 class Data:
@@ -105,7 +106,7 @@ class Data:
         Returns:
         pd.DataFrame: The DataFrame containing the data read from the file.
         """
-        
+
         if read_mode == "CSV":
             df = pd.read_csv(filepath, delimiter=delimiter, header=header_row, nrows=nrows, usecols=usecols).convert_dtypes()
         elif read_mode == "EXCEL":
@@ -157,7 +158,7 @@ class Data:
 
         self.sample_df = self._read_data(
             filepath, read_mode, delimiter, sheet_name, header_row, nrows)
-        
+
         self.df_size = len(self._read_data(filepath, read_mode, delimiter, sheet_name, header_row, usecols=[0]))
 
         self.filepath = filepath
@@ -191,3 +192,66 @@ class Data:
 
         self.df[column_name] = column
         return column
+
+    def get_summarized_metrics(
+        self,
+        groupby_variable_1: pd.Series,
+        groupby_variable_2: t.Optional[pd.Series] = None,
+        data_filter: t.Optional[pd.Series] = None,
+        metrics: t.Optional[list[Metric]] = None):
+
+        """
+        Summarizes metrics based on the provided groupby variables and filter.
+        Parameters:
+        - groupby_variable_1 (pd.Series): The first variable to group by.
+        - groupby_variable_2 (pd.Series, optional): The second variable to group by. Defaults to None.
+        - filter (pd.Series, optional): A boolean mask to filter the data. Defaults to None.
+        - metrics (list[METRIC], optional): A list of metrics to summarize. Defaults to None.
+        Returns:
+        - pd.DataFrame: A DataFrame containing the summarized metrics.
+        """
+
+        # Creating a filter if not provided
+        if data_filter is None:
+            data_filter = pd.Series([True] * self.df_size, index=self.df.index)
+
+        # Creating the base DataFrame with the groupby variables
+        base_df = pd.DataFrame({
+            groupby_variable_1.name: groupby_variable_1,
+        })
+        groupby_variables = [groupby_variable_1.name]
+
+        if groupby_variable_2 is not None:
+            base_df[groupby_variable_2.name] = groupby_variable_2
+            groupby_variables.append(groupby_variable_2.name)
+
+        if metrics is None:
+            metrics = []
+
+        for metric in metrics:
+            if metric in [Metric.VOLUME, Metric.WO_COUNT_PCT]:
+                base_df[Metric.VOLUME.value] = 1
+
+            if metric in [Metric.WO_BAL, Metric.WO_BAL_PCT]:
+                base_df[Metric.WO_BAL.value] = self.load_column(self.var_dlr_wrt_off)
+
+            if metric in [Metric.WO_COUNT, Metric.WO_COUNT_PCT]:
+                base_df[Metric.WO_COUNT.value] = self.load_column(self.var_unt_wrt_off)
+
+            if metric in [Metric.AVG_BAL, Metric.WO_BAL_PCT]:
+                base_df[Metric.AVG_BAL.value] = self.load_column(self.var_avg_bal)
+
+        # Applying the filter to the base DataFrame
+        filtered_df = base_df[data_filter].copy()
+
+        # Grouping the DataFrame by the specified variables and aggregating the metrics
+        grouped_df = filtered_df.groupby(groupby_variables).sum(numeric_only=True)
+
+        for metric in metrics:
+            if metric == Metric.WO_BAL_PCT:
+                grouped_df[Metric.WO_BAL_PCT.value] = 100 * grouped_df[Metric.WO_BAL.value] / grouped_df[Metric.AVG_BAL.value]
+
+            if metric == Metric.WO_COUNT_PCT:
+                grouped_df[Metric.WO_COUNT_PCT.value] = 100 * grouped_df[Metric.WO_COUNT.value] / grouped_df[Metric.VOLUME.value]
+
+        return grouped_df

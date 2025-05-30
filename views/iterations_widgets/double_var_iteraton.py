@@ -2,13 +2,13 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from classes.common import SUB_RISK_TIERS, SUB_RT_INV_MAP, Names, color_map
+from classes.common import SUB_RISK_TIERS, SUB_RT_INV_MAP, Names, color_map, Metric
 from classes.iteration_graph import IterationGraph
 from classes.session import Session
 
 from views.iterations_widgets.dialogs import set_groups, show_metric_selector
 from views.iterations_widgets.navigation import show_navigation_buttons
-from views.iterations_widgets.single_var_iteration import show_edited_range
+from views.iterations_widgets.single_var_iteration import show_edited_range, show_category_editor
 from views.variable_selector import show_variable_selector_dialog
 
 def show_edited_grid(split_view: bool):
@@ -17,54 +17,27 @@ def show_edited_grid(split_view: bool):
     data = session.data
 
     iteration = iteration_graph.current_iteration
-    iteration_type = iteration_graph.get_iteration_type(iteration.id)
 
-    groups = iteration.groups
-    groups = pd.DataFrame({Names.GROUPS : groups})
-
-    if iteration_type == "categorical":
-        with st.expander("Edit Groups", expanded=True):
-            column = st.columns(min(5, len(groups)))
-
-            all_categories = set(iteration.variable.cat.categories)
-            assigned_categories = set(groups[Names.GROUPS].explode())
-            unassigned_categories = all_categories - assigned_categories
-
-            for i, row in enumerate(groups.itertuples()):
-                group_index = row.Index
-                group = set(row[1])
-
-                with column[i % len(column)]:
-                    new_group = set(st.multiselect(
-                        label=f"Group {group_index + 1}",
-                        options=sorted(list(group.union(unassigned_categories))),
-                        default=sorted(list(group),
-                        # disabled=True,
-                    )))
-
-                    if group != new_group:
-                        iteration.set_group(group_index, new_group)
-                        iteration_graph.add_to_calculation_queue()
-                        st.rerun()
-
+    if iteration.var_type == "categorical":
+        show_category_editor(iteration.id)
         st.divider()
 
     # Columns
     grid_columns = SUB_RISK_TIERS.loc[iteration_graph.get_parent_tiers(iteration.id)]
-    # st.write(grid_columns)
 
     # Index
+    groups = pd.DataFrame({Names.GROUPS.value : iteration.groups})
     grid_index = groups.copy()
 
-    if iteration_type == "numerical":
-        grid_index[Names.LOWER_BOUND] = grid_index[Names.GROUPS].map(lambda bounds: bounds[0])
-        grid_index[Names.UPPER_BOUND] = grid_index[Names.GROUPS].map(lambda bounds: bounds[1])
-        grid_index.drop(columns=[Names.GROUPS], inplace=True)
+    if iteration.var_type == "numerical":
+        grid_index[Names.LOWER_BOUND.value] = grid_index[Names.GROUPS.value].map(lambda bounds: bounds[0])
+        grid_index[Names.UPPER_BOUND.value] = grid_index[Names.GROUPS.value].map(lambda bounds: bounds[1])
+        grid_index.drop(columns=[Names.GROUPS.value], inplace=True)
     else:
-        grid_index.rename(columns={Names.GROUPS: Names.CATEGORIES}, inplace=True)
-    # st.write(grid_index)
+        grid_index.rename(columns={Names.GROUPS.value: Names.CATEGORIES.value}, inplace=True)
 
     # Conttoller
+    # Create the grid DataFrame
     grid_df = grid_index.merge(
         iteration.risk_tier_grid.loc[:, iteration_graph.get_parent_tiers(iteration.id)].replace(SUB_RISK_TIERS),
         how='left',
@@ -73,8 +46,8 @@ def show_edited_grid(split_view: bool):
     ).rename(columns=grid_columns)
 
     column_config = {
-        Names.LOWER_BOUND: st.column_config.NumberColumn(label=Names.LOWER_BOUND, disabled=False, format="plain"),
-        Names.UPPER_BOUND: st.column_config.NumberColumn(label=Names.UPPER_BOUND, disabled=False, format="plain"),
+        Names.LOWER_BOUND.value: st.column_config.NumberColumn(label=Names.LOWER_BOUND.value, disabled=False, format="plain"),
+        Names.UPPER_BOUND.value: st.column_config.NumberColumn(label=Names.UPPER_BOUND.value, disabled=False, format="plain"),
     }
 
     selectbox_columns = grid_df.columns.to_series().filter(SUB_RISK_TIERS)
@@ -92,6 +65,7 @@ def show_edited_grid(split_view: bool):
 
     col1, col2 = st.columns(2)
 
+    # Grid Editor
     edited_grid = col1.data_editor(
         grid_df,
         column_config=column_config,
@@ -100,17 +74,20 @@ def show_edited_grid(split_view: bool):
     )
 
     edited_styled_grid = edited_grid \
-        .drop(columns=[Names.LOWER_BOUND, Names.UPPER_BOUND, Names.CATEGORIES], errors="ignore") \
+        .drop(columns=[Names.LOWER_BOUND.value, Names.UPPER_BOUND.value, Names.CATEGORIES.value], errors="ignore") \
         .style.map(lambda v: f'background-color: {color_map[v]};', subset=selectbox_columns)
 
+    # Show the edited grid
     col2.dataframe(edited_styled_grid, hide_index=True)
 
+    # Replace the values in the edited grid with the corresponding risk tier values
     with pd.option_context('future.no_silent_downcasting', True):
         edited_grid = edited_grid \
             .replace(SUB_RT_INV_MAP) \
             .infer_objects(copy=False) \
             .rename(columns=SUB_RT_INV_MAP)
 
+    # Check if the edited grid is different from the original risk tier grid
     needs_rerun = False
     for i in edited_grid.index:
         for j in edited_grid.columns:
@@ -122,17 +99,19 @@ def show_edited_grid(split_view: bool):
                 iteration_graph.add_to_calculation_queue()
                 needs_rerun = True
 
-    if iteration_type == "numerical":
-
-        edited_groups = edited_grid[[Names.LOWER_BOUND, Names.UPPER_BOUND]]
+    # Check if the edited groups are different from the original groups
+    if iteration.var_type == "numerical":
+        edited_groups = edited_grid[[Names.LOWER_BOUND.value, Names.UPPER_BOUND.value]]
 
         for index in edited_groups.index:
-            prev_bounds = np.array(groups.loc[index, Names.GROUPS]).astype(float)
-            curent_bounds = np.array(edited_groups.loc[index, [Names.LOWER_BOUND, Names.UPPER_BOUND]]).astype(float)
+            prev_bounds = np.array(groups.loc[index, Names.GROUPS.value]).astype(float)
+            curent_bounds = np.array(edited_groups.loc[index, [Names.LOWER_BOUND.value
+, Names.UPPER_BOUND.value]]).astype(float)
 
             if not np.array_equal(prev_bounds, curent_bounds, equal_nan=True):
-                curr_lb = edited_groups.loc[index, Names.LOWER_BOUND]
-                curr_ub = edited_groups.loc[index, Names.UPPER_BOUND]
+                curr_lb = edited_groups.loc[index, Names.LOWER_BOUND.value
+    ]
+                curr_ub = edited_groups.loc[index, Names.UPPER_BOUND.value]
 
                 iteration.set_group(index, curr_lb, curr_ub)
                 iteration_graph.add_to_calculation_queue()
@@ -146,7 +125,6 @@ def show_edited_grid(split_view: bool):
 
     if errors:
         message = "Errors: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", errors))
-        # st.error(message, icon=":material/error:")
         return message
 
     if warnings:
@@ -157,35 +135,29 @@ def show_edited_grid(split_view: bool):
 
     if errors:
         message = "Errors: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", errors))
-        # st.error(message, icon=":material/error:")
         return message
 
     if warnings:
         message = "Warnings: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", warnings))
         st.warning(message, icon=":material/warning:")
 
+    metrics_df = iteration_graph.iteration_metadata[iteration_graph.current_node_id]['metrics']
+    showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
 
-    base_df = pd.DataFrame({
-        Names.RISK_TIER_VALUE: previous_risk_tiers,
-        Names.GROUP_INDEX: group_indices,
-        Names.VOLUME: 1,
-        Names.AVG_BAL: data.load_column(data.var_avg_bal),
-        Names.WO_BAL: data.load_column(data.var_dlr_wrt_off),
-        Names.WO_COUNT: data.load_column(data.var_unt_wrt_off),
-    })
+    summ_df = data.get_summarized_metrics(
+        groupby_variable_1=group_indices.rename(Names.GROUP_INDEX.value),
+        groupby_variable_2=previous_risk_tiers.rename(Names.RISK_TIER_VALUE.value),
+        metrics=showing_metrics.to_list(),
+    )
 
-    summ_df = base_df.groupby([Names.RISK_TIER_VALUE, Names.GROUP_INDEX]).sum()
-    summ_df[Names.WO_BAL_PCT] = 100 * summ_df[Names.WO_BAL] / summ_df[Names.AVG_BAL]
-    summ_df[Names.WO_COUNT_PCT] = 100 * summ_df[Names.WO_COUNT] / summ_df[Names.VOLUME]
-
-    def calculate_grid_of_metric(metric: str) -> pd.DataFrame:
-        metric_summary =  summ_df[metric] \
+    def calculate_grid_of_metric(metric: Metric) -> pd.DataFrame:
+        metric_summary =  summ_df[metric.value] \
             .to_frame() \
-            .unstack(0) \
+            .unstack(1) \
             .droplevel(0, axis=1) \
             .rename(columns=SUB_RISK_TIERS)
 
-        metric_summary.index.name = Names.GROUP_INDEX
+        metric_summary.index.name = Names.GROUP_INDEX.value
 
         metric_summary = pd.merge(grid_index, metric_summary, how="left", left_index=True, right_index=True)
 
@@ -202,14 +174,12 @@ def show_edited_grid(split_view: bool):
 
         return metric_summary
 
-    metrics_df = iteration_graph.iteration_metadata[iteration_graph.current_node_id]['metrics']
-
     column_config = {
-        Names.LOWER_BOUND: st.column_config.NumberColumn(label=Names.LOWER_BOUND, disabled=False, format="plain"),
-        Names.UPPER_BOUND: st.column_config.NumberColumn(label=Names.UPPER_BOUND, disabled=False, format="plain"),
+        Names.LOWER_BOUND.value: st.column_config.NumberColumn(label=Names.LOWER_BOUND.value, disabled=False, format="plain"),
+        Names.UPPER_BOUND.value: st.column_config.NumberColumn(label=Names.UPPER_BOUND.value, disabled=False, format="plain"),
     }
-
-    showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
+    
+    selectbox_columns = previous_risk_tiers.dropna().drop_duplicates().sort_values().map(SUB_RISK_TIERS)
 
     with st.expander("Grid View"):
         columns = []
@@ -223,43 +193,17 @@ def show_edited_grid(split_view: bool):
         for metric in showing_metrics:
             new_column = columns.pop(0)
 
-            if metric == Names.VOLUME:
-                volume_summary = calculate_grid_of_metric(Names.VOLUME)
-                volume_summary = volume_summary.format(precision=0, thousands=',', subset=selectbox_columns)
+            metric_summary = calculate_grid_of_metric(metric)
 
-                new_column.markdown(f"### {Names.VOLUME}")
-                new_column.dataframe(volume_summary, hide_index=True, column_config=column_config, use_container_width=True)
-            elif metric == Names.AVG_BAL:
-                avg_bal_summary = calculate_grid_of_metric(Names.AVG_BAL)
-                avg_bal_summary = avg_bal_summary.format(precision=2, thousands=',', subset=selectbox_columns)
+            if metric.value in [Metric.VOLUME.value, Metric.WO_COUNT.value]:
+                metric_summary = metric_summary.format(precision=0, thousands=',', subset=selectbox_columns)
+            elif metric.value in [Metric.AVG_BAL.value, Metric.WO_BAL.value]:
+                metric_summary = metric_summary.format(precision=2, thousands=',', subset=selectbox_columns)
+            elif metric.value in [Metric.WO_COUNT_PCT.value, Metric.WO_BAL_PCT.value]:
+                metric_summary = metric_summary.format(lambda v: f"{v:.2f} %", subset=selectbox_columns)
 
-                new_column.markdown(f"### {Names.AVG_BAL}")
-                new_column.dataframe(avg_bal_summary, hide_index=True, column_config=column_config, use_container_width=True)
-            elif metric == Names.WO_COUNT:
-                wo_unt_summary = calculate_grid_of_metric(Names.WO_COUNT)
-                wo_unt_summary = wo_unt_summary.format(precision=0, thousands=',', subset=selectbox_columns)
-
-                new_column.markdown(f"### {Names.WO_COUNT}")
-                new_column.dataframe(wo_unt_summary, hide_index=True, column_config=column_config, use_container_width=True)
-            elif metric == Names.WO_BAL:
-                wo_bal_summary = calculate_grid_of_metric(Names.WO_BAL)
-                wo_bal_summary = wo_bal_summary.format(precision=2, thousands=',', subset=selectbox_columns)
-
-                new_column.markdown(f"### {Names.WO_BAL}")
-                new_column.dataframe(wo_bal_summary, hide_index=True, column_config=column_config, use_container_width=True)
-            elif metric == Names.WO_COUNT_PCT:
-                wo_unt_perc_summary = calculate_grid_of_metric(Names.WO_COUNT_PCT)
-                wo_unt_perc_summary = wo_unt_perc_summary.format(lambda v: f"{v:.2f} %", subset=selectbox_columns)
-
-                new_column.markdown(f"### {Names.WO_COUNT_PCT}")
-                new_column.dataframe(wo_unt_perc_summary, hide_index=True, column_config=column_config, use_container_width=True)
-            elif metric == Names.WO_BAL_PCT:
-                wo_bal_perc_summary = calculate_grid_of_metric(Names.WO_BAL_PCT)
-                wo_bal_perc_summary = wo_bal_perc_summary.format(lambda v: f"{v:.2f} %", subset=selectbox_columns)
-
-                new_column.markdown(f"### {Names.WO_BAL_PCT}")
-                new_column.dataframe(wo_bal_perc_summary, hide_index=True, column_config=column_config, use_container_width=True)
-
+            new_column.markdown(f"### {metric.value}")
+            new_column.dataframe(metric_summary, hide_index=True, column_config=column_config, use_container_width=True)
 
 def show_double_var_iteration_widgets():
     session: Session = st.session_state['session']
@@ -283,6 +227,16 @@ def show_double_var_iteration_widgets():
 
         if st.button("Set Variables", use_container_width=True):
             show_variable_selector_dialog()
+
+        if st.button(
+            label="Reverse Group Order",
+            use_container_width=True,
+            icon=":material/swap_vert:",
+            help="Reverse the selection of groups",
+        ):
+            iteration.reverse_group_order()
+            iteration_graph.add_to_calculation_queue(iteration.id)
+            st.rerun()
 
         split_view = st.checkbox("Split into columns")
 

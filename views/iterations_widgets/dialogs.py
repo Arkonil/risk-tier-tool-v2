@@ -17,7 +17,8 @@ def show_metric_selector(node_id: str):
         label="Metrics",
         options=metrics_df['metric'].to_list(),
         default=metrics_df.loc[metrics_df['showing'], 'metric'],
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        format_func=lambda m: m.value,
     )
 
     if set(selected_metrics) != set(metrics_df.loc[metrics_df['showing'], 'metric']):
@@ -27,12 +28,23 @@ def show_metric_selector(node_id: str):
 
     st.write("Reorder Metrics:")
 
-    sorted_metrics = sort_items(metrics_df.sort_values('order').loc[metrics_df['showing'], 'metric'].to_list())
+    sorted_metrics = sort_items(
+        list(map(lambda m: m.value, metrics_df.sort_values('order').loc[metrics_df['showing'], 'metric'].to_list()))
+    )
+
     sorted_metrics = pd.DataFrame({
         'metric': sorted_metrics,
         'new_order': range(len(sorted_metrics)),
     })
-    temp = pd.merge(metrics_df, sorted_metrics, how='left', on='metric').dropna().sort_values('new_order')
+
+    temp = pd.merge(
+        metrics_df,
+        sorted_metrics,
+        how='left',
+        left_on='metric_name',
+        right_on='metric',
+        suffixes=('', '_y')
+        ).dropna().sort_values('new_order')
 
     if not temp['order'].is_monotonic_increasing and not temp['order'].is_monotonic_decreasing:
         index = temp.index
@@ -75,23 +87,23 @@ def set_groups(node_id: str):
 
     # pylint: disable=protected-access
     groups = pd.DataFrame({
-        Names.GROUPS : iteration._groups,
+        Names.GROUPS.value : iteration._groups,
         'Selected': iteration._group_mask
     })
     # pylint: enable=protected-access
 
     if iteration.var_type == "numerical":
-        groups[Names.LOWER_BOUND] = groups[Names.GROUPS].map(lambda bounds: bounds[0])
-        groups[Names.UPPER_BOUND] = groups[Names.GROUPS].map(lambda bounds: bounds[1])
+        groups[Names.LOWER_BOUND.value] = groups[Names.GROUPS.value].map(lambda bounds: bounds[0])
+        groups[Names.UPPER_BOUND.value] = groups[Names.GROUPS.value].map(lambda bounds: bounds[1])
     else:
-        groups[Names.CATEGORIES] = groups[Names.GROUPS]
+        groups[Names.CATEGORIES.value] = groups[Names.GROUPS.value]
 
-    groups.drop(columns=[Names.GROUPS], inplace=True)
+    groups.drop(columns=[Names.GROUPS.value], inplace=True)
 
     column_config = {
-        Names.CATEGORIES: st.column_config.ListColumn(label=Names.CATEGORIES, width="large"),
-        Names.LOWER_BOUND: st.column_config.NumberColumn(label=Names.LOWER_BOUND, disabled=True, format="compact"),
-        Names.UPPER_BOUND: st.column_config.NumberColumn(label=Names.UPPER_BOUND, disabled=True, format="compact"),
+        Names.CATEGORIES.value: st.column_config.ListColumn(label=Names.CATEGORIES.value, width="large"),
+        Names.LOWER_BOUND.value: st.column_config.NumberColumn(label=Names.LOWER_BOUND.value, disabled=True, format="compact"),
+        Names.UPPER_BOUND.value: st.column_config.NumberColumn(label=Names.UPPER_BOUND.value, disabled=True, format="compact"),
         'Selected': st.column_config.CheckboxColumn(label='Selected', disabled=False),
     }
 

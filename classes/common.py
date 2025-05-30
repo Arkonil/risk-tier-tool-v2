@@ -1,23 +1,28 @@
+from enum import Enum
+
 import pandas as pd
 
-class Names:
-    VOLUME = "Volume"
-    WO_BAL = "$ Write off Balance"
-    WO_COUNT = "# Write off Count"
-    AVG_BAL = "$ Average Balance"
-    WO_BAL_PCT = "$ Write off %"
-    WO_COUNT_PCT = "# Write off %"
-    LOWER_BOUND = "Lower Bound"
-    UPPER_BOUND = "Upper Bound"
-    CATEGORIES = "Categories"
-    GROUPS = "Groups"
-    RISK_TIER = "Risk Tier"
-    RISK_TIER_VALUE = "Risk Tier Value"
-    GROUP_INDEX = "Group Index"
+class Metric(Enum):
+    VOLUME: str = "Volume"
+    AVG_BAL: str = "$ Average Balance"
+    WO_COUNT: str = "# Write off Count"
+    WO_COUNT_PCT: str = "# Write off %"
+    WO_BAL: str = "$ Write off Balance"
+    WO_BAL_PCT: str = "$ Write off %"
+
+
+class Names(Enum):
+    LOWER_BOUND: str = "Lower Bound"
+    UPPER_BOUND: str = "Upper Bound"
+    CATEGORIES: str = "Categories"
+    GROUPS: str = "Groups"
+    RISK_TIER: str = "Risk Tier"
+    RISK_TIER_VALUE: str = "Risk Tier Value"
+    GROUP_INDEX: str = "Group Index"
 
 RISK_TIERS = list(map(str, range(1, 6)))
 SUB_RISK_TIERS = pd.Series(sorted(
-    [f'{rt}A' for rt in RISK_TIERS] + [f'{rt}B' for rt in RISK_TIERS], reverse=False), name=Names.RISK_TIER)
+    [f'{rt}A' for rt in RISK_TIERS] + [f'{rt}B' for rt in RISK_TIERS], reverse=False), name=Names.RISK_TIER.value)
 SUB_RT_INV_MAP = pd.Series(SUB_RISK_TIERS.index.values, index=SUB_RISK_TIERS)
 
 color_map = {

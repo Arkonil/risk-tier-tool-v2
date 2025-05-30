@@ -23,7 +23,7 @@ def show_unit_wrt_off_selector(data: Data):
     if current_index is not None:
         current_index += 1
 
-    data.var_unt_wrt_off = col3.selectbox(
+    var_unt_wrt_off = col3.selectbox(
         label="#WO_var",
         options=options,
         label_visibility="collapsed",
@@ -33,6 +33,8 @@ def show_unit_wrt_off_selector(data: Data):
     )
     show_text(col4, "/")
     show_text(col5, "# Accounts")
+
+    return var_unt_wrt_off
 
 def show_dlr_wrt_off_selector(data: Data):
     col1, col2, col3, col4, col5 = st.columns([4, 1, 5, 1, 5])
@@ -45,7 +47,7 @@ def show_dlr_wrt_off_selector(data: Data):
     if current_index is not None:
         current_index += 1
 
-    data.var_dlr_wrt_off = col3.selectbox(
+    var_dlr_wrt_off = col3.selectbox(
         label="$WO_var",
         options=options,
         label_visibility="collapsed",
@@ -62,7 +64,7 @@ def show_dlr_wrt_off_selector(data: Data):
     if current_index is not None:
         current_index += 1
 
-    data.var_avg_bal = col5.selectbox(
+    var_avg_bal = col5.selectbox(
         label="Avg_Bal",
         options=options,
         label_visibility="collapsed",
@@ -71,13 +73,56 @@ def show_dlr_wrt_off_selector(data: Data):
         placeholder="Avg Balance Variable"
     )
 
+    return var_dlr_wrt_off, var_avg_bal
+
+def show_mob_selector(data: Data):
+    col1, col2, col3, _ = st.columns([4, 1, 5, 6])
+
+    show_text(col1, "MOB")
+    show_text(col2, "=")
+    mob = col3.number_input(
+        label="MOB_var",
+        value=data.mob,
+        min_value=1,
+        max_value=100,
+        step=1,
+        label_visibility="collapsed",
+        format="%d",
+        placeholder="Months on Book"
+    )
+
+    return mob
 
 def show_variable_selector():
     session: Session = st.session_state['session']
     data = session.data
 
-    show_unit_wrt_off_selector(data)
-    show_dlr_wrt_off_selector(data)
+    var_unt_wrt_off = show_unit_wrt_off_selector(data)
+    var_dlr_wrt_off, var_avg_bal = show_dlr_wrt_off_selector(data)
+    mob = show_mob_selector(data)
+
+    needs_rerun = False
+    if var_unt_wrt_off != data.var_unt_wrt_off:
+        data.var_unt_wrt_off = var_unt_wrt_off
+        needs_rerun = True
+        
+    if var_dlr_wrt_off != data.var_dlr_wrt_off:
+        data.var_dlr_wrt_off = var_dlr_wrt_off
+        needs_rerun = True
+        
+    if var_avg_bal != data.var_avg_bal:
+        data.var_avg_bal = var_avg_bal
+        needs_rerun = True
+        
+    if mob != data.mob:
+        data.mob = mob
+        needs_rerun = True
+        
+    if needs_rerun:
+        try:
+            st.rerun(scope="fragment")
+        except st.errors.StreamlitAPIException:
+            st.rerun()
 
 @st.dialog("Set Variables", width="large")
 def show_variable_selector_dialog():

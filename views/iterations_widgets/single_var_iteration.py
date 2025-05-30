@@ -88,7 +88,7 @@ def show_edited_range(iteration_id: str, editable: bool = True):
 
     int_cols = [Metric.VOLUME.value, Metric.WO_COUNT.value]
     dec_cols = [Metric.WO_BAL.value, Metric.AVG_BAL.value]
-    perc_cols = [Metric.WO_BAL_PCT.value, Metric.WO_COUNT_PCT.value]
+    perc_cols = [Metric.WO_BAL_PCT.value, Metric.WO_COUNT_PCT.value, Metric.ANNL_WO_COUNT_PCT.value, Metric.ANNL_WO_BAL_PCT.value]
 
     calculated_df = calculated_df.style \
         .map(lambda v: f'background-color: {color_map[v]};', subset=[Names.RISK_TIER.value]) \
@@ -108,6 +108,8 @@ def show_edited_range(iteration_id: str, editable: bool = True):
         Metric.WO_COUNT.value: st.column_config.NumberColumn(label=Metric.WO_COUNT.value, disabled=True),
         Metric.WO_COUNT_PCT.value: st.column_config.NumberColumn(label=Metric.WO_COUNT_PCT.value, disabled=True),
         Metric.AVG_BAL.value: st.column_config.NumberColumn(label=Metric.AVG_BAL.value, disabled=True),
+        Metric.ANNL_WO_COUNT_PCT.value: st.column_config.NumberColumn(label=Metric.ANNL_WO_COUNT_PCT.value, disabled=True),
+        Metric.ANNL_WO_BAL_PCT.value: st.column_config.NumberColumn(label=Metric.ANNL_WO_BAL_PCT.value, disabled=True),
     }
 
     columns = [Names.RISK_TIER.value]

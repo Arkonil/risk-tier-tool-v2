@@ -4,12 +4,13 @@ import pandas as pd
 
 class Metric(Enum):
     VOLUME: str = "Volume"
+    ANNL_WO_COUNT_PCT: str = "# Annualized Write off %"
+    ANNL_WO_BAL_PCT: str = "$ Annualized Write off %"
     AVG_BAL: str = "$ Average Balance"
     WO_COUNT: str = "# Write off Count"
     WO_COUNT_PCT: str = "# Write off %"
     WO_BAL: str = "$ Write off Balance"
     WO_BAL_PCT: str = "$ Write off %"
-
 
 class Names(Enum):
     LOWER_BOUND: str = "Lower Bound"

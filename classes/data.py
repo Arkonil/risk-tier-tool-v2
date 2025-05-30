@@ -228,18 +228,42 @@ class Data:
         if metrics is None:
             metrics = []
 
+        metric_dependency_map = {
+            Metric.VOLUME: [],
+            Metric.WO_COUNT: [],
+            Metric.WO_BAL: [],
+            Metric.AVG_BAL: [],
+            Metric.WO_COUNT_PCT: [Metric.VOLUME, Metric.WO_COUNT],
+            Metric.WO_BAL_PCT: [Metric.AVG_BAL, Metric.WO_BAL],
+            Metric.ANNL_WO_COUNT_PCT: [Metric.WO_COUNT_PCT],
+            Metric.ANNL_WO_BAL_PCT: [Metric.WO_BAL_PCT],
+        }
+
+        required_metrics = set()
+
+        def add_metric_and_dependencies(metric):
+            if metric in required_metrics:
+                return
+
+            required_metrics.add(metric)
+            dependencies = metric_dependency_map.get(metric, [])
+            for dep in dependencies:
+                add_metric_and_dependencies(dep)
+
         for metric in metrics:
-            if metric in [Metric.VOLUME, Metric.WO_COUNT_PCT]:
-                base_df[Metric.VOLUME.value] = 1
+            add_metric_and_dependencies(metric)
 
-            if metric in [Metric.WO_BAL, Metric.WO_BAL_PCT]:
-                base_df[Metric.WO_BAL.value] = self.load_column(self.var_dlr_wrt_off)
+        if Metric.VOLUME in required_metrics:
+            base_df[Metric.VOLUME.value] = 1
 
-            if metric in [Metric.WO_COUNT, Metric.WO_COUNT_PCT]:
-                base_df[Metric.WO_COUNT.value] = self.load_column(self.var_unt_wrt_off)
+        if Metric.WO_COUNT in required_metrics:
+            base_df[Metric.WO_COUNT.value] = self.load_column(self.var_unt_wrt_off)
 
-            if metric in [Metric.AVG_BAL, Metric.WO_BAL_PCT]:
-                base_df[Metric.AVG_BAL.value] = self.load_column(self.var_avg_bal)
+        if Metric.WO_BAL in required_metrics:
+            base_df[Metric.WO_BAL.value] = self.load_column(self.var_dlr_wrt_off)
+
+        if Metric.AVG_BAL in required_metrics:
+            base_df[Metric.AVG_BAL.value] = self.load_column(self.var_avg_bal)
 
         # Applying the filter to the base DataFrame
         filtered_df = base_df[data_filter].copy()
@@ -247,11 +271,16 @@ class Data:
         # Grouping the DataFrame by the specified variables and aggregating the metrics
         grouped_df = filtered_df.groupby(groupby_variables).sum(numeric_only=True)
 
-        for metric in metrics:
-            if metric == Metric.WO_BAL_PCT:
-                grouped_df[Metric.WO_BAL_PCT.value] = 100 * grouped_df[Metric.WO_BAL.value] / grouped_df[Metric.AVG_BAL.value]
+        if Metric.WO_COUNT_PCT in required_metrics:
+            grouped_df[Metric.WO_COUNT_PCT.value] = 100 * grouped_df[Metric.WO_COUNT.value] / grouped_df[Metric.VOLUME.value]
 
-            if metric == Metric.WO_COUNT_PCT:
-                grouped_df[Metric.WO_COUNT_PCT.value] = 100 * grouped_df[Metric.WO_COUNT.value] / grouped_df[Metric.VOLUME.value]
+        if Metric.WO_BAL_PCT in required_metrics:
+            grouped_df[Metric.WO_BAL_PCT.value] = 100 * grouped_df[Metric.WO_BAL.value] / grouped_df[Metric.AVG_BAL.value]
+
+        if Metric.ANNL_WO_COUNT_PCT in required_metrics:
+            grouped_df[Metric.ANNL_WO_COUNT_PCT.value] = grouped_df[Metric.WO_COUNT_PCT.value] / (self.mob / 12)
+
+        if Metric.ANNL_WO_BAL_PCT in required_metrics:
+            grouped_df[Metric.ANNL_WO_BAL_PCT.value] = grouped_df[Metric.WO_BAL_PCT.value] / (self.mob / 12)
 
         return grouped_df

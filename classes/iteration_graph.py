@@ -49,8 +49,8 @@ class IterationGraph:
         self.__default_metric_df = pd.DataFrame({
             "metric": list(Metric),
             "metric_name": [m.value for m in Metric],
-            "order": [0, 1, 2, 3, 4, 5],
-            "showing": [True, True, True, True, True, True],
+            "order": [i for i, _ in enumerate(Metric)],
+            "showing": [i < 3 for i, _ in enumerate(Metric)],
         })
 
     @property

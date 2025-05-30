@@ -178,7 +178,7 @@ def show_edited_grid(split_view: bool):
         Names.LOWER_BOUND.value: st.column_config.NumberColumn(label=Names.LOWER_BOUND.value, disabled=False, format="plain"),
         Names.UPPER_BOUND.value: st.column_config.NumberColumn(label=Names.UPPER_BOUND.value, disabled=False, format="plain"),
     }
-    
+
     selectbox_columns = previous_risk_tiers.dropna().drop_duplicates().sort_values().map(SUB_RISK_TIERS)
 
     with st.expander("Grid View"):
@@ -199,7 +199,7 @@ def show_edited_grid(split_view: bool):
                 metric_summary = metric_summary.format(precision=0, thousands=',', subset=selectbox_columns)
             elif metric.value in [Metric.AVG_BAL.value, Metric.WO_BAL.value]:
                 metric_summary = metric_summary.format(precision=2, thousands=',', subset=selectbox_columns)
-            elif metric.value in [Metric.WO_COUNT_PCT.value, Metric.WO_BAL_PCT.value]:
+            elif metric.value in [Metric.WO_COUNT_PCT.value, Metric.WO_BAL_PCT.value, Metric.ANNL_WO_COUNT_PCT.value, Metric.ANNL_WO_BAL_PCT.value]:
                 metric_summary = metric_summary.format(lambda v: f"{v:.2f} %", subset=selectbox_columns)
 
             new_column.markdown(f"### {metric.value}")

@@ -10,7 +10,7 @@ from classes.iteration import (
     CategoricalSingleVarIteration,
     CategoricalDoubleVarIteration,
 )
-from classes.common import SUB_RISK_TIERS, Metric
+from classes.common import SUB_RISK_TIERS, DEFAULT_METRICS_DF
 
 def __integer_generator():
     current = 0
@@ -47,12 +47,7 @@ class IterationGraph:
         self._current_node_id = None
         self._recalculation_required = set()
 
-        self.__default_metric_df = pd.DataFrame({
-            "metric": list(Metric),
-            "metric_name": [m.value for m in Metric],
-            "order": [i for i, _ in enumerate(Metric)],
-            "showing": [i < 3 for i, _ in enumerate(Metric)],
-        })
+        self.__default_metric_df = DEFAULT_METRICS_DF
 
     @property
     def selected_node_id(self):

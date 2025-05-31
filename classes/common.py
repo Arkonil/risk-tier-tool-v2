@@ -11,6 +11,13 @@ class Metric(Enum):
     WO_COUNT_PCT: str = "# Write off %"
     WO_BAL: str = "$ Write off Balance"
     WO_BAL_PCT: str = "$ Write off %"
+    
+DEFAULT_METRICS_DF = pd.DataFrame({
+    "metric": list(Metric),
+    "metric_name": [m.value for m in Metric],
+    "order": [i for i, _ in enumerate(Metric)],
+    "showing": [i < 3 for i, _ in enumerate(Metric)],
+})
 
 class Names(Enum):
     LOWER_BOUND: str = "Lower Bound"

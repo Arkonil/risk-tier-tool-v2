@@ -48,7 +48,11 @@ class IterationGraph:
         self._recalculation_required = set()
 
         self.__default_metric_df = DEFAULT_METRICS_DF
-
+        
+    @property
+    def is_empty(self):
+        return len(self.iterations) == 0
+    
     @property
     def selected_node_id(self):
         return self._selected_node_id

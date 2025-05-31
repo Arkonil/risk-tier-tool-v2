@@ -9,6 +9,12 @@ _homepage = st.Page(
     default=True
 )
 
+_summary_page = st.Page(
+    page=f"{__name__}/summary.py",
+    title="Summary",
+    icon=":material/dashboard_2:",
+)
+
 _data_importer_page = st.Page(
     page=f"{__name__}/data_importer.py",
     title="Data Importer",
@@ -41,7 +47,7 @@ _export_page = st.Page(
 
 def set_page_navigation():
     pg = st.navigation({
-        "Home": [_homepage],
+        "Home": [_homepage, _summary_page],
         "Tools": [_data_importer_page, _scalar_page, _iteration_graph_page],
         "Results": [_charts_page, _export_page]
     })

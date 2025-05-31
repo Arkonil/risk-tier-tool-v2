@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -150,7 +152,8 @@ def show_edited_range(iteration_id: str, editable: bool, scalars_enabled: bool, 
         column_order=columns,
         hide_index=True,
         column_config=column_config,
-        use_container_width=True
+        use_container_width=True,
+        key=f"edited_range_{iteration.id}-{uuid4()}",
     )
 
     if editable and iteration.var_type == "numerical":
@@ -192,6 +195,9 @@ def show_single_var_iteration_widgets():
     iteration = iteration_graph.current_iteration
 
     iteration_metadata = iteration_graph.iteration_metadata[iteration.id]
+    
+    metrics_df = iteration_metadata["metrics"]
+    showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
 
     show_navigation_buttons()
 
@@ -230,7 +236,7 @@ def show_single_var_iteration_widgets():
             icon=":material/functions:",
             help="Set metrics to display in the table",
         ):
-            show_metric_selector(iteration.id)
+            show_metric_selector(metrics_df)
 
         scalars_enabled = st.checkbox(
             label="Enable Scalars",
@@ -244,9 +250,6 @@ def show_single_var_iteration_widgets():
 
     st.title(f"Iteration #{iteration.id}")
     st.write(f"##### Variable: `{iteration.variable.name}`")
-
-    metrics_df = iteration_metadata["metrics"]
-    showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
 
     show_edited_range(
         iteration_id=iteration.id,

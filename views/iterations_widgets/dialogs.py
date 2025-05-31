@@ -6,11 +6,7 @@ from classes.common import SUB_RISK_TIERS, Names
 from classes.iteration_graph import IterationGraph
 
 @st.dialog("Set Metrics")
-def show_metric_selector(node_id: str):
-    session = st.session_state['session']
-    iteration_graph: IterationGraph = session.iteration_graph
-    metrics_df = iteration_graph.iteration_metadata[node_id]['metrics']
-
+def show_metric_selector(metrics_df: pd.DataFrame):
     st.write("Select Metrics:")
 
     selected_metrics = st.multiselect(

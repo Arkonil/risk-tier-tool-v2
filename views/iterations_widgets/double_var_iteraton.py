@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -71,7 +73,8 @@ def show_edited_grid(scalars_enabled: bool, split_view_enabled: bool, metrics: p
         grid_df,
         column_config=column_config,
         hide_index=True,
-        use_container_width=True
+        use_container_width=True,
+        key=f"edited_grid_{iteration.id}-{uuid4()}",
     )
 
     edited_styled_grid = edited_grid \
@@ -79,7 +82,7 @@ def show_edited_grid(scalars_enabled: bool, split_view_enabled: bool, metrics: p
         .style.map(lambda v: f'background-color: {color_map[v]};', subset=selectbox_columns)
 
     # Show the edited grid
-    col2.dataframe(edited_styled_grid, hide_index=True)
+    col2.dataframe(edited_styled_grid, hide_index=True, key=f"edited_grid_{iteration.id}_1")
 
     # Replace the values in the edited grid with the corresponding risk tier values
     with pd.option_context('future.no_silent_downcasting', True):
@@ -250,6 +253,9 @@ def show_double_var_iteration_widgets():
     iteration = iteration_graph.iterations[iteration_graph.current_node_id]
 
     iteration_metadata = iteration_graph.iteration_metadata[iteration.id]
+    
+    metrics_df = iteration_metadata["metrics"]
+    showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
 
     show_navigation_buttons()
 
@@ -284,7 +290,7 @@ def show_double_var_iteration_widgets():
             st.rerun()
 
         if st.button("Set Metrics", use_container_width=True, icon=":material/functions:",):
-            show_metric_selector(iteration.id)
+            show_metric_selector(metrics_df)
 
         scalars_enabled = st.checkbox(
             label="Enable Scalars",
@@ -308,9 +314,6 @@ def show_double_var_iteration_widgets():
 
     st.title(f"Iteration #{iteration.id}")
     st.write(f"##### Variable: `{iteration.variable.name}`")
-
-    metrics_df = iteration_metadata["metrics"]
-    showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
 
     error_message = show_edited_grid(
         scalars_enabled=scalars_enabled,

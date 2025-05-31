@@ -1,7 +1,6 @@
 import streamlit as st
 
-
-def show_home_page():
+def show_welcome_page():
     st.title("Risk Tier Development Tool")
 
     st.write("")
@@ -22,5 +21,9 @@ def show_home_page():
             st.write("Supported file formats: `\".zip\"`")
             if st.button("Import `.rt.zip` file", icon=":material/file_upload:"):
                 st.switch_page("views/data_importer.py")
+
+
+def show_home_page():
+    show_welcome_page()
 
 show_home_page()

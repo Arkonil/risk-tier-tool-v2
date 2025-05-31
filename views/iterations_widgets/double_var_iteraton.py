@@ -11,12 +11,13 @@ from views.iterations_widgets.navigation import show_navigation_buttons
 from views.iterations_widgets.single_var_iteration import show_edited_range, show_category_editor
 from views.variable_selector import show_variable_selector_dialog
 
-def show_edited_grid(split_view: bool):
+def show_edited_grid():
     session: Session = st.session_state['session']
     iteration_graph: IterationGraph = session.iteration_graph
     data = session.data
 
     iteration = iteration_graph.current_iteration
+    iteration_metadata = iteration_graph.iteration_metadata[iteration.id]
 
     if iteration.var_type == "categorical":
         show_category_editor(iteration.id)
@@ -105,8 +106,7 @@ def show_edited_grid(split_view: bool):
 
         for index in edited_groups.index:
             prev_bounds = np.array(groups.loc[index, Names.GROUPS.value]).astype(float)
-            curent_bounds = np.array(edited_groups.loc[index, [Names.LOWER_BOUND.value
-, Names.UPPER_BOUND.value]]).astype(float)
+            curent_bounds = np.array(edited_groups.loc[index, [Names.LOWER_BOUND.value, Names.UPPER_BOUND.value]]).astype(float)
 
             if not np.array_equal(prev_bounds, curent_bounds, equal_nan=True):
                 curr_lb = edited_groups.loc[index, Names.LOWER_BOUND.value
@@ -150,6 +150,44 @@ def show_edited_grid(split_view: bool):
         metrics=showing_metrics.to_list(),
     )
 
+    # Get a list of names of the metrics that are currently set to 'showing'
+    showing_metric_names = [m.name for m in showing_metrics]
+
+    if iteration_metadata["scalars_enabled"] and (
+        Metric.ANNL_WO_COUNT_PCT.name in showing_metric_names or
+        Metric.ANNL_WO_BAL_PCT.name in showing_metric_names
+    ):
+        ulr_scalar = session.ulr_scalars
+        dlr_scalar = session.dlr_scalars
+
+        summ_df = summ_df.merge(
+            iteration.risk_tier_grid \
+                .stack() \
+                .rename_axis(index=[Names.GROUP_INDEX.value, Names.RISK_TIER_VALUE.value]) \
+                .rename("New Risk Tier"),
+            how='left',
+            left_index=True,
+            right_index=True,
+        ).merge(
+            ulr_scalar.risk_scalar_factor.rename("rsf_ulr"),
+            how='left',
+            left_on="New Risk Tier",
+            right_index=True,
+        ).merge(
+            dlr_scalar.risk_scalar_factor.rename("rsf_dlr"),
+            how='left',
+            left_on="New Risk Tier",
+            right_index=True,
+        )
+
+        if Metric.ANNL_WO_COUNT_PCT.value in summ_df.columns:
+            summ_df[Metric.ANNL_WO_COUNT_PCT.value] = summ_df[Metric.ANNL_WO_COUNT_PCT.value] * summ_df["rsf_ulr"]
+
+        if Metric.ANNL_WO_BAL_PCT.value in summ_df.columns:
+            summ_df[Metric.ANNL_WO_BAL_PCT.value] = summ_df[Metric.ANNL_WO_BAL_PCT.value] * summ_df["rsf_dlr"]
+
+        summ_df = summ_df.drop(columns=["rsf_ulr", "rsf_dlr", "New Risk Tier"], errors="ignore")
+
     def calculate_grid_of_metric(metric: Metric) -> pd.DataFrame:
         metric_summary =  summ_df[metric.value] \
             .to_frame() \
@@ -181,9 +219,9 @@ def show_edited_grid(split_view: bool):
 
     selectbox_columns = previous_risk_tiers.dropna().drop_duplicates().sort_values().map(SUB_RISK_TIERS)
 
-    with st.expander("Grid View"):
+    with st.expander("Grid View", expanded=True):
         columns = []
-        if split_view:
+        if iteration_metadata["split_view_enabled"]:
             for _ in range(0, len(showing_metrics), 2):
                 columns += st.columns(2)
         else:
@@ -210,23 +248,29 @@ def show_double_var_iteration_widgets():
     iteration_graph = session.iteration_graph
     iteration = iteration_graph.iterations[iteration_graph.current_node_id]
 
+    iteration_metadata = iteration_graph.iteration_metadata[iteration.id]
+
     show_navigation_buttons()
 
     with st.sidebar:
-        if st.button("Set Metrics", use_container_width=True):
-            show_metric_selector(iteration.id)
+        if st.button(
+            label="Set Variables",
+            use_container_width=True,
+            icon=":material/data_table:",
+            help="Select variables for calculations",
+        ):
+            show_variable_selector_dialog()
+
+        st.divider()
 
         col1, col2 = st.columns([3, 1])
-        if col1.button("Edit Groups", use_container_width=True):
+        if col1.button("Edit Groups", use_container_width=True, icon=":material/edit:",):
             set_groups(iteration.id)
 
         if col2.button("", use_container_width=True, icon=":material/add:", key="Add Group"):
             iteration.add_group(iteration.num_groups)
             iteration_graph.add_to_calculation_queue(iteration.id)
             st.rerun()
-
-        if st.button("Set Variables", use_container_width=True):
-            show_variable_selector_dialog()
 
         if st.button(
             label="Reverse Group Order",
@@ -238,12 +282,33 @@ def show_double_var_iteration_widgets():
             iteration_graph.add_to_calculation_queue(iteration.id)
             st.rerun()
 
-        split_view = st.checkbox("Split into columns")
+        if st.button("Set Metrics", use_container_width=True, icon=":material/functions:",):
+            show_metric_selector(iteration.id)
+
+        scalars_enabled = st.checkbox(
+            label="Enable Scalars",
+            value=iteration_metadata["scalars_enabled"],
+            help="Use Scalars for Annualized Write Off Rates",
+        )
+
+        if scalars_enabled != iteration_metadata["scalars_enabled"]:
+            iteration_metadata["scalars_enabled"] = scalars_enabled
+            st.rerun()
+
+        split_view_enabled = st.checkbox(
+            label="Split into columns",
+            value=iteration_metadata["split_view_enabled"],
+            help="Split the grid view into columns for each metric",
+        )
+
+        if split_view_enabled != iteration_metadata["split_view_enabled"]:
+            iteration_metadata["split_view_enabled"] = split_view_enabled
+            st.rerun()
 
     st.title(f"Iteration #{iteration.id}")
     st.write(f"##### Variable: `{iteration.variable.name}`")
 
-    error_message = show_edited_grid(split_view)
+    error_message = show_edited_grid()
 
     if error_message:
         st.error(error_message, icon=":material/error:")

@@ -4,8 +4,8 @@ import pandas as pd
 
 class Metric(Enum):
     VOLUME: str = "Volume"
-    ANNL_WO_COUNT_PCT: str = "# Annualized Write off %"
     ANNL_WO_BAL_PCT: str = "$ Annualized Write off %"
+    ANNL_WO_COUNT_PCT: str = "# Annualized Write off %"
     AVG_BAL: str = "$ Average Balance"
     WO_COUNT: str = "# Write off Count"
     WO_COUNT_PCT: str = "# Write off %"
@@ -20,6 +20,8 @@ class Names(Enum):
     RISK_TIER: str = "Risk Tier"
     RISK_TIER_VALUE: str = "Risk Tier Value"
     GROUP_INDEX: str = "Group Index"
+    MATURITY_ADJUSTMENT_FACTOR: str = "Maturity Adjustment Factor"
+    RISK_SCALAR_FACTOR: str = "Risk Scalar Factor"
 
 RISK_TIERS = list(map(str, range(1, 6)))
 SUB_RISK_TIERS = pd.Series(sorted(

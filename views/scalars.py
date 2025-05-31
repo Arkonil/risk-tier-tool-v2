@@ -1,39 +1,37 @@
 import pandas as pd
 import streamlit as st
 
+from classes.common import SUB_RISK_TIERS, color_map, Names
+from classes.data import Data
 from classes.scalars import Scalar
 
-from views.components import columns_with_divider
-
-
-def annualizing_factor_calculation(scalar: Scalar) -> Scalar:
-
+def annualizing_factor_calculation(scalar: Scalar, data: Data) -> Scalar:
     df = pd.DataFrame({
-        "years": [scalar.period1, scalar.period2],
-        "loss_rates": [scalar.period1_rate, scalar.period2_rate]
+        "Loss Rate Description": ["Current Rate", "Lifetime Rate"],
+        "MOB": [data.current_rate_mob, data.lifetime_rate_mob],
+        "Loss Rates": [scalar.current_rate, scalar.lifetime_rate]
     })
 
-    def year_transformer(y):
-        return f"{int(y) if float(y).is_integer() else y} Years"
+    df['MOB'] = df['MOB'].map(lambda mob: f"{mob} MOB")
+    df['Loss Rates'] = df['Loss Rates'] * 100
 
-    def year_inv_transformer(s):
-        return float(s.split(" ")[0])
+    st.subheader(f"{'$' if scalar.loss_rate_type == 'dlr' else r'#'} Scalar Calculation")
 
-    df['years'] = df['years'].map(year_transformer)
-    df['loss_rates'] = df['loss_rates'] * 100
+    col1, _, col2, _ = st.columns([12, 1, 4, 1])
 
-    edited_df = st.data_editor(
+    edited_df = col1.data_editor(
         df,
         column_config={
-            "years": st.column_config.SelectboxColumn(
-                "Years",
-                width="medium",
-                required=True,
-                options=list(map(year_transformer, Scalar.period_options))
+            "Loss Rate Description": st.column_config.TextColumn(
+                label="Loss Rate Description",
+                disabled=True,
             ),
-            "loss_rates": st.column_config.NumberColumn(
-                f"{'$' if scalar.loss_rate_type == 'dlr' else '#'} Charge Off",
-                width="medium",
+            "MOB": st.column_config.TextColumn(
+                label="MOB",
+                disabled=True,
+            ),
+            "Loss Rates": st.column_config.NumberColumn(
+                label=f"{'$' if scalar.loss_rate_type == 'dlr' else r'#'} Charge Off",
                 required=True,
                 format="%.2f %%",
             )
@@ -43,37 +41,44 @@ def annualizing_factor_calculation(scalar: Scalar) -> Scalar:
         key=f"annualizing-factor-{scalar.loss_rate_type}",
     )
 
+    col2.metric(
+        label="{0} Portfolio Scalar".format('$' if scalar.loss_rate_type == 'dlr' else r'\#'),
+        value=f"{scalar.portfolio_scalar:.2f}",
+        border=True
+    )
+
     if not edited_df.equals(df):
+        edited_df['Loss Rates'] = edited_df['Loss Rates'] / 100
 
-        edited_df['years'] = edited_df['years'].map(year_inv_transformer)
-        edited_df['loss_rates'] = edited_df['loss_rates'] / 100
-
-        scalar.period1 = edited_df.loc[0, 'years']
-        scalar.period2 = edited_df.loc[1, 'years']
-
-        scalar.period1_rate = edited_df.loc[0, 'loss_rates']
-        scalar.period2_rate = edited_df.loc[1, 'loss_rates']
+        scalar.current_rate = edited_df.loc[0, 'Loss Rates']
+        scalar.lifetime_rate = edited_df.loc[1, 'Loss Rates']
 
         st.rerun()
 
 def risk_scalar_factor_calculation(scalar: Scalar) -> Scalar:
-
     df = pd.DataFrame({
-        "Risk Tier": range(1, 6),
-        "Maturity Adjustment Factor": scalar.maturity_adjustment_factor * 100,
-        "Risk Scalar Factor": scalar.risk_scalar_factor
+        Names.RISK_TIER.value: SUB_RISK_TIERS,
+        Names.MATURITY_ADJUSTMENT_FACTOR.value: scalar.maturity_adjustment_factor * 100,
+        Names.RISK_SCALAR_FACTOR.value: scalar.risk_scalar_factor
     })
+
+    df = df.style.map(lambda v: f'background-color: {color_map[v]};', subset=[Names.RISK_TIER.value])
 
     edited_df = st.data_editor(
         df,
         column_config={
-            "Maturity Adjustment Factor": st.column_config.NumberColumn(
-                label="Maturity Adjustment Factor",
-                format="%.1f %%",
+            Names.RISK_TIER.value: st.column_config.TextColumn(
+                label=Names.RISK_TIER.value,
+                disabled=True,
             ),
-            "Risk Scalar Factor": st.column_config.NumberColumn(
-                label="Risk Scalar Factor",
-                format="%.1f",
+            Names.MATURITY_ADJUSTMENT_FACTOR.value: st.column_config.NumberColumn(
+                label=Names.MATURITY_ADJUSTMENT_FACTOR.value,
+                format="%.1f %%",
+
+            ),
+            Names.RISK_SCALAR_FACTOR.value: st.column_config.NumberColumn(
+                label=Names.RISK_SCALAR_FACTOR.value,
+                format="%.2f",
                 disabled=True
             )
         },
@@ -82,17 +87,14 @@ def risk_scalar_factor_calculation(scalar: Scalar) -> Scalar:
         key=f"risk-scalar-factor-{scalar.loss_rate_type}",
     )
 
-    if not edited_df.equals(df):
-        scalar.maturity_adjustment_factor = edited_df['Maturity Adjustment Factor'] / 100
+    if not edited_df.equals(df.data):
+        scalar.maturity_adjustment_factor = edited_df[Names.MATURITY_ADJUSTMENT_FACTOR.value] / 100
 
         st.rerun()
 
-def scalar_edit_widget(scalars: Scalar) -> Scalar:
+def scalar_edit_widget(scalars: Scalar, data: Data) -> Scalar:
 
-    annualizing_factor_calculation(scalars)
-
-    st.write("Portfolio Scalar:", scalars.portfolio_scalar)
-
+    annualizing_factor_calculation(scalars, data)
     risk_scalar_factor_calculation(scalars)
 
 def show_scalars_page():
@@ -103,14 +105,12 @@ def show_scalars_page():
     st.write("")
     st.write("")
 
-    dlr_scalars_column, ulr_scalars_column = columns_with_divider(2)
+    dlr_scalars_column, ulr_scalars_column = st.columns(2)
 
     with dlr_scalars_column:
-        st.subheader("$ Scalar Calculation")
-        scalar_edit_widget(session.dlr_scalars)
+        scalar_edit_widget(session.dlr_scalars, session.data)
 
     with ulr_scalars_column:
-        st.subheader("# Scalar Calculation")
-        scalar_edit_widget(session.ulr_scalars)
+        scalar_edit_widget(session.ulr_scalars, session.data)
 
 show_scalars_page()

@@ -27,9 +27,10 @@ def new_id():
 
 class IterationMetadata(TypedDict):
     metrics: pd.DataFrame
-    annualized_rates: bool
-    scalar_multiplied_rates: bool
-
+    scalars_enabled: bool
+    split_view_enabled: bool
+    grid_view_expanded: bool
+    final_rt_view_expanded: bool
 
 class IterationGraph:
 
@@ -182,8 +183,10 @@ class IterationGraph:
         self.iterations[new_node_id] = iteration
         self.iteration_metadata[new_node_id] = {
             "metrics": self.__default_metric_df.copy(),
-            "annualized_rates": False,
-            "scalar_multiplied_rates": False,
+            "scalars_enabled": True,
+            "split_view_enabled": False,
+            "grid_view_expanded": False,
+            "final_rt_view_expanded": False,
         }
         self._recalculation_required.add(new_node_id)
 
@@ -218,8 +221,10 @@ class IterationGraph:
         self.iterations[new_node_id] = iteration
         self.iteration_metadata[new_node_id] = {
             "metrics": self.__default_metric_df.copy(),
-            "annualized_rates": False,
-            "scalar_multiplied_rates": False,
+            "scalars_enabled": True,
+            "split_view_enabled": False,
+            "grid_view_expanded": False,
+            "final_rt_view_expanded": False,
         }
         self.connections.setdefault(previous_node_id, []).append(new_node_id)
 

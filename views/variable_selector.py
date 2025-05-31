@@ -82,7 +82,7 @@ def show_mob_selector(data: Data):
     show_text(col2, "=")
     mob = col3.number_input(
         label="MOB_var",
-        value=data.mob,
+        value=data.current_rate_mob,
         min_value=1,
         max_value=100,
         step=1,
@@ -93,6 +93,24 @@ def show_mob_selector(data: Data):
 
     return mob
 
+def show_lifetime_rate_mob_selector(data: Data):
+    col1, col2, col3, _ = st.columns([4, 1, 5, 6])
+
+    show_text(col1, "Lifetime MOB")
+    show_text(col2, "=")
+    lifetime_rate_mob = col3.number_input(
+        label="Lifetime MOB",
+        value=data.lifetime_rate_mob,
+        min_value=data.current_rate_mob,
+        max_value=100,
+        step=1,
+        label_visibility="collapsed",
+        format="%d",
+        placeholder="Lifetime Rate Months on Book"
+    )
+
+    return lifetime_rate_mob
+
 def show_variable_selector():
     session: Session = st.session_state['session']
     data = session.data
@@ -100,24 +118,29 @@ def show_variable_selector():
     var_unt_wrt_off = show_unit_wrt_off_selector(data)
     var_dlr_wrt_off, var_avg_bal = show_dlr_wrt_off_selector(data)
     mob = show_mob_selector(data)
+    lifetime_rate_mob = show_lifetime_rate_mob_selector(data)
 
     needs_rerun = False
     if var_unt_wrt_off != data.var_unt_wrt_off:
         data.var_unt_wrt_off = var_unt_wrt_off
         needs_rerun = True
-        
+
     if var_dlr_wrt_off != data.var_dlr_wrt_off:
         data.var_dlr_wrt_off = var_dlr_wrt_off
         needs_rerun = True
-        
+
     if var_avg_bal != data.var_avg_bal:
         data.var_avg_bal = var_avg_bal
         needs_rerun = True
-        
-    if mob != data.mob:
-        data.mob = mob
+
+    if mob != data.current_rate_mob:
+        data.current_rate_mob = mob
         needs_rerun = True
-        
+
+    if lifetime_rate_mob != data.lifetime_rate_mob:
+        data.lifetime_rate_mob = lifetime_rate_mob
+        needs_rerun = True
+
     if needs_rerun:
         try:
             st.rerun(scope="fragment")

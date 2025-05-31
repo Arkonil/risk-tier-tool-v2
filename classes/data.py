@@ -37,30 +37,13 @@ class Data:
         self.df: pd.DataFrame | None = None
         self.df_size: int | None = None
 
-        self.var_app_status: str | None = None
-        self.var_app_status_accepted: set[str] = set()
-        self.var_app_status_declined: set[str] = set()
         self.var_unt_wrt_off: str | None = None
         self.var_dlr_wrt_off: str | None = None
         self.var_avg_bal: str | None = None
-        self.var_revenue: str | None = None
-        self.mob: int = 12
+        self.current_rate_mob: int = 12
+        self.lifetime_rate_mob: int = 36
 
         self.metadata: Metadata | None = None
-
-    @property
-    def var_app_status_values(self) -> set[str]:
-        return self.var_app_status_accepted.union(self.var_app_status_declined)
-
-    def all_variable_selected(self) -> bool:
-        return all([
-            self.var_app_status is not None,
-            self.var_unt_wrt_off is not None,
-            self.var_dlr_wrt_off is not None,
-            self.var_avg_bal is not None,
-            self.var_revenue is not None,
-            self.mob is not None,
-        ])
 
     def get_col_pos(self, col_name: str | None) -> int:
         if col_name is None or col_name not in self.sample_df.columns:
@@ -108,10 +91,12 @@ class Data:
         """
 
         if read_mode == "CSV":
-            df = pd.read_csv(filepath, delimiter=delimiter, header=header_row, nrows=nrows, usecols=usecols).convert_dtypes()
+            df = pd.read_csv(
+                filepath, delimiter=delimiter, header=header_row, nrows=nrows, usecols=usecols).convert_dtypes()
         elif read_mode == "EXCEL":
             try:
-                df = pd.read_excel(filepath, sheet_name=sheet_name, header=header_row, nrows=nrows, usecols=usecols).convert_dtypes()
+                df = pd.read_excel(
+                    filepath, sheet_name=sheet_name, header=header_row, nrows=nrows, usecols=usecols).convert_dtypes()
             except ValueError as error:
                 if sheet_name.isdigit():
                     df = pd.read_excel(
@@ -278,9 +263,9 @@ class Data:
             grouped_df[Metric.WO_BAL_PCT.value] = 100 * grouped_df[Metric.WO_BAL.value] / grouped_df[Metric.AVG_BAL.value]
 
         if Metric.ANNL_WO_COUNT_PCT in required_metrics:
-            grouped_df[Metric.ANNL_WO_COUNT_PCT.value] = grouped_df[Metric.WO_COUNT_PCT.value] / (self.mob / 12)
+            grouped_df[Metric.ANNL_WO_COUNT_PCT.value] = grouped_df[Metric.WO_COUNT_PCT.value] / (self.current_rate_mob / 12)
 
         if Metric.ANNL_WO_BAL_PCT in required_metrics:
-            grouped_df[Metric.ANNL_WO_BAL_PCT.value] = grouped_df[Metric.WO_BAL_PCT.value] / (self.mob / 12)
+            grouped_df[Metric.ANNL_WO_BAL_PCT.value] = grouped_df[Metric.WO_BAL_PCT.value] / (self.current_rate_mob / 12)
 
         return grouped_df

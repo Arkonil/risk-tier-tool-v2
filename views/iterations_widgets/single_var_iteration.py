@@ -51,6 +51,7 @@ def show_edited_range(iteration_id: str, editable: bool = True):
     data = session.data
 
     iteration = iteration_graph.iterations[iteration_id]
+    iteration_metadata = iteration_graph.iteration_metadata[iteration_id]
 
     if iteration.var_count == 2:
         editable = False
@@ -76,7 +77,7 @@ def show_edited_range(iteration_id: str, editable: bool = True):
             Names.RISK_TIER.value: SUB_RISK_TIERS.loc[SUB_RISK_TIERS.index.isin(new_risk_tiers)]
         })
 
-    metrics_df = iteration_graph.iteration_metadata[iteration_graph.current_node_id]['metrics']
+    metrics_df = iteration_metadata["metrics"]
     showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
 
     summ_df = data.get_summarized_metrics(
@@ -84,11 +85,33 @@ def show_edited_range(iteration_id: str, editable: bool = True):
         metrics=showing_metrics.to_list(),
     )
 
+    # Get a list of names of the metrics that are currently set to 'showing'
+    showing_metric_names = [m.value for m in showing_metrics]
+
+    if iteration_metadata["scalars_enabled"] and (
+        Metric.ANNL_WO_COUNT_PCT.value in showing_metric_names or
+        Metric.ANNL_WO_BAL_PCT.value in showing_metric_names
+    ):
+        ulr_scalar = session.ulr_scalars
+        dlr_scalar = session.dlr_scalars
+        summ_df = summ_df \
+            .merge(ulr_scalar.risk_scalar_factor.rename("rsf_ulr"), how='left', left_index=True, right_index=True) \
+            .merge(dlr_scalar.risk_scalar_factor.rename("rsf_dlr"), how='left', left_index=True, right_index=True)
+
+        if Metric.ANNL_WO_COUNT_PCT.value in summ_df.columns:
+            summ_df[Metric.ANNL_WO_COUNT_PCT.value] = summ_df[Metric.ANNL_WO_COUNT_PCT.value] * summ_df["rsf_ulr"]
+
+        if Metric.ANNL_WO_BAL_PCT.value in summ_df.columns:
+            summ_df[Metric.ANNL_WO_BAL_PCT.value] = summ_df[Metric.ANNL_WO_BAL_PCT.value] * summ_df["rsf_dlr"]
+
+        summ_df = summ_df.drop(columns=["rsf_ulr", "rsf_dlr"], errors="ignore")
+
     calculated_df = groups.merge(summ_df, how='left', left_index=True, right_index=True)
 
     int_cols = [Metric.VOLUME.value, Metric.WO_COUNT.value]
     dec_cols = [Metric.WO_BAL.value, Metric.AVG_BAL.value]
-    perc_cols = [Metric.WO_BAL_PCT.value, Metric.WO_COUNT_PCT.value, Metric.ANNL_WO_COUNT_PCT.value, Metric.ANNL_WO_BAL_PCT.value]
+    perc_cols = [Metric.WO_BAL_PCT.value, Metric.WO_COUNT_PCT.value,
+                 Metric.ANNL_WO_COUNT_PCT.value, Metric.ANNL_WO_BAL_PCT.value]
 
     calculated_df = calculated_df.style \
         .map(lambda v: f'background-color: {color_map[v]};', subset=[Names.RISK_TIER.value]) \
@@ -167,16 +190,20 @@ def show_single_var_iteration_widgets():
     iteration_graph = session.iteration_graph
     iteration = iteration_graph.current_iteration
 
+    iteration_metadata = iteration_graph.iteration_metadata[iteration.id]
+
     show_navigation_buttons()
 
     with st.sidebar:
         if st.button(
-            label="Set Metrics",
+            label="Set Variables",
             use_container_width=True,
-            icon=":material/functions:",
-            help="Set metrics to display in the table",
+            icon=":material/data_table:",
+            help="Select variables for calculations",
         ):
-            show_metric_selector(iteration.id)
+            show_variable_selector_dialog()
+
+        st.divider()
 
         if st.button(
             label="Set Risk Tiers",
@@ -185,14 +212,6 @@ def show_single_var_iteration_widgets():
             help="Set the desired Risk Tiers",
         ):
             set_risk_tiers(iteration.id)
-
-        if st.button(
-            label="Set Variables",
-            use_container_width=True,
-            icon=":material/data_table:",
-            help="Select variables for calculations",
-        ):
-            show_variable_selector_dialog()
 
         if st.button(
             label="Reverse Group Order",
@@ -204,6 +223,23 @@ def show_single_var_iteration_widgets():
             iteration_graph.add_to_calculation_queue(iteration.id)
             st.rerun()
 
+        if st.button(
+            label="Set Metrics",
+            use_container_width=True,
+            icon=":material/functions:",
+            help="Set metrics to display in the table",
+        ):
+            show_metric_selector(iteration.id)
+
+        scalars_enabled = st.checkbox(
+            label="Enable Scalars",
+            value=iteration_metadata["scalars_enabled"],
+            help="Use Scalars for Annualized Write Off Rates",
+        )
+
+        if scalars_enabled != iteration_metadata["scalars_enabled"]:
+            iteration_metadata["scalars_enabled"] = scalars_enabled
+            st.rerun()
 
     st.title(f"Iteration #{iteration.id}")
     st.write(f"##### Variable: `{iteration.variable.name}`")

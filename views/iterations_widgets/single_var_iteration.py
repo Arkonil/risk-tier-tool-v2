@@ -45,13 +45,13 @@ def show_category_editor(node_id: str):
                     iteration_graph.add_to_calculation_queue(iteration.id)
                     st.rerun()
 
-def show_edited_range(iteration_id: str, editable: bool = True):
+def show_edited_range(iteration_id: str, editable: bool, scalars_enabled: bool, metrics: pd.Series):
     session: Session = st.session_state['session']
     iteration_graph = session.iteration_graph
     data = session.data
 
     iteration = iteration_graph.iterations[iteration_id]
-    iteration_metadata = iteration_graph.iteration_metadata[iteration_id]
+    # iteration_metadata = iteration_graph.iteration_metadata[iteration_id]
 
     if iteration.var_count == 2:
         editable = False
@@ -77,8 +77,9 @@ def show_edited_range(iteration_id: str, editable: bool = True):
             Names.RISK_TIER.value: SUB_RISK_TIERS.loc[SUB_RISK_TIERS.index.isin(new_risk_tiers)]
         })
 
-    metrics_df = iteration_metadata["metrics"]
-    showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
+    # metrics_df = iteration_metadata["metrics"]
+    # showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
+    showing_metrics = metrics
 
     summ_df = data.get_summarized_metrics(
         new_risk_tiers.rename(Names.RISK_TIER_VALUE.value),
@@ -88,7 +89,7 @@ def show_edited_range(iteration_id: str, editable: bool = True):
     # Get a list of names of the metrics that are currently set to 'showing'
     showing_metric_names = [m.value for m in showing_metrics]
 
-    if iteration_metadata["scalars_enabled"] and (
+    if scalars_enabled and (
         Metric.ANNL_WO_COUNT_PCT.value in showing_metric_names or
         Metric.ANNL_WO_BAL_PCT.value in showing_metric_names
     ):
@@ -244,7 +245,12 @@ def show_single_var_iteration_widgets():
     st.title(f"Iteration #{iteration.id}")
     st.write(f"##### Variable: `{iteration.variable.name}`")
 
+    metrics_df = iteration_metadata["metrics"]
+    showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
+
     show_edited_range(
         iteration_id=iteration.id,
         editable=True,
+        scalars_enabled=scalars_enabled,
+        metrics=showing_metrics,
     )

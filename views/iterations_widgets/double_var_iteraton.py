@@ -11,13 +11,13 @@ from views.iterations_widgets.navigation import show_navigation_buttons
 from views.iterations_widgets.single_var_iteration import show_edited_range, show_category_editor
 from views.variable_selector import show_variable_selector_dialog
 
-def show_edited_grid():
+def show_edited_grid(scalars_enabled: bool, split_view_enabled: bool, metrics: pd.Series) -> str | None:
     session: Session = st.session_state['session']
     iteration_graph: IterationGraph = session.iteration_graph
     data = session.data
 
     iteration = iteration_graph.current_iteration
-    iteration_metadata = iteration_graph.iteration_metadata[iteration.id]
+    # iteration_metadata = iteration_graph.iteration_metadata[iteration.id]
 
     if iteration.var_type == "categorical":
         show_category_editor(iteration.id)
@@ -141,8 +141,9 @@ def show_edited_grid():
         message = "Warnings: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", warnings))
         st.warning(message, icon=":material/warning:")
 
-    metrics_df = iteration_graph.iteration_metadata[iteration_graph.current_node_id]['metrics']
-    showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
+    # metrics_df = iteration_graph.iteration_metadata[iteration_graph.current_node_id]['metrics']
+    # showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
+    showing_metrics = metrics
 
     summ_df = data.get_summarized_metrics(
         groupby_variable_1=group_indices.rename(Names.GROUP_INDEX.value),
@@ -153,7 +154,7 @@ def show_edited_grid():
     # Get a list of names of the metrics that are currently set to 'showing'
     showing_metric_names = [m.name for m in showing_metrics]
 
-    if iteration_metadata["scalars_enabled"] and (
+    if scalars_enabled and (
         Metric.ANNL_WO_COUNT_PCT.name in showing_metric_names or
         Metric.ANNL_WO_BAL_PCT.name in showing_metric_names
     ):
@@ -221,7 +222,7 @@ def show_edited_grid():
 
     with st.expander("Grid View", expanded=True):
         columns = []
-        if iteration_metadata["split_view_enabled"]:
+        if split_view_enabled:
             for _ in range(0, len(showing_metrics), 2):
                 columns += st.columns(2)
         else:
@@ -308,7 +309,14 @@ def show_double_var_iteration_widgets():
     st.title(f"Iteration #{iteration.id}")
     st.write(f"##### Variable: `{iteration.variable.name}`")
 
-    error_message = show_edited_grid()
+    metrics_df = iteration_metadata["metrics"]
+    showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
+
+    error_message = show_edited_grid(
+        scalars_enabled=scalars_enabled,
+        split_view_enabled=split_view_enabled,
+        metrics=showing_metrics
+    )
 
     if error_message:
         st.error(error_message, icon=":material/error:")
@@ -320,5 +328,5 @@ def show_double_var_iteration_widgets():
         while iter_id is not None:
             st.title(f"Iteration #{iter_id}")
             st.markdown(f"##### Variable: `{iteration_graph.iterations[iter_id].variable.name}`")
-            show_edited_range(iter_id, editable=False)
+            show_edited_range(iter_id, editable=False, scalars_enabled=scalars_enabled, metrics=showing_metrics)
             iter_id = iteration_graph.get_parent(iter_id)

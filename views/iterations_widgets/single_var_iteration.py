@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -47,7 +45,7 @@ def show_category_editor(node_id: str):
                     iteration_graph.add_to_calculation_queue(iteration.id)
                     st.rerun()
 
-def show_edited_range(iteration_id: str, editable: bool, scalars_enabled: bool, metrics: pd.Series):
+def show_edited_range(iteration_id: str, editable: bool, scalars_enabled: bool, metrics: pd.Series, key: int = 0):
     session: Session = st.session_state['session']
     iteration_graph = session.iteration_graph
     data = session.data
@@ -153,7 +151,7 @@ def show_edited_range(iteration_id: str, editable: bool, scalars_enabled: bool, 
         hide_index=True,
         column_config=column_config,
         use_container_width=True,
-        key=f"edited_range_{iteration.id}-{uuid4()}",
+        key=f"edited_range-{key}-{iteration.id}",
     )
 
     if editable and iteration.var_type == "numerical":

@@ -1,4 +1,4 @@
-from uuid import uuid4
+import typing as t
 
 import numpy as np
 import pandas as pd
@@ -13,7 +13,7 @@ from views.iterations_widgets.navigation import show_navigation_buttons
 from views.iterations_widgets.single_var_iteration import show_edited_range, show_category_editor
 from views.variable_selector import show_variable_selector_dialog
 
-def show_edited_grid(scalars_enabled: bool, split_view_enabled: bool, metrics: pd.Series) -> str | None:
+def show_edited_grid(scalars_enabled: bool, split_view_enabled: bool, metrics: pd.Series, key: int = 0) -> t.Optional[str]:
     session: Session = st.session_state['session']
     iteration_graph: IterationGraph = session.iteration_graph
     data = session.data
@@ -74,7 +74,7 @@ def show_edited_grid(scalars_enabled: bool, split_view_enabled: bool, metrics: p
         column_config=column_config,
         hide_index=True,
         use_container_width=True,
-        key=f"edited_grid_{iteration.id}-{uuid4()}",
+        key=f"edited_grid-{key}-{iteration.id}",
     )
 
     edited_styled_grid = edited_grid \

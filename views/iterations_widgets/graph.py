@@ -1,4 +1,5 @@
 import pathlib as p
+import typing as t
 
 import pandas as pd
 import streamlit as st
@@ -96,7 +97,7 @@ def streamlit_flow_graph(iteration_graph: IterationGraph) -> StreamlitFlowState:
     return new_state
 
 @st.dialog("Choose a variable")
-def show_add_iter_dialog(parent_node_id: str | None = None):
+def show_add_iter_dialog(parent_node_id: t.Optional[str] = None):
     session: Session = st.session_state['session']
     data = session.data
 

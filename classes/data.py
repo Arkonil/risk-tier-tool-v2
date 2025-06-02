@@ -1,6 +1,5 @@
 import pathlib
 import typing as t
-import collections.abc
 
 import numpy as np
 import pandas as pd
@@ -32,20 +31,20 @@ class Data:
         self.header_row: int = 0
         self.sample_row_count: int = 100
 
-        self.sample_df: pd.DataFrame | None = None
+        self.sample_df: t.Optional[pd.DataFrame] = None
         self.raw_csv_lines: list[str] = []
-        self.df: pd.DataFrame | None = None
-        self.df_size: int | None = None
+        self.df: t.Optional[pd.DataFrame] = None
+        self.df_size: t.Optional[int] = None
 
-        self.var_unt_wrt_off: str | None = None
-        self.var_dlr_wrt_off: str | None = None
-        self.var_avg_bal: str | None = None
+        self.var_unt_wrt_off: t.Optional[str] = None
+        self.var_dlr_wrt_off: t.Optional[str] = None
+        self.var_avg_bal: t.Optional[str] = None
         self.current_rate_mob: int = 12
         self.lifetime_rate_mob: int = 36
 
-        self.metadata: Metadata | None = None
+        self.metadata: t.Optional[Metadata] = None
 
-    def get_col_pos(self, col_name: str | None) -> int:
+    def get_col_pos(self, col_name: t.Optional[str]) -> int:
         if col_name is None or col_name not in self.sample_df.columns:
             return None
         return self.sample_df.columns.get_loc(col_name)
@@ -69,8 +68,8 @@ class Data:
         delimiter: str,
         sheet_name: str,
         header_row: int,
-        nrows: int | None = None,
-        usecols: collections.abc.Callable[[str], bool] = None,
+        nrows: t.Optional[int] = None,
+        usecols: t.Callable[[str], bool] = None,
     ) -> pd.DataFrame:
         """
         This function reads data from a file into a pandas DataFrame based on the specified parameters.
@@ -153,7 +152,7 @@ class Data:
         self.header_row = header_row
         self.sample_row_count = nrows if nrows is not None else self.sample_row_count
 
-    def load_column(self, column_name: str | None) -> pd.Series:
+    def load_column(self, column_name: t.Optional[str]) -> pd.Series:
         if column_name is None:
             return pd.Series(index=np.arange(self.df_size))
 

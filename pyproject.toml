@@ -1,7 +1,7 @@
 [project]
 name = "risk-tier-tool"
 version = "0.1.0"
-description = "Add your description here"
+description = ""A tool to assess and visualize risk tiers based on user input."
 readme = "README.md"
 requires-python = ">=3.9.19"
 dependencies = [

@@ -30,7 +30,7 @@ def show_welcome_page():
             if st.button("Import `.rt.zip` file", icon=":material/file_upload:"):
                 st.switch_page("views/data_importer.py")
 
-def show_iteration_result(selected_iteration: t.Literal[1, 2], metrics: pd.Series, scalars_enabled: bool):
+def show_iteration_result(selected_iteration: t.Literal[1, 2], metrics: pd.Series, scalars_enabled: bool, key: int = 0):
     session: Session = st.session_state['session']
     home_page_state = session.home_page_state
     iteration_graph = session.iteration_graph
@@ -66,6 +66,7 @@ def show_iteration_result(selected_iteration: t.Literal[1, 2], metrics: pd.Serie
         editable=False,
         scalars_enabled=scalars_enabled,
         metrics=metrics,
+        key=key,
     )
 
 
@@ -125,17 +126,17 @@ def show_summary_page():
 
     if comparison_mode:
         if home_page_state.comparison_view_mode == "row":
-            show_iteration_result(selected_iteration=1, metrics=showing_metrics, scalars_enabled=scalars_enabled)
-            show_iteration_result(selected_iteration=2, metrics=showing_metrics, scalars_enabled=scalars_enabled)
+            show_iteration_result(selected_iteration=1, metrics=showing_metrics, scalars_enabled=scalars_enabled, key=1)
+            show_iteration_result(selected_iteration=2, metrics=showing_metrics, scalars_enabled=scalars_enabled, key=2)
 
         else:
             col1, col2 = st.columns(2)
 
             with col1:
-                show_iteration_result(selected_iteration=1, metrics=showing_metrics, scalars_enabled=scalars_enabled)
+                show_iteration_result(selected_iteration=1, metrics=showing_metrics, scalars_enabled=scalars_enabled, key=1)
 
             with col2:
-                show_iteration_result(selected_iteration=2, metrics=showing_metrics, scalars_enabled=scalars_enabled)
+                show_iteration_result(selected_iteration=2, metrics=showing_metrics, scalars_enabled=scalars_enabled, key=2)
 
         return
     

@@ -9,10 +9,10 @@
   "customizations": {
     "vscode": {
       "extensions": [
-    "ms-python.python",
-    "ms-python.pylint",
-    "mhutchie.git-graph"
-  ]
+        "ms-python.python",
+        "mhutchie.git-graph",
+        "charliermarsh.ruff"
+      ]
     }
   },
   "postCreateCommand": "bash scripts/install-devcontainer-dependencies.sh"

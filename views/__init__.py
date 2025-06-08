@@ -3,10 +3,7 @@ import streamlit as st
 __all__ = ["set_page_navigation"]
 
 _homepage = st.Page(
-    page=f"{__name__}/home.py",
-    title="Home",
-    icon=":material/home:",
-    default=True
+    page=f"{__name__}/home.py", title="Home", icon=":material/home:", default=True
 )
 
 _summary_page = st.Page(
@@ -24,7 +21,7 @@ _data_importer_page = st.Page(
 _scalar_page = st.Page(
     page=f"{__name__}/scalars.py",
     title="Scalar Calculation",
-    icon=":material/ssid_chart:"
+    icon=":material/ssid_chart:",
 )
 
 _iteration_graph_page = st.Page(
@@ -45,11 +42,14 @@ _export_page = st.Page(
     icon=":material/file_download:",
 )
 
+
 def set_page_navigation():
-    pg = st.navigation({
-        "Home": [_homepage, _summary_page],
-        "Tools": [_data_importer_page, _scalar_page, _iteration_graph_page],
-        "Results": [_charts_page, _export_page]
-    })
+    pg = st.navigation(
+        {
+            "Home": [_homepage, _summary_page],
+            "Tools": [_data_importer_page, _scalar_page, _iteration_graph_page],
+            "Results": [_charts_page, _export_page],
+        }
+    )
 
     pg.run()

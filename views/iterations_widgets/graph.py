@@ -16,9 +16,7 @@ def streamlit_flow_graph(iteration_graph: IterationGraph) -> StreamlitFlowState:
     connections = iteration_graph.connections
     selected_node_id = iteration_graph.selected_node_id
 
-    node_style = {
-        "border-radius": "1em"
-    }
+    node_style = {"border-radius": "1em"}
 
     nodes = []
 
@@ -27,11 +25,11 @@ def streamlit_flow_graph(iteration_graph: IterationGraph) -> StreamlitFlowState:
         is_leaf = iteration_graph.is_leaf(node_id)
 
         if is_root:
-            node_type = 'input'
+            node_type = "input"
         elif is_leaf:
-            node_type = 'output'
+            node_type = "output"
         else:
-            node_type = 'default'
+            node_type = "default"
 
         if iteration.name == "":
             node_content = f"""<p>
@@ -48,36 +46,40 @@ def streamlit_flow_graph(iteration_graph: IterationGraph) -> StreamlitFlowState:
                 <i>{iteration.variable.name}</i>
             </p>"""
 
-        nodes.append(StreamlitFlowNode(
-            id=f"{node_id}",
-            pos=(100, 100),
-            data={'content': node_content},
-            node_type=node_type,
-            source_position='right',
-            target_position='left',
-            draggable=False,
-            style=node_style
-        ))
+        nodes.append(
+            StreamlitFlowNode(
+                id=f"{node_id}",
+                pos=(100, 100),
+                data={"content": node_content},
+                node_type=node_type,
+                source_position="right",
+                target_position="left",
+                draggable=False,
+                style=node_style,
+            )
+        )
 
     edges = []
 
     for node_id, children in connections.items():
         for child_id in children:
-            edges.append(StreamlitFlowEdge(
-                id=f"{node_id}-{child_id}",
-                source=node_id,
-                target=child_id,
-                edge_type='simplebezier',
-                animated=True,
-            ))
+            edges.append(
+                StreamlitFlowEdge(
+                    id=f"{node_id}-{child_id}",
+                    source=node_id,
+                    target=child_id,
+                    edge_type="simplebezier",
+                    animated=True,
+                )
+            )
 
     state = StreamlitFlowState(nodes, edges, selected_node_id)
     state.timestamp = 0
 
     new_state = streamlit_flow(
-        key=f'iteration_flow-{len(iterations)}',
+        key=f"iteration_flow-{len(iterations)}",
         state=state,
-        layout=TreeLayout(direction='right'),
+        layout=TreeLayout(direction="right"),
         fit_view=True,
         height=550,
         enable_node_menu=False,
@@ -88,16 +90,17 @@ def streamlit_flow_graph(iteration_graph: IterationGraph) -> StreamlitFlowState:
         get_node_on_click=True,
         show_minimap=st.sidebar.checkbox("Show Minimap", value=True),
         hide_watermark=True,
-        allow_new_edges=False
+        allow_new_edges=False,
     )
 
     iteration_graph.select_node_id(new_state.selected_id)
 
     return new_state
 
+
 @st.dialog("Choose a variable")
 def show_add_iter_dialog(parent_node_id: str | None = None):
-    session: Session = st.session_state['session']
+    session: Session = st.session_state["session"]
     data = session.data
 
     if not data.sample_loaded:
@@ -124,12 +127,15 @@ def show_add_iter_dialog(parent_node_id: str | None = None):
         )
         st.rerun()
 
+
 @st.dialog("Confirm Delete")
 def show_delete_confirmation_dialog(node_id: str):
-    session: Session = st.session_state['session']
+    session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
 
-    st.write(f"Are you sure you want to delete iteration #{iteration_graph.iterations[node_id].id}?")
+    st.write(
+        f"Are you sure you want to delete iteration #{iteration_graph.iterations[node_id].id}?"
+    )
 
     children = iteration_graph.get_descendants(node_id)
     if children:
@@ -143,7 +149,7 @@ def show_delete_confirmation_dialog(node_id: str):
 
 
 def show_iteration_graph_widgets():
-    session: Session = st.session_state['session']
+    session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
 
     st.title("Iteration Graph")
@@ -155,7 +161,7 @@ def show_iteration_graph_widgets():
             label=f"Open Iteration #{new_state.selected_id}",
             use_container_width=True,
             type="primary",
-            icon=":material/open_in_new:"
+            icon=":material/open_in_new:",
         ):
             iteration_graph.select_current_node_id(new_state.selected_id)
             st.rerun()
@@ -165,16 +171,19 @@ def show_iteration_graph_widgets():
             label="Add New Iteration",
             icon=":material/add:",
             use_container_width=True,
-            type="secondary"
+            type="secondary",
         ):
             show_add_iter_dialog()
     else:
-        if iteration_graph.iteration_depth(new_state.selected_id) < iteration_graph.MAX_DEPTH:
+        if (
+            iteration_graph.iteration_depth(new_state.selected_id)
+            < iteration_graph.MAX_DEPTH
+        ):
             if st.sidebar.button(
                 label="Add Child Iteration",
                 icon=":material/add:",
                 use_container_width=True,
-                type="secondary"
+                type="secondary",
             ):
                 show_add_iter_dialog(new_state.selected_id)
 
@@ -182,6 +191,6 @@ def show_iteration_graph_widgets():
             label="Delete Iteration",
             icon=":material/delete:",
             use_container_width=True,
-            type="secondary"
+            type="secondary",
         ):
             show_delete_confirmation_dialog(new_state.selected_id)

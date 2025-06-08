@@ -6,12 +6,11 @@ import streamlit as st
 from classes.data import Data
 from views.variable_selector import show_variable_selector
 
+
 def filepath_input(default_value=None) -> pathlib.Path:
     st.markdown("##### File Path:")
     path_text = st.text_input(
-        label="#### File Path:",
-        label_visibility="collapsed",
-        value=default_value
+        label="#### File Path:", label_visibility="collapsed", value=default_value
     )
 
     if not path_text:
@@ -21,27 +20,29 @@ def filepath_input(default_value=None) -> pathlib.Path:
 
     return path
 
+
 def read_mode_input(default_value) -> t.Literal["CSV", "EXCEL"]:
-    st.markdown('##### Read Mode:')
-    options = ['CSV', 'EXCEL']
+    st.markdown("##### Read Mode:")
+    options = ["CSV", "EXCEL"]
 
     return st.selectbox(
-        label='##### Read Mode:',
+        label="##### Read Mode:",
         options=options,
         label_visibility="collapsed",
-        index=options.index(default_value)
+        index=options.index(default_value),
     )
+
 
 def delimeter_input(default_value=None):
     delimeters = [
-        { "name": "comma", "value": "," },
-        { "name": "semicolon", "value": ";" },
-        { "name": "pipe", "value": "|" },
-        { "name": "whitespace", "value": "\\s+" }
+        {"name": "comma", "value": ","},
+        {"name": "semicolon", "value": ";"},
+        {"name": "pipe", "value": "|"},
+        {"name": "whitespace", "value": "\\s+"},
     ]
 
     for i, d in enumerate(delimeters):
-        if d['value'] == default_value:
+        if d["value"] == default_value:
             current_index = i
             break
     else:
@@ -50,40 +51,39 @@ def delimeter_input(default_value=None):
     def format_delimeter(delimeter):
         return f"{delimeter['name'].capitalize()} ({delimeter['value']})"
 
-    st.markdown('##### Delimeter:')
+    st.markdown("##### Delimeter:")
 
     return st.selectbox(
-        label='##### Delimeter:',
+        label="##### Delimeter:",
         options=delimeters,
         format_func=format_delimeter,
         label_visibility="collapsed",
-        index=current_index
+        index=current_index,
     )
+
 
 def sheet_input(default_value):
-    label = '##### Sheet Name or Index:'
+    label = "##### Sheet Name or Index:"
     st.markdown(label)
 
-    return st.text_input(
-        label=label,
-        value=default_value,
-        label_visibility="collapsed"
-    )
+    return st.text_input(label=label, value=default_value, label_visibility="collapsed")
+
 
 def header_row_input(default_value):
-    label = '##### Header Row:'
+    label = "##### Header Row:"
     st.markdown(label)
 
     return st.number_input(
         label=label,
         min_value=0,
-        max_value=1_048_575, # max number of rows in excel is 1,048,576
+        max_value=1_048_575,  # max number of rows in excel is 1,048,576
         value=default_value,
         label_visibility="collapsed",
     )
 
+
 def sample_row_count_input(default_value):
-    label = '##### Sample Row Count:'
+    label = "##### Sample Row Count:"
     st.markdown(label)
 
     return st.number_input(
@@ -94,10 +94,10 @@ def sample_row_count_input(default_value):
         label_visibility="collapsed",
     )
 
-def show_data_importer_page():
 
+def show_data_importer_page():
     # Declarations
-    data: Data = st.session_state['session'].data
+    data: Data = st.session_state["session"].data
 
     filepath: pathlib.Path = None
     read_mode: t.Literal["CSV", "EXCEL"] = None
@@ -124,7 +124,7 @@ def show_data_importer_page():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        if read_mode == 'CSV':
+        if read_mode == "CSV":
             delimeter = delimeter_input(data.delimiter)
         else:
             sheet_name = sheet_input(data.sheet_name)
@@ -159,20 +159,24 @@ def show_data_importer_page():
         button_type = "primary"
 
     if st.button(button_text, icon=button_icon, type=button_type):
-        with st.status('Importing data...', state="running") as status:
+        with st.status("Importing data...", state="running") as status:
             try:
                 data.reset()
                 data.load_sample(
                     filepath=filepath,
                     read_mode=read_mode,
-                    delimiter=delimeter['value'] if isinstance(delimeter, dict) else None,
+                    delimiter=delimeter["value"]
+                    if isinstance(delimeter, dict)
+                    else None,
                     sheet_name=sheet_name,
                     header_row=header_row,
-                    nrows=sample_row_count
+                    nrows=sample_row_count,
                 )
             # pylint: disable=broad-exception-caught
             except Exception as error:
-                status.update(label="Error Importing Data!", state="error", expanded=True)
+                status.update(
+                    label="Error Importing Data!", state="error", expanded=True
+                )
                 st.markdown(f"#### {error}")
                 st.exception(error)
             # pylint: enable=broad-exception-caught
@@ -191,5 +195,6 @@ def show_data_importer_page():
     with st.container(border=True):
         st.write(" ")
         show_variable_selector()
+
 
 show_data_importer_page()

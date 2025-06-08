@@ -2,6 +2,7 @@ from enum import Enum
 
 import pandas as pd
 
+
 class Metric(Enum):
     VOLUME: str = "Volume"
     ANNL_WO_BAL_PCT: str = "$ Annualized Write off %"
@@ -11,13 +12,17 @@ class Metric(Enum):
     WO_COUNT_PCT: str = "# Write off %"
     WO_BAL: str = "$ Write off Balance"
     WO_BAL_PCT: str = "$ Write off %"
-    
-DEFAULT_METRICS_DF = pd.DataFrame({
-    "metric": list(Metric),
-    "metric_name": [m.value for m in Metric],
-    "order": [i for i, _ in enumerate(Metric)],
-    "showing": [i < 3 for i, _ in enumerate(Metric)],
-})
+
+
+DEFAULT_METRICS_DF = pd.DataFrame(
+    {
+        "metric": list(Metric),
+        "metric_name": [m.value for m in Metric],
+        "order": [i for i, _ in enumerate(Metric)],
+        "showing": [i < 3 for i, _ in enumerate(Metric)],
+    }
+)
+
 
 class Names(Enum):
     LOWER_BOUND: str = "Lower Bound"
@@ -30,9 +35,14 @@ class Names(Enum):
     MATURITY_ADJUSTMENT_FACTOR: str = "Maturity Adjustment Factor"
     RISK_SCALAR_FACTOR: str = "Risk Scalar Factor"
 
+
 RISK_TIERS = list(map(str, range(1, 6)))
-SUB_RISK_TIERS = pd.Series(sorted(
-    [f'{rt}A' for rt in RISK_TIERS] + [f'{rt}B' for rt in RISK_TIERS], reverse=False), name=Names.RISK_TIER.value)
+SUB_RISK_TIERS = pd.Series(
+    sorted(
+        [f"{rt}A" for rt in RISK_TIERS] + [f"{rt}B" for rt in RISK_TIERS], reverse=False
+    ),
+    name=Names.RISK_TIER.value,
+)
 SUB_RT_INV_MAP = pd.Series(SUB_RISK_TIERS.index.values, index=SUB_RISK_TIERS)
 
 color_map = {

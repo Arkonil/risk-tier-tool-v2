@@ -19,19 +19,25 @@ def show_welcome_page():
     with col1:
         with st.container(border=True):
             st.markdown("##### Import Data to get started")
-            st.write("Supported file formats: `\".csv\"`, `\".xlsx\"`, `\".xls\"`")
+            st.write('Supported file formats: `".csv"`, `".xlsx"`, `".xls"`')
             if st.button("Import Data", icon=":material/file_upload:", type="primary"):
                 st.switch_page("views/data_importer.py")
 
     with col2:
         with st.container(border=True):
             st.markdown("##### Import a `.rt.zip` file to continue working on it")
-            st.write("Supported file formats: `\".zip\"`")
+            st.write('Supported file formats: `".zip"`')
             if st.button("Import `.rt.zip` file", icon=":material/file_upload:"):
                 st.switch_page("views/data_importer.py")
 
-def show_iteration_result(selected_iteration: t.Literal[1, 2], metrics: pd.Series, scalars_enabled: bool, key: int = 0):
-    session: Session = st.session_state['session']
+
+def show_iteration_result(
+    selected_iteration: t.Literal[1, 2],
+    metrics: pd.Series,
+    scalars_enabled: bool,
+    key: int = 0,
+):
+    session: Session = st.session_state["session"]
     home_page_state = session.home_page_state
     iteration_graph = session.iteration_graph
 
@@ -53,7 +59,9 @@ def show_iteration_result(selected_iteration: t.Literal[1, 2], metrics: pd.Serie
         label="Select Iteration",
         options=iteration_ids,
         key=f"selected_iteration_{selected_iteration}",
-        index=iteration_ids.index(selected_iteration_id) if selected_iteration_id in iteration_ids else 0,
+        index=iteration_ids.index(selected_iteration_id)
+        if selected_iteration_id in iteration_ids
+        else 0,
         format_func=format_func,
     )
 
@@ -71,7 +79,7 @@ def show_iteration_result(selected_iteration: t.Literal[1, 2], metrics: pd.Serie
 
 
 def show_summary_page():
-    session: Session = st.session_state['session']
+    session: Session = st.session_state["session"]
     home_page_state = session.home_page_state
     iteration_graph = session.iteration_graph
 
@@ -82,7 +90,9 @@ def show_summary_page():
     st.title("Summary")
 
     metrics_df = home_page_state.metrcis
-    showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
+    showing_metrics = metrics_df.sort_values("order").loc[
+        metrics_df["showing"], "metric"
+    ]
 
     with st.sidebar:
         if st.button(
@@ -126,20 +136,43 @@ def show_summary_page():
 
     if comparison_mode:
         if home_page_state.comparison_view_mode == "row":
-            show_iteration_result(selected_iteration=1, metrics=showing_metrics, scalars_enabled=scalars_enabled, key=1)
-            show_iteration_result(selected_iteration=2, metrics=showing_metrics, scalars_enabled=scalars_enabled, key=2)
+            show_iteration_result(
+                selected_iteration=1,
+                metrics=showing_metrics,
+                scalars_enabled=scalars_enabled,
+                key=1,
+            )
+            show_iteration_result(
+                selected_iteration=2,
+                metrics=showing_metrics,
+                scalars_enabled=scalars_enabled,
+                key=2,
+            )
 
         else:
             col1, col2 = st.columns(2)
 
             with col1:
-                show_iteration_result(selected_iteration=1, metrics=showing_metrics, scalars_enabled=scalars_enabled, key=1)
+                show_iteration_result(
+                    selected_iteration=1,
+                    metrics=showing_metrics,
+                    scalars_enabled=scalars_enabled,
+                    key=1,
+                )
 
             with col2:
-                show_iteration_result(selected_iteration=2, metrics=showing_metrics, scalars_enabled=scalars_enabled, key=2)
+                show_iteration_result(
+                    selected_iteration=2,
+                    metrics=showing_metrics,
+                    scalars_enabled=scalars_enabled,
+                    key=2,
+                )
 
         return
-    
-    show_iteration_result(selected_iteration=1, metrics=showing_metrics, scalars_enabled=scalars_enabled)
+
+    show_iteration_result(
+        selected_iteration=1, metrics=showing_metrics, scalars_enabled=scalars_enabled
+    )
+
 
 show_summary_page()

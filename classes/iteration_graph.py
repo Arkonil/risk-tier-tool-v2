@@ -12,6 +12,7 @@ from classes.iteration import (
 )
 from classes.common import SUB_RISK_TIERS, DEFAULT_METRICS_DF
 
+
 def __integer_generator():
     current = 0
     while True:
@@ -25,6 +26,7 @@ __generator = __integer_generator()
 def new_id():
     return str(next(__generator))
 
+
 class IterationMetadata(TypedDict):
     metrics: pd.DataFrame
     scalars_enabled: bool
@@ -32,8 +34,8 @@ class IterationMetadata(TypedDict):
     grid_view_expanded: bool
     final_rt_view_expanded: bool
 
-class IterationGraph:
 
+class IterationGraph:
     MAX_DEPTH = 10
 
     def __init__(self) -> None:
@@ -48,11 +50,11 @@ class IterationGraph:
         self._recalculation_required = set()
 
         self.__default_metric_df = DEFAULT_METRICS_DF
-        
+
     @property
     def is_empty(self):
         return len(self.iterations) == 0
-    
+
     @property
     def selected_node_id(self):
         return self._selected_node_id
@@ -156,8 +158,8 @@ class IterationGraph:
         self,
         name: str,
         variable: pd.Series,
-        variable_dtype: Literal["numerical", "categorical"]):
-
+        variable_dtype: Literal["numerical", "categorical"],
+    ):
         new_node_id = new_id()
 
         initial_group_count = len(SUB_RISK_TIERS)
@@ -167,14 +169,14 @@ class IterationGraph:
                 _id=new_node_id,
                 name=name,
                 variable=variable,
-                initial_group_count=initial_group_count
+                initial_group_count=initial_group_count,
             )
         elif variable_dtype == "categorical":
             iteration = CategoricalSingleVarIteration(
                 _id=new_node_id,
                 name=name,
                 variable=variable,
-                initial_group_count=initial_group_count
+                initial_group_count=initial_group_count,
             )
         else:
             raise ValueError(f"Invalid variable type: {variable_dtype}")
@@ -196,8 +198,8 @@ class IterationGraph:
         name: str,
         variable: pd.Series,
         variable_dtype: Literal["numerical", "categorical"],
-        previous_node_id: str):
-
+        previous_node_id: str,
+    ):
         new_node_id = new_id()
 
         if variable_dtype == "numerical":
@@ -234,8 +236,8 @@ class IterationGraph:
         name: str,
         variable: pd.Series,
         variable_dtype: Literal["numerical", "categorical"],
-        previous_node_id: str = None):
-
+        previous_node_id: str = None,
+    ):
         if previous_node_id is None:
             self.add_single_var_node(name, variable, variable_dtype)
         else:
@@ -256,7 +258,8 @@ class IterationGraph:
 
         for parent, children in self.connections.items():
             self.connections[parent] = [
-                child for child in children if child not in nodes_to_delete]
+                child for child in children if child not in nodes_to_delete
+            ]
 
         self.select_node_id()
 
@@ -268,7 +271,9 @@ class IterationGraph:
         for descendant in self.get_descendants(node_id):
             self._recalculation_required.add(descendant)
 
-    def get_risk_tiers(self, node_id: str = None) -> tuple[pd.Series, list[str], list[str], list]:
+    def get_risk_tiers(
+        self, node_id: str = None
+    ) -> tuple[pd.Series, list[str], list[str], list]:
         invalid_groups = []
         warnings = []
         errors = []
@@ -284,7 +289,9 @@ class IterationGraph:
 
         if self.is_root(node_id):
             # print(f"Calculating Risk Tiers for node: {node_id}")
-            risk_tier_column, errors, warnings, invalid_groups = self.iterations[node_id].get_risk_tiers()
+            risk_tier_column, errors, warnings, invalid_groups = self.iterations[
+                node_id
+            ].get_risk_tiers()
 
             if not errors:
                 self._iteration_outputs[node_id] = risk_tier_column
@@ -300,7 +307,9 @@ class IterationGraph:
                 continue
 
             # print(f"Calculating Risk Tiers for node: {node}")
-            risk_tier_column, errors, warnings, invalid_groups = self.iterations[node].get_risk_tiers(
+            risk_tier_column, errors, warnings, invalid_groups = self.iterations[
+                node
+            ].get_risk_tiers(
                 previous_risk_tiers=self._iteration_outputs[self.get_parent(node)]
             )
 

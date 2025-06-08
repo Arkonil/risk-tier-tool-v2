@@ -2,6 +2,7 @@ import typing as t
 
 from classes.common import DEFAULT_METRICS_DF
 
+
 class HomePageState:
     def __init__(self):
         self.scalars_enabled = True

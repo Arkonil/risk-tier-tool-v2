@@ -8,6 +8,7 @@ import pandas as pd
 from classes.common import Metric
 from classes.metadata import Metadata
 
+
 class Data:
     """
     This class stores the data and all reading attributes
@@ -50,14 +51,16 @@ class Data:
             return None
         return self.sample_df.columns.get_loc(col_name)
 
-    def validate_read_config(self, filepath: pathlib.Path, read_mode: t.Literal["CSV", "EXCEL"]) -> tuple[bool, str]:
+    def validate_read_config(
+        self, filepath: pathlib.Path, read_mode: t.Literal["CSV", "EXCEL"]
+    ) -> tuple[bool, str]:
         if not filepath or not filepath.is_file():
             return False, f"File not found: `{filepath}`"
 
-        if read_mode == 'CSV' and filepath.suffix.lower() != '.csv':
+        if read_mode == "CSV" and filepath.suffix.lower() != ".csv":
             return False, f"Selected file is not a CSV: `{filepath}`"
 
-        if read_mode == 'EXCEL' and filepath.suffix.lower() not in ['.xlsx', '.xls']:
+        if read_mode == "EXCEL" and filepath.suffix.lower() not in [".xlsx", ".xls"]:
             return False, f"Selected file is not a EXCEL: `{filepath}`"
 
         return True, f"Selected File: `{filepath}`"
@@ -92,35 +95,48 @@ class Data:
 
         if read_mode == "CSV":
             df = pd.read_csv(
-                filepath, delimiter=delimiter, header=header_row, nrows=nrows, usecols=usecols).convert_dtypes()
+                filepath,
+                delimiter=delimiter,
+                header=header_row,
+                nrows=nrows,
+                usecols=usecols,
+            ).convert_dtypes()
         elif read_mode == "EXCEL":
             try:
                 df = pd.read_excel(
-                    filepath, sheet_name=sheet_name, header=header_row, nrows=nrows, usecols=usecols).convert_dtypes()
+                    filepath,
+                    sheet_name=sheet_name,
+                    header=header_row,
+                    nrows=nrows,
+                    usecols=usecols,
+                ).convert_dtypes()
             except ValueError as error:
                 if sheet_name.isdigit():
                     df = pd.read_excel(
-                            filepath,
-                            sheet_name=int(sheet_name),
-                            header=header_row,
-                            nrows=nrows,
-                            usecols=usecols
-                        ).convert_dtypes()
+                        filepath,
+                        sheet_name=int(sheet_name),
+                        header=header_row,
+                        nrows=nrows,
+                        usecols=usecols,
+                    ).convert_dtypes()
                 else:
                     raise error
         else:
-            raise ValueError(f"'read_mode' must be either 'CSV' or 'EXCEL'. {read_mode} was given.")
+            raise ValueError(
+                f"'read_mode' must be either 'CSV' or 'EXCEL'. {read_mode} was given."
+            )
 
         return df
 
     def load_sample(
-            self,
-            filepath: str,
-            read_mode: t.Literal["CSV", "EXCEL"],
-            delimiter: str,
-            sheet_name: str,
-            header_row: int,
-            nrows: int) -> None:
+        self,
+        filepath: str,
+        read_mode: t.Literal["CSV", "EXCEL"],
+        delimiter: str,
+        sheet_name: str,
+        header_row: int,
+        nrows: int,
+    ) -> None:
         """
         This function loads a sample of data from a specified file into memory. The sample is used to create metadata.
 
@@ -136,15 +152,20 @@ class Data:
         - None: The function modifies the internal state of the Data instance by loading the sample data and metadata.
         """
 
-        if read_mode == 'CSV' and delimiter is None:
+        if read_mode == "CSV" and delimiter is None:
             delimiter = ","
-        elif read_mode == 'EXCEL' and sheet_name is None:
+        elif read_mode == "EXCEL" and sheet_name is None:
             sheet_name = "0"
 
         self.sample_df = self._read_data(
-            filepath, read_mode, delimiter, sheet_name, header_row, nrows)
+            filepath, read_mode, delimiter, sheet_name, header_row, nrows
+        )
 
-        self.df_size = len(self._read_data(filepath, read_mode, delimiter, sheet_name, header_row, usecols=[0]))
+        self.df_size = len(
+            self._read_data(
+                filepath, read_mode, delimiter, sheet_name, header_row, usecols=[0]
+            )
+        )
 
         self.filepath = filepath
         self.read_mode = read_mode
@@ -169,7 +190,7 @@ class Data:
             self.delimiter,
             self.sheet_name,
             self.header_row,
-            usecols=[column_name]
+            usecols=[column_name],
         )[column_name]
 
         if not pd.api.types.is_numeric_dtype(column):
@@ -183,8 +204,8 @@ class Data:
         groupby_variable_1: pd.Series,
         groupby_variable_2: t.Optional[pd.Series] = None,
         data_filter: t.Optional[pd.Series] = None,
-        metrics: t.Optional[list[Metric]] = None):
-
+        metrics: t.Optional[list[Metric]] = None,
+    ):
         """
         Summarizes metrics based on the provided groupby variables and filter.
         Parameters:
@@ -201,9 +222,11 @@ class Data:
             data_filter = pd.Series([True] * self.df_size, index=self.df.index)
 
         # Creating the base DataFrame with the groupby variables
-        base_df = pd.DataFrame({
-            groupby_variable_1.name: groupby_variable_1,
-        })
+        base_df = pd.DataFrame(
+            {
+                groupby_variable_1.name: groupby_variable_1,
+            }
+        )
         groupby_variables = [groupby_variable_1.name]
 
         if groupby_variable_2 is not None:
@@ -257,15 +280,25 @@ class Data:
         grouped_df = filtered_df.groupby(groupby_variables).sum(numeric_only=True)
 
         if Metric.WO_COUNT_PCT in required_metrics:
-            grouped_df[Metric.WO_COUNT_PCT.value] = 100 * grouped_df[Metric.WO_COUNT.value] / grouped_df[Metric.VOLUME.value]
+            grouped_df[Metric.WO_COUNT_PCT.value] = (
+                100
+                * grouped_df[Metric.WO_COUNT.value]
+                / grouped_df[Metric.VOLUME.value]
+            )
 
         if Metric.WO_BAL_PCT in required_metrics:
-            grouped_df[Metric.WO_BAL_PCT.value] = 100 * grouped_df[Metric.WO_BAL.value] / grouped_df[Metric.AVG_BAL.value]
+            grouped_df[Metric.WO_BAL_PCT.value] = (
+                100 * grouped_df[Metric.WO_BAL.value] / grouped_df[Metric.AVG_BAL.value]
+            )
 
         if Metric.ANNL_WO_COUNT_PCT in required_metrics:
-            grouped_df[Metric.ANNL_WO_COUNT_PCT.value] = grouped_df[Metric.WO_COUNT_PCT.value] / (self.current_rate_mob / 12)
+            grouped_df[Metric.ANNL_WO_COUNT_PCT.value] = grouped_df[
+                Metric.WO_COUNT_PCT.value
+            ] / (self.current_rate_mob / 12)
 
         if Metric.ANNL_WO_BAL_PCT in required_metrics:
-            grouped_df[Metric.ANNL_WO_BAL_PCT.value] = grouped_df[Metric.WO_BAL_PCT.value] / (self.current_rate_mob / 12)
+            grouped_df[Metric.ANNL_WO_BAL_PCT.value] = grouped_df[
+                Metric.WO_BAL_PCT.value
+            ] / (self.current_rate_mob / 12)
 
         return grouped_df

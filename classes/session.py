@@ -3,7 +3,8 @@ from classes.home_page_state import HomePageState
 from classes.scalars import Scalar
 from classes.iteration_graph import IterationGraph
 
-class Session():
+
+class Session:
     def __init__(self):
         super().__init__()
 

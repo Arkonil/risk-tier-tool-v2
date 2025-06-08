@@ -9,18 +9,22 @@ from views.iterations_widgets.dialogs import set_risk_tiers, show_metric_selecto
 from views.iterations_widgets.navigation import show_navigation_buttons
 from views.variable_selector import show_variable_selector_dialog
 
+
 def show_category_editor(node_id: str):
-    session: Session = st.session_state['session']
+    session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
 
     iteration = iteration_graph.iterations[node_id]
 
     if iteration.var_type != "categorical":
-        st.error("Group editor is only available for categorical variables.", icon=":material/error:")
+        st.error(
+            "Group editor is only available for categorical variables.",
+            icon=":material/error:",
+        )
         return
 
     groups = iteration.groups
-    groups = pd.DataFrame({Names.GROUPS.value : groups})
+    groups = pd.DataFrame({Names.GROUPS.value: groups})
 
     with st.expander("Edit Groups"):
         columns = st.columns(min(5, len(groups)))
@@ -34,19 +38,30 @@ def show_category_editor(node_id: str):
             group = set(row[1])
 
             with columns[i % len(columns)]:
-                new_group = set(st.multiselect(
-                    label=SUB_RISK_TIERS.loc[group_index],
-                    options=sorted(list(group.union(unassigned_categories))),
-                    default=sorted(list(group),
-                )))
+                new_group = set(
+                    st.multiselect(
+                        label=SUB_RISK_TIERS.loc[group_index],
+                        options=sorted(list(group.union(unassigned_categories))),
+                        default=sorted(
+                            list(group),
+                        ),
+                    )
+                )
 
                 if group != new_group:
                     iteration.set_group(group_index, new_group)
                     iteration_graph.add_to_calculation_queue(iteration.id)
                     st.rerun()
 
-def show_edited_range(iteration_id: str, editable: bool, scalars_enabled: bool, metrics: pd.Series, key: int = 0):
-    session: Session = st.session_state['session']
+
+def show_edited_range(
+    iteration_id: str,
+    editable: bool,
+    scalars_enabled: bool,
+    metrics: pd.Series,
+    key: int = 0,
+):
+    session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
     data = session.data
 
@@ -64,18 +79,27 @@ def show_edited_range(iteration_id: str, editable: bool, scalars_enabled: bool, 
 
     if iteration.var_count == 1:
         groups = iteration.groups
-        groups = pd.DataFrame({Names.GROUPS.value : groups}) \
-            .merge(SUB_RISK_TIERS, how='left', left_index=True, right_index=True)
+        groups = pd.DataFrame({Names.GROUPS.value: groups}).merge(
+            SUB_RISK_TIERS, how="left", left_index=True, right_index=True
+        )
 
         if iteration.var_type == "numerical":
-            groups[Names.LOWER_BOUND.value] = groups[Names.GROUPS.value].map(lambda bounds: bounds[0])
-            groups[Names.UPPER_BOUND.value] = groups[Names.GROUPS.value].map(lambda bounds: bounds[1])
+            groups[Names.LOWER_BOUND.value] = groups[Names.GROUPS.value].map(
+                lambda bounds: bounds[0]
+            )
+            groups[Names.UPPER_BOUND.value] = groups[Names.GROUPS.value].map(
+                lambda bounds: bounds[1]
+            )
         else:
             groups[Names.CATEGORIES.value] = groups[Names.GROUPS.value]
     else:
-        groups = pd.DataFrame({
-            Names.RISK_TIER.value: SUB_RISK_TIERS.loc[SUB_RISK_TIERS.index.isin(new_risk_tiers)]
-        })
+        groups = pd.DataFrame(
+            {
+                Names.RISK_TIER.value: SUB_RISK_TIERS.loc[
+                    SUB_RISK_TIERS.index.isin(new_risk_tiers)
+                ]
+            }
+        )
 
     # metrics_df = iteration_metadata["metrics"]
     # showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
@@ -90,50 +114,94 @@ def show_edited_range(iteration_id: str, editable: bool, scalars_enabled: bool, 
     showing_metric_names = [m.value for m in showing_metrics]
 
     if scalars_enabled and (
-        Metric.ANNL_WO_COUNT_PCT.value in showing_metric_names or
-        Metric.ANNL_WO_BAL_PCT.value in showing_metric_names
+        Metric.ANNL_WO_COUNT_PCT.value in showing_metric_names
+        or Metric.ANNL_WO_BAL_PCT.value in showing_metric_names
     ):
         ulr_scalar = session.ulr_scalars
         dlr_scalar = session.dlr_scalars
-        summ_df = summ_df \
-            .merge(ulr_scalar.risk_scalar_factor.rename("rsf_ulr"), how='left', left_index=True, right_index=True) \
-            .merge(dlr_scalar.risk_scalar_factor.rename("rsf_dlr"), how='left', left_index=True, right_index=True)
+        summ_df = summ_df.merge(
+            ulr_scalar.risk_scalar_factor.rename("rsf_ulr"),
+            how="left",
+            left_index=True,
+            right_index=True,
+        ).merge(
+            dlr_scalar.risk_scalar_factor.rename("rsf_dlr"),
+            how="left",
+            left_index=True,
+            right_index=True,
+        )
 
         if Metric.ANNL_WO_COUNT_PCT.value in summ_df.columns:
-            summ_df[Metric.ANNL_WO_COUNT_PCT.value] = summ_df[Metric.ANNL_WO_COUNT_PCT.value] * summ_df["rsf_ulr"]
+            summ_df[Metric.ANNL_WO_COUNT_PCT.value] = (
+                summ_df[Metric.ANNL_WO_COUNT_PCT.value] * summ_df["rsf_ulr"]
+            )
 
         if Metric.ANNL_WO_BAL_PCT.value in summ_df.columns:
-            summ_df[Metric.ANNL_WO_BAL_PCT.value] = summ_df[Metric.ANNL_WO_BAL_PCT.value] * summ_df["rsf_dlr"]
+            summ_df[Metric.ANNL_WO_BAL_PCT.value] = (
+                summ_df[Metric.ANNL_WO_BAL_PCT.value] * summ_df["rsf_dlr"]
+            )
 
         summ_df = summ_df.drop(columns=["rsf_ulr", "rsf_dlr"], errors="ignore")
 
-    calculated_df = groups.merge(summ_df, how='left', left_index=True, right_index=True)
+    calculated_df = groups.merge(summ_df, how="left", left_index=True, right_index=True)
 
     int_cols = [Metric.VOLUME.value, Metric.WO_COUNT.value]
     dec_cols = [Metric.WO_BAL.value, Metric.AVG_BAL.value]
-    perc_cols = [Metric.WO_BAL_PCT.value, Metric.WO_COUNT_PCT.value,
-                 Metric.ANNL_WO_COUNT_PCT.value, Metric.ANNL_WO_BAL_PCT.value]
+    perc_cols = [
+        Metric.WO_BAL_PCT.value,
+        Metric.WO_COUNT_PCT.value,
+        Metric.ANNL_WO_COUNT_PCT.value,
+        Metric.ANNL_WO_BAL_PCT.value,
+    ]
 
-    calculated_df = calculated_df.style \
-        .map(lambda v: f'background-color: {color_map[v]};', subset=[Names.RISK_TIER.value]) \
-        .format(precision=0, thousands=',', subset=int_cols) \
-        .format(precision=2, thousands=',', subset=dec_cols) \
-        .format('{:.2f} %', subset=perc_cols)
+    calculated_df = (
+        calculated_df.style.map(
+            lambda v: f"background-color: {color_map[v]};",
+            subset=[Names.RISK_TIER.value],
+        )
+        .format(precision=0, thousands=",", subset=int_cols)
+        .format(precision=2, thousands=",", subset=dec_cols)
+        .format("{:.2f} %", subset=perc_cols)
+    )
 
     disabled = not editable
     column_config = {
-        Names.RISK_TIER.value: st.column_config.TextColumn(label=Names.RISK_TIER.value, disabled=True),
-        Names.CATEGORIES.value: st.column_config.ListColumn(label=Names.CATEGORIES.value, width="large"),
-        Names.LOWER_BOUND.value: st.column_config.NumberColumn(label=Names.LOWER_BOUND.value, disabled=disabled, format="compact"),
-        Names.UPPER_BOUND.value: st.column_config.NumberColumn(label=Names.UPPER_BOUND.value, disabled=disabled, format="compact"),
-        Metric.VOLUME.value: st.column_config.NumberColumn(label=Metric.VOLUME.value, disabled=True),
-        Metric.WO_BAL.value: st.column_config.NumberColumn(label=Metric.WO_BAL.value, disabled=True),
-        Metric.WO_BAL_PCT.value: st.column_config.NumberColumn(label=Metric.WO_BAL_PCT.value, disabled=True),
-        Metric.WO_COUNT.value: st.column_config.NumberColumn(label=Metric.WO_COUNT.value, disabled=True),
-        Metric.WO_COUNT_PCT.value: st.column_config.NumberColumn(label=Metric.WO_COUNT_PCT.value, disabled=True),
-        Metric.AVG_BAL.value: st.column_config.NumberColumn(label=Metric.AVG_BAL.value, disabled=True),
-        Metric.ANNL_WO_COUNT_PCT.value: st.column_config.NumberColumn(label=Metric.ANNL_WO_COUNT_PCT.value, disabled=True),
-        Metric.ANNL_WO_BAL_PCT.value: st.column_config.NumberColumn(label=Metric.ANNL_WO_BAL_PCT.value, disabled=True),
+        Names.RISK_TIER.value: st.column_config.TextColumn(
+            label=Names.RISK_TIER.value, disabled=True
+        ),
+        Names.CATEGORIES.value: st.column_config.ListColumn(
+            label=Names.CATEGORIES.value, width="large"
+        ),
+        Names.LOWER_BOUND.value: st.column_config.NumberColumn(
+            label=Names.LOWER_BOUND.value, disabled=disabled, format="compact"
+        ),
+        Names.UPPER_BOUND.value: st.column_config.NumberColumn(
+            label=Names.UPPER_BOUND.value, disabled=disabled, format="compact"
+        ),
+        Metric.VOLUME.value: st.column_config.NumberColumn(
+            label=Metric.VOLUME.value, disabled=True
+        ),
+        Metric.WO_BAL.value: st.column_config.NumberColumn(
+            label=Metric.WO_BAL.value, disabled=True
+        ),
+        Metric.WO_BAL_PCT.value: st.column_config.NumberColumn(
+            label=Metric.WO_BAL_PCT.value, disabled=True
+        ),
+        Metric.WO_COUNT.value: st.column_config.NumberColumn(
+            label=Metric.WO_COUNT.value, disabled=True
+        ),
+        Metric.WO_COUNT_PCT.value: st.column_config.NumberColumn(
+            label=Metric.WO_COUNT_PCT.value, disabled=True
+        ),
+        Metric.AVG_BAL.value: st.column_config.NumberColumn(
+            label=Metric.AVG_BAL.value, disabled=True
+        ),
+        Metric.ANNL_WO_COUNT_PCT.value: st.column_config.NumberColumn(
+            label=Metric.ANNL_WO_COUNT_PCT.value, disabled=True
+        ),
+        Metric.ANNL_WO_BAL_PCT.value: st.column_config.NumberColumn(
+            label=Metric.ANNL_WO_BAL_PCT.value, disabled=True
+        ),
     }
 
     columns = [Names.RISK_TIER.value]
@@ -155,13 +223,18 @@ def show_edited_range(iteration_id: str, editable: bool, scalars_enabled: bool, 
     )
 
     if editable and iteration.var_type == "numerical":
-
-        edited_groups = edited_df[[Names.RISK_TIER.value, Names.LOWER_BOUND.value, Names.UPPER_BOUND.value]]
+        edited_groups = edited_df[
+            [Names.RISK_TIER.value, Names.LOWER_BOUND.value, Names.UPPER_BOUND.value]
+        ]
 
         needs_rerun = False
         for index in edited_groups.index:
             prev_bounds = np.array(groups.loc[index, Names.GROUPS.value]).astype(float)
-            curent_bounds = np.array(edited_groups.loc[index, [Names.LOWER_BOUND.value, Names.UPPER_BOUND.value]]).astype(float)
+            curent_bounds = np.array(
+                edited_groups.loc[
+                    index, [Names.LOWER_BOUND.value, Names.UPPER_BOUND.value]
+                ]
+            ).astype(float)
 
             if not np.array_equal(prev_bounds, curent_bounds, equal_nan=True):
                 curr_lb = edited_groups.loc[index, Names.LOWER_BOUND.value]
@@ -182,20 +255,24 @@ def show_edited_range(iteration_id: str, editable: bool, scalars_enabled: bool, 
             st.error(message, icon=":material/error:")
 
         if warnings:
-            message = "Warnings: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", warnings))
+            message = "Warnings: \n\n" + "\n\n".join(
+                map(lambda msg: f"- {msg}", warnings)
+            )
 
             st.warning(message, icon=":material/warning:")
 
 
 def show_single_var_iteration_widgets():
-    session: Session = st.session_state['session']
+    session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
     iteration = iteration_graph.current_iteration
 
     iteration_metadata = iteration_graph.iteration_metadata[iteration.id]
-    
+
     metrics_df = iteration_metadata["metrics"]
-    showing_metrics = metrics_df.sort_values("order").loc[metrics_df['showing'], 'metric']
+    showing_metrics = metrics_df.sort_values("order").loc[
+        metrics_df["showing"], "metric"
+    ]
 
     show_navigation_buttons()
 

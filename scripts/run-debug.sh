@@ -1,0 +1,1 @@
+uv run streamlit run main.py --logger.level debug --logger.enableRich True

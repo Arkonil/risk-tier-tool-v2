@@ -12,6 +12,18 @@
           "presentation": {
               "reveal": "always"
           }
+      },
+      {
+          "label": "Debug Streamlit App",
+          "type": "shell",
+          "command": "bash",
+          "args": [
+            "./scripts/run-debug.sh",
+          ],
+          "group": "build",
+          "presentation": {
+              "reveal": "always"
+          }
       }
   ]
 }

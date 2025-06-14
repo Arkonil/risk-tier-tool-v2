@@ -143,9 +143,9 @@ def show_iteration_creation_page() -> None:
         ].reset_index(drop=False)
 
     if st.button("Create", type="primary"):
-        variable = session.data.load_column(variable_name)
-
         variable_dtype = VariableType(variable_dtype)
+        variable = session.data.load_column(variable_name, variable_dtype)
+
         if not pd.api.types.is_numeric_dtype(variable):
             variable_dtype = VariableType.CATEGORICAL
 

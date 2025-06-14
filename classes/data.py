@@ -5,7 +5,7 @@ import collections.abc
 import numpy as np
 import pandas as pd
 
-from classes.constants import Metric
+from classes.constants import Metric, VariableType
 from classes.metadata import Metadata
 
 
@@ -174,15 +174,50 @@ class Data:
         self.header_row = header_row
         self.sample_row_count = nrows if nrows is not None else self.sample_row_count
 
-    def load_column(self, column_name: str | None) -> pd.Series:
+    def load_column(
+        self, column_name: str | None, column_type: VariableType
+    ) -> pd.Series:
         if column_name is None:
             return pd.Series(index=np.arange(self.df_size))
 
         if self.df is None:
             self.df = pd.DataFrame()
 
-        if column_name in self.df.columns:
-            return self.df[column_name]
+        preferred_column_name = f"{column_name} ({column_type.capitalize()})"
+
+        if preferred_column_name in self.df.columns:
+            return self.df[preferred_column_name]
+
+        alternative_column_type = (
+            VariableType.CATEGORICAL
+            if column_type == VariableType.NUMERICAL
+            else VariableType.NUMERICAL
+        )
+        alternative_column_name = (
+            f"{column_name} ({alternative_column_type.capitalize()})"
+        )
+
+        if (
+            column_type == VariableType.CATEGORICAL
+            and alternative_column_name in self.df.columns
+        ):
+            self.df[preferred_column_name] = self.df[alternative_column_name].astype(
+                "category"
+            )
+            return self.df[preferred_column_name]
+
+        if (
+            column_type == VariableType.NUMERICAL
+            and alternative_column_name in self.df.columns
+        ):
+            try:
+                temp_column = pd.to_numeric(
+                    self.df[alternative_column_name], errors="raise"
+                )
+                self.df[preferred_column_name] = temp_column
+                return self.df[preferred_column_name]
+            except ValueError:
+                return self.df[alternative_column_name]
 
         column = self._read_data(
             self.filepath,
@@ -193,11 +228,17 @@ class Data:
             usecols=[column_name],
         )[column_name]
 
-        if not pd.api.types.is_numeric_dtype(column):
-            column = column.astype("category")
+        if column_type == VariableType.NUMERICAL:
+            try:
+                temp_column = pd.to_numeric(column, errors="raise")
+                self.df[preferred_column_name] = temp_column
+                return self.df[preferred_column_name]
+            except ValueError:
+                self.df[alternative_column_name] = column
+                return self.df[alternative_column_name]
 
-        self.df[column_name] = column
-        return column
+        self.df[preferred_column_name] = column.astype("category")
+        return self.df[preferred_column_name]
 
     def get_summarized_metrics(
         self,
@@ -263,13 +304,19 @@ class Data:
             base_df[Metric.VOLUME] = 1
 
         if Metric.WO_COUNT in required_metrics:
-            base_df[Metric.WO_COUNT] = self.load_column(self.var_unt_wrt_off)
+            base_df[Metric.WO_COUNT] = self.load_column(
+                self.var_unt_wrt_off, VariableType.NUMERICAL
+            )
 
         if Metric.WO_BAL in required_metrics:
-            base_df[Metric.WO_BAL] = self.load_column(self.var_dlr_wrt_off)
+            base_df[Metric.WO_BAL] = self.load_column(
+                self.var_dlr_wrt_off, VariableType.NUMERICAL
+            )
 
         if Metric.AVG_BAL in required_metrics:
-            base_df[Metric.AVG_BAL] = self.load_column(self.var_avg_bal)
+            base_df[Metric.AVG_BAL] = self.load_column(
+                self.var_avg_bal, VariableType.NUMERICAL
+            )
 
         # Applying the filter to the base DataFrame
         filtered_df = base_df[data_filter].copy()

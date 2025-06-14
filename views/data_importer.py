@@ -3,7 +3,7 @@ import typing as t
 
 import streamlit as st
 
-from classes.data import Data
+from classes.session import Session
 from views.variable_selector import show_variable_selector
 
 
@@ -33,7 +33,7 @@ def read_mode_input(default_value) -> t.Literal["CSV", "EXCEL"]:
     )
 
 
-def delimeter_input(default_value=None):
+def delimiter_input(default_value=None):
     delimeters = [
         {"name": "comma", "value": ","},
         {"name": "semicolon", "value": ";"},
@@ -51,10 +51,10 @@ def delimeter_input(default_value=None):
     def format_delimeter(delimeter):
         return f"{delimeter['name'].capitalize()} ({delimeter['value']})"
 
-    st.markdown("##### Delimeter:")
+    st.markdown("##### Delimiter:")
 
     return st.selectbox(
-        label="##### Delimeter:",
+        label="##### Delimiter:",
         options=delimeters,
         format_func=format_delimeter,
         label_visibility="collapsed",
@@ -95,27 +95,23 @@ def sample_row_count_input(default_value):
     )
 
 
-def show_data_importer_page():
-    # Declarations
-    data: Data = st.session_state["session"].data
+def show_data_import_options():
+    session: Session = st.session_state["session"]
+    data = session.data
 
     filepath: pathlib.Path = None
     read_mode: t.Literal["CSV", "EXCEL"] = None
-    delimeter: dict[str, str] = None
+    delimiter: dict[str, str] = None
     sheet_name: str = None
     header_row: int = None
     sample_row_count: int = None
 
-    # UI - File Info
-    st.title("Import Data")
-
-    st.write("")
+    st.markdown("### Data Import Options")
 
     col1, col2 = st.columns([0.75, 0.25])
 
     with col1:
         filepath = filepath_input(data.filepath)
-
     with col2:
         read_mode = read_mode_input(data.read_mode)
 
@@ -125,7 +121,7 @@ def show_data_importer_page():
 
     with col1:
         if read_mode == "CSV":
-            delimeter = delimeter_input(data.delimiter)
+            delimiter = delimiter_input(data.delimiter)
         else:
             sheet_name = sheet_input(data.sheet_name)
     with col2:
@@ -165,36 +161,58 @@ def show_data_importer_page():
                 data.load_sample(
                     filepath=filepath,
                     read_mode=read_mode,
-                    delimiter=delimeter["value"]
-                    if isinstance(delimeter, dict)
+                    delimiter=delimiter["value"]
+                    if isinstance(delimiter, dict)
                     else None,
                     sheet_name=sheet_name,
                     header_row=header_row,
                     nrows=sample_row_count,
                 )
-            # pylint: disable=broad-exception-caught
             except Exception as error:
                 status.update(
                     label="Error Importing Data!", state="error", expanded=True
                 )
                 st.markdown(f"#### {error}")
                 st.exception(error)
-            # pylint: enable=broad-exception-caught
             else:
                 status.update(label="Data Imported", state="complete", expanded=True)
+
+
+def show_sample_data():
+    session: Session = st.session_state["session"]
+    data = session.data
+
+    st.markdown("### Sample Data")
+    st.dataframe(data.sample_df, width=2000)
+
+
+def show_variable_selector_():
+    st.markdown("### Variable Selector")
+    with st.container(border=True):
+        st.write("")
+        show_variable_selector()
+
+
+def show_data_importer_page():
+    session: Session = st.session_state["session"]
+    data = session.data
+
+    st.title("Data Importer")
+
+    st.divider()
+
+    show_data_import_options()
 
     if not data.sample_loaded:
         return
 
     st.divider()
-    st.markdown("#### Sample Data")
-    st.dataframe(data.sample_df, width=2000)
+
+    show_sample_data()
 
     st.divider()
-    st.markdown("#### Variable Selector")
-    with st.container(border=True):
-        st.write(" ")
-        show_variable_selector()
+
+    show_variable_selector_()
 
 
 show_data_importer_page()

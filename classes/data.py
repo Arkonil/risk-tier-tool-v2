@@ -5,7 +5,7 @@ import collections.abc
 import numpy as np
 import pandas as pd
 
-from classes.common import Metric
+from classes.constants import Metric
 from classes.metadata import Metadata
 
 
@@ -202,9 +202,9 @@ class Data:
     def get_summarized_metrics(
         self,
         groupby_variable_1: pd.Series,
-        groupby_variable_2: t.Optional[pd.Series] = None,
-        data_filter: t.Optional[pd.Series] = None,
-        metrics: t.Optional[list[Metric]] = None,
+        groupby_variable_2: pd.Series | None = None,
+        data_filter: pd.Series | None = None,
+        metrics: list[Metric] | None = None,
     ):
         """
         Summarizes metrics based on the provided groupby variables and filter.
@@ -222,11 +222,9 @@ class Data:
             data_filter = pd.Series([True] * self.df_size, index=self.df.index)
 
         # Creating the base DataFrame with the groupby variables
-        base_df = pd.DataFrame(
-            {
-                groupby_variable_1.name: groupby_variable_1,
-            }
-        )
+        base_df = pd.DataFrame({
+            groupby_variable_1.name: groupby_variable_1,
+        })
         groupby_variables = [groupby_variable_1.name]
 
         if groupby_variable_2 is not None:
@@ -262,43 +260,43 @@ class Data:
             add_metric_and_dependencies(metric)
 
         if Metric.VOLUME in required_metrics:
-            base_df[Metric.VOLUME.value] = 1
+            base_df[Metric.VOLUME] = 1
 
         if Metric.WO_COUNT in required_metrics:
-            base_df[Metric.WO_COUNT.value] = self.load_column(self.var_unt_wrt_off)
+            base_df[Metric.WO_COUNT] = self.load_column(self.var_unt_wrt_off)
 
         if Metric.WO_BAL in required_metrics:
-            base_df[Metric.WO_BAL.value] = self.load_column(self.var_dlr_wrt_off)
+            base_df[Metric.WO_BAL] = self.load_column(self.var_dlr_wrt_off)
 
         if Metric.AVG_BAL in required_metrics:
-            base_df[Metric.AVG_BAL.value] = self.load_column(self.var_avg_bal)
+            base_df[Metric.AVG_BAL] = self.load_column(self.var_avg_bal)
 
         # Applying the filter to the base DataFrame
         filtered_df = base_df[data_filter].copy()
 
         # Grouping the DataFrame by the specified variables and aggregating the metrics
-        grouped_df = filtered_df.groupby(groupby_variables).sum(numeric_only=True)
+        grouped_df = filtered_df.groupby(groupby_variables, observed=False).sum(
+            numeric_only=True
+        )
 
         if Metric.WO_COUNT_PCT in required_metrics:
-            grouped_df[Metric.WO_COUNT_PCT.value] = (
-                100
-                * grouped_df[Metric.WO_COUNT.value]
-                / grouped_df[Metric.VOLUME.value]
+            grouped_df[Metric.WO_COUNT_PCT] = (
+                100 * grouped_df[Metric.WO_COUNT] / grouped_df[Metric.VOLUME]
             )
 
         if Metric.WO_BAL_PCT in required_metrics:
-            grouped_df[Metric.WO_BAL_PCT.value] = (
-                100 * grouped_df[Metric.WO_BAL.value] / grouped_df[Metric.AVG_BAL.value]
+            grouped_df[Metric.WO_BAL_PCT] = (
+                100 * grouped_df[Metric.WO_BAL] / grouped_df[Metric.AVG_BAL]
             )
 
         if Metric.ANNL_WO_COUNT_PCT in required_metrics:
-            grouped_df[Metric.ANNL_WO_COUNT_PCT.value] = grouped_df[
-                Metric.WO_COUNT_PCT.value
-            ] / (self.current_rate_mob / 12)
+            grouped_df[Metric.ANNL_WO_COUNT_PCT] = grouped_df[Metric.WO_COUNT_PCT] / (
+                self.current_rate_mob / 12
+            )
 
         if Metric.ANNL_WO_BAL_PCT in required_metrics:
-            grouped_df[Metric.ANNL_WO_BAL_PCT.value] = grouped_df[
-                Metric.WO_BAL_PCT.value
-            ] / (self.current_rate_mob / 12)
+            grouped_df[Metric.ANNL_WO_BAL_PCT] = grouped_df[Metric.WO_BAL_PCT] / (
+                self.current_rate_mob / 12
+            )
 
         return grouped_df

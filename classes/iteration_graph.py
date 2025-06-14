@@ -1,85 +1,117 @@
-from typing import Literal, Union, TypedDict
+import typing as t
 
 import numpy as np
 import pandas as pd
 
+from classes.constants import (
+    DefaultOptions,
+    IterationMetadata,
+    IterationType,
+    RTDetCol,
+    VariableType,
+)
 from classes.iteration import (
-    IterationBase,
+    CategoricalDoubleVarIteration,
+    CategoricalSingleVarIteration,
+    IterationOutput,
+    NumericalDoubleVarIteration,
+    NumericalSingleVarIteration,
+)
+from classes.utils import integer_generator
+
+
+Iteration = t.Union[
     NumericalSingleVarIteration,
     NumericalDoubleVarIteration,
     CategoricalSingleVarIteration,
     CategoricalDoubleVarIteration,
-)
-from classes.common import SUB_RISK_TIERS, DEFAULT_METRICS_DF
+]
+
+__generator = integer_generator()
 
 
-def __integer_generator():
-    current = 0
+def new_id(current_ids: t.Iterable[str] = None) -> str:
+    if current_ids is None:
+        current_ids = []
+
     while True:
-        current += 1
-        yield current
-
-
-__generator = __integer_generator()
-
-
-def new_id():
-    return str(next(__generator))
-
-
-class IterationMetadata(TypedDict):
-    metrics: pd.DataFrame
-    scalars_enabled: bool
-    split_view_enabled: bool
-    grid_view_expanded: bool
-    final_rt_view_expanded: bool
+        new_id = str(next(__generator))
+        if new_id not in current_ids:
+            return new_id
 
 
 class IterationGraph:
-    MAX_DEPTH = 10
-
     def __init__(self) -> None:
-        self.iterations: dict[str, IterationBase] = {}
-
+        self.iterations: dict[str, Iteration] = {}
         self.connections: dict[str, list[str]] = {}
-        self._iteration_outputs: dict[str, pd.Series] = {}
         self.iteration_metadata: dict[str, IterationMetadata] = {}
 
-        self._selected_node_id = None
-        self._current_node_id = None
-        self._recalculation_required = set()
+        self._iteration_outputs: dict[str, IterationOutput] = {}
 
-        self.__default_metric_df = DEFAULT_METRICS_DF
+        self._selected_node_id: str | None = None
+        self._current_node_id: str | None = None
+        self._current_iter_create_mode: IterationType | None = None
+        self._current_iter_create_parent_id: str | None = None
+
+        self._recalculation_required = set()
 
     @property
     def is_empty(self):
         return len(self.iterations) == 0
 
+    def select_graph_view(self):
+        self._selected_node_id = None
+        self._current_node_id = None
+        self._current_iter_create_mode = None
+        self._current_iter_create_parent_id = None
+
     @property
     def selected_node_id(self):
         return self._selected_node_id
 
-    def select_node_id(self, node_id: str = None):
+    def select_node_id(self, node_id: str):
+        self.select_graph_view()
+
         if node_id in self.iterations:
             self._selected_node_id = node_id
-        else:
-            self._selected_node_id = None
 
     @property
     def current_node_id(self):
         return self._current_node_id
 
-    def select_current_node_id(self, node_id: str = None):
+    def select_current_node_id(self, node_id: str):
+        self.select_graph_view()
+
         if node_id in self.iterations:
             self._current_node_id = node_id
-        else:
-            self._current_node_id = None
+
+    @property
+    def current_iter_create_mode(self):
+        return self._current_iter_create_mode
+
+    @property
+    def current_iter_create_parent_id(self):
+        return self._current_iter_create_parent_id
+
+    def set_current_iter_create_mode(
+        self, iteration_type: IterationType, parent_node_id: str = None
+    ):
+        self.select_graph_view()
+
+        if iteration_type == IterationType.DOUBLE and parent_node_id is None:
+            raise ValueError(
+                "Must provide a parent_node_id for double variable iteration"
+            )
+
+        if iteration_type in IterationType:
+            self._current_iter_create_mode = iteration_type
+            self._current_iter_create_parent_id = parent_node_id
 
     @property
     def current_iteration(self):
         return self.iterations[self.current_node_id]
 
-    def get_parent(self, node_id: str = None) -> Union[str, None]:
+    def get_parent(self, node_id: str = None) -> str | None:
         if node_id is None:
             node_id = self.current_node_id
 
@@ -90,9 +122,6 @@ class IterationGraph:
         return None
 
     def iteration_depth(self, node_id: str = None) -> int:
-        if node_id is None:
-            node_id = self.current_node_id
-
         parent_node_id = self.get_parent(node_id)
         if parent_node_id is None:
             return 1
@@ -100,9 +129,6 @@ class IterationGraph:
         return 1 + self.iteration_depth(parent_node_id)
 
     def get_ancestors(self, node_id: str = None) -> list[str]:
-        if node_id is None:
-            node_id = self.current_node_id
-
         ancestors = []
         parent_node_id = self.get_parent(node_id)
         while parent_node_id is not None:
@@ -142,6 +168,37 @@ class IterationGraph:
 
         raise ValueError(f"Invalid iteration type: {type(parent_node)}")
 
+    def get_root_iter_id(self, node_id: str = None) -> str:
+        if node_id is None:
+            node_id = self.current_node_id
+
+        if self.is_root(node_id):
+            return node_id
+
+        return self.get_root_iter_id(self.get_parent(node_id))
+
+    def get_risk_tier_details(self, node_id: str = None) -> pd.DataFrame:
+        if node_id is None:
+            node_id = self.current_node_id
+
+        root_iter_id = self.get_root_iter_id(node_id)
+        return self.iterations[root_iter_id].risk_tier_details
+
+    def get_color(self, rt_label: str, node_id: str = None):
+        if node_id is None:
+            node_id = self.current_node_id
+
+        risk_tier_details = self.get_risk_tier_details(node_id)
+
+        font_color = risk_tier_details.loc[
+            risk_tier_details[RTDetCol.RISK_TIER] == rt_label, RTDetCol.FONT_COLOR
+        ]
+        bg_color = risk_tier_details.loc[
+            risk_tier_details[RTDetCol.RISK_TIER] == rt_label, RTDetCol.BG_COLOR
+        ]
+
+        return font_color.iloc[0], bg_color.iloc[0]
+
     def is_root(self, node_id: str = None) -> bool:
         if node_id is None:
             node_id = self.current_node_id
@@ -158,90 +215,76 @@ class IterationGraph:
         self,
         name: str,
         variable: pd.Series,
-        variable_dtype: Literal["numerical", "categorical"],
-    ):
-        new_node_id = new_id()
+        variable_dtype: VariableType,
+        risk_tier_details: pd.DataFrame,
+    ) -> NumericalSingleVarIteration | CategoricalSingleVarIteration:
+        new_node_id = new_id(current_ids=self.iterations.keys())
 
-        initial_group_count = len(SUB_RISK_TIERS)
-
-        if variable_dtype == "numerical":
+        if variable_dtype == VariableType.NUMERICAL:
             iteration = NumericalSingleVarIteration(
                 _id=new_node_id,
                 name=name,
                 variable=variable,
-                initial_group_count=initial_group_count,
+                risk_tier_details=risk_tier_details,
             )
-        elif variable_dtype == "categorical":
+        elif variable_dtype == VariableType.CATEGORICAL:
             iteration = CategoricalSingleVarIteration(
                 _id=new_node_id,
                 name=name,
                 variable=variable,
-                initial_group_count=initial_group_count,
+                risk_tier_details=risk_tier_details,
             )
         else:
             raise ValueError(f"Invalid variable type: {variable_dtype}")
 
         self.iterations[new_node_id] = iteration
-        self.iteration_metadata[new_node_id] = {
-            "metrics": self.__default_metric_df.copy(),
-            "scalars_enabled": True,
-            "split_view_enabled": False,
-            "grid_view_expanded": False,
-            "final_rt_view_expanded": False,
-        }
+        self.iteration_metadata[new_node_id] = (
+            DefaultOptions().default_iteation_metadata
+        )
         self._recalculation_required.add(new_node_id)
 
-        # self.select_node_id(new_node_id)
+        return iteration
 
     def add_double_var_node(
         self,
         name: str,
         variable: pd.Series,
-        variable_dtype: Literal["numerical", "categorical"],
+        variable_dtype: VariableType,
         previous_node_id: str,
-    ):
-        new_node_id = new_id()
+    ) -> NumericalDoubleVarIteration | CategoricalDoubleVarIteration:
+        if previous_node_id not in self.iterations:
+            raise ValueError(
+                f"Invalid previous node id: {previous_node_id}. Iteration does not exist."
+            )
 
-        if variable_dtype == "numerical":
+        risk_tier_details = self.get_risk_tier_details(previous_node_id)
+
+        new_node_id = new_id(current_ids=self.iterations.keys())
+
+        if variable_dtype == VariableType.NUMERICAL:
             iteration = NumericalDoubleVarIteration(
                 _id=new_node_id,
                 name=name,
                 variable=variable,
-                initial_group_count=10,
+                risk_tier_details=risk_tier_details,
             )
-        elif variable_dtype == "categorical":
+        elif variable_dtype == VariableType.CATEGORICAL:
             iteration = CategoricalDoubleVarIteration(
                 _id=new_node_id,
                 name=name,
                 variable=variable,
-                initial_group_count=10,
+                risk_tier_details=risk_tier_details,
             )
         else:
             raise ValueError(f"Invalid variable type: {variable_dtype}")
 
         self.iterations[new_node_id] = iteration
-        self.iteration_metadata[new_node_id] = {
-            "metrics": self.__default_metric_df.copy(),
-            "scalars_enabled": True,
-            "split_view_enabled": False,
-            "grid_view_expanded": False,
-            "final_rt_view_expanded": False,
-        }
+        self.iteration_metadata[new_node_id] = (
+            DefaultOptions().default_iteation_metadata
+        )
         self.connections.setdefault(previous_node_id, []).append(new_node_id)
 
-        self.select_node_id(new_node_id)
-
-    def add_node(
-        self,
-        name: str,
-        variable: pd.Series,
-        variable_dtype: Literal["numerical", "categorical"],
-        previous_node_id: str = None,
-    ):
-        if previous_node_id is None:
-            self.add_single_var_node(name, variable, variable_dtype)
-        else:
-            self.add_double_var_node(name, variable, variable_dtype, previous_node_id)
+        return iteration
 
     def delete_iteration(self, node_id: str):
         nodes_to_delete = [node_id] + self.get_descendants(node_id)
@@ -261,7 +304,7 @@ class IterationGraph:
                 child for child in children if child not in nodes_to_delete
             ]
 
-        self.select_node_id()
+        self.select_graph_view()
 
     def add_to_calculation_queue(self, node_id: str = None):
         if node_id is None:
@@ -271,55 +314,32 @@ class IterationGraph:
         for descendant in self.get_descendants(node_id):
             self._recalculation_required.add(descendant)
 
-    def get_risk_tiers(
-        self, node_id: str = None
-    ) -> tuple[pd.Series, list[str], list[str], list]:
-        invalid_groups = []
-        warnings = []
-        errors = []
-
+    def get_risk_tiers(self, node_id: str = None) -> IterationOutput:
         if node_id is None:
             node_id = self.current_node_id
 
         if node_id not in self._iteration_outputs:
             self._recalculation_required.add(node_id)
 
+        # No calculation required. Taking from cache.
         if node_id not in self._recalculation_required:
-            return self._iteration_outputs[node_id], errors, warnings, invalid_groups
+            return self._iteration_outputs[node_id]
 
-        if self.is_root(node_id):
-            # print(f"Calculating Risk Tiers for node: {node_id}")
-            risk_tier_column, errors, warnings, invalid_groups = self.iterations[
-                node_id
-            ].get_risk_tiers()
+        # Calculation Required.
+        previous_risk_tiers = None
 
-            if not errors:
-                self._iteration_outputs[node_id] = risk_tier_column
-                self._recalculation_required.remove(node_id)
+        if not self.is_root(node_id):
+            previous_node_output = self.get_risk_tiers(self.get_parent(node_id))
+            previous_risk_tiers = previous_node_output["risk_tier_column"]
 
-            return risk_tier_column, errors, warnings, invalid_groups
+        iteration_output = self.iterations[node_id].get_risk_tiers(
+            previous_risk_tiers=previous_risk_tiers
+        )
 
-        calculation_path = self.get_ancestors(node_id)
-        calculation_path.append(node_id)
+        self._iteration_outputs[node_id] = iteration_output
+        self._recalculation_required.remove(node_id)
 
-        for node in calculation_path:
-            if node not in self._recalculation_required:
-                continue
-
-            # print(f"Calculating Risk Tiers for node: {node}")
-            risk_tier_column, errors, warnings, invalid_groups = self.iterations[
-                node
-            ].get_risk_tiers(
-                previous_risk_tiers=self._iteration_outputs[self.get_parent(node)]
-            )
-
-            if errors:
-                return risk_tier_column, errors, warnings, invalid_groups
-
-            self._iteration_outputs[node] = risk_tier_column
-            self._recalculation_required.remove(node)
-
-        return risk_tier_column, errors, warnings, invalid_groups
+        return iteration_output
 
 
 __all__ = [

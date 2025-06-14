@@ -1,74 +1,78 @@
 from abc import ABC, abstractmethod
+import typing as t
 
 import numpy as np
 import pandas as pd
 
+from classes.constants import (
+    GridColumn,
+    IterationType,
+    LossRateTypes,
+    RTDetCol,
+    RangeColumn,
+    VariableType,
+)
 
-MAX_SINGLE_VAR_GROUP_COUNT = 10
+
+class IterationOutput(t.TypedDict):
+    risk_tier_column: pd.Series
+    errors: list[str]
+    warnings: list[str]
+    invalid_groups: list[int]
 
 
 class IterationBase(ABC):
-    var_type = None
-    var_count = 0
+    var_type: VariableType = None
+    iter_type: IterationType = None
 
     @staticmethod
-    def _new_group_default_value_factory() -> None:
-        return None
+    @abstractmethod
+    def _new_group_default_value_factory():
+        raise NotImplementedError()
+
+    @staticmethod
+    @abstractmethod
+    def _create_initial_groups(
+        variable: pd.Series, initial_group_count: int
+    ) -> pd.Series:
+        raise NotImplementedError()
 
     def __init__(
-        self, _id, name: str, variable: pd.Series, initial_group_count: int
-    ) -> None:
-        super().__init__()
-
-        self.id = _id
-        self.name = name
+        self, _id: str, name: str, variable: pd.Series, initial_group_count: int
+    ):
+        self._id = _id
+        self._name = name
         self._variable = variable
-        self._groups = pd.Series()
+        self._groups = self._create_initial_groups(variable, initial_group_count)
+        self._default_groups = self._groups.copy()
 
-        self._create_initial_groups(initial_group_count)
-        self._group_mask = pd.Series(True, index=self._groups.index)
+    @property
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     @property
     def variable(self) -> pd.Series:
-        if self._variable is None:
-            raise ValueError("The variable is not loaded from the data.")
-
         return self._variable
 
     @property
+    @abstractmethod
     def groups(self) -> pd.Series:
-        return self._groups.loc[self._group_mask]
+        raise NotImplementedError()
 
     @property
-    def num_groups(self) -> int:
-        return len(self._groups)
-
-    def _check_group_index(self, group_index: int) -> None:
-        if group_index < 0 or group_index >= self.num_groups:
-            raise ValueError(
-                f"Value of colidx out of range [0, {self.num_groups - 1}]. "
-                f"Provided value: {group_index}"
-            )
-
-    def add_group(self, group_index: int) -> None:
-        if group_index < 0:
-            raise ValueError(f"Invalid argument for 'group_index': {group_index}")
-
-        if group_index >= self.num_groups:
-            self._groups.loc[self.num_groups] = self._new_group_default_value_factory()
-
-        self._group_mask.loc[min(group_index, self.num_groups)] = True
-
-    def remove_group(self, group_index: int) -> None:
-        self._check_group_index(group_index)
-
-        if self._group_mask.drop(group_index).any():
-            self._group_mask.iloc[group_index] = False
-        else:
-            raise ValueError("Can not remove the last group.")
+    def default_groups(self) -> pd.Series:
+        return self._default_groups
 
     @abstractmethod
-    def _create_initial_groups(self, initial_group_count: int):
+    def get_risk_tiers(self, previous_risk_tiers: pd.Series = None) -> IterationOutput:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def set_group(self, group_index: int, *args, **kwargs):
         raise NotImplementedError()
 
     @abstractmethod
@@ -76,64 +80,100 @@ class IterationBase(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def set_group(self, group_index: int, *args, **kwargs) -> None:
+    def get_group_mapping(self) -> IterationOutput:
         raise NotImplementedError()
 
-    @abstractmethod
-    def get_risk_tiers(
-        self, previous_risk_tiers: pd.Series = None
-    ) -> tuple[pd.Series, list[str], list[str], list]:
-        raise NotImplementedError()
+    def _check_group_index(self, group_index: int) -> None:
+        num_groups = len(self._groups)
 
-    def reverse_group_order(self) -> None:
-        """Reverses the order of groups."""
-        self._groups = self._groups.iloc[::-1].reset_index(drop=True)
-        self._group_mask = self._group_mask.iloc[::-1].reset_index(drop=True)
+        if group_index < 0 or group_index >= num_groups:
+            raise ValueError(
+                f"Value of colidx out of range [0, {num_groups - 1}]. "
+                f"Provided value: {group_index}"
+            )
 
 
 class SingleVarIteration(IterationBase):
-    var_count = 1
+    iter_type = IterationType.SINGLE
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, risk_tier_details: pd.DataFrame, **kwargs):
+        super().__init__(**kwargs, initial_group_count=len(risk_tier_details))
 
-    def add_group(self, group_index: int) -> None:
-        if group_index >= MAX_SINGLE_VAR_GROUP_COUNT:
-            raise ValueError(
-                f"Can not add more than {MAX_SINGLE_VAR_GROUP_COUNT} groups."
-            )
+        self._risk_tier_details = risk_tier_details
 
-        return super().add_group(group_index)
+    @t.override
+    @property
+    def groups(self) -> pd.Series:
+        return self._groups
+
+    @property
+    def risk_tier_details(self) -> pd.DataFrame:
+        return self._risk_tier_details
+
+    def update_maf(self, loss_rate_type: LossRateTypes, maf: pd.Series):
+        if len(maf) != len(self._risk_tier_details):
+            raise ValueError(f"Invalid maf length: {len(maf)}")
+
+        if loss_rate_type == LossRateTypes.DLR:
+            self._risk_tier_details[RTDetCol.MAF_DLR] = maf.to_list()
+        elif loss_rate_type == LossRateTypes.ULR:
+            self._risk_tier_details[RTDetCol.MAF_ULR] = maf.to_list()
+        else:
+            raise ValueError(f"Invalid loss rate type: {loss_rate_type}")
+
+    @t.override
+    def get_risk_tiers(self, previous_risk_tiers: pd.Series = None) -> IterationOutput:
+        output = self.get_group_mapping()
+
+        output["risk_tier_column"] = output["risk_tier_column"].astype(
+            pd.CategoricalDtype(categories=self.risk_tier_details.index)
+        )
+
+        return output
 
 
 class DoubleVarIteration(IterationBase):
-    var_count = 2
+    iter_type = IterationType.DOUBLE
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, risk_tier_details: pd.DataFrame, **kwargs):
+        initial_group_count = 10
 
+        super().__init__(**kwargs, initial_group_count=initial_group_count)
+
+        prev_rt_count = len(risk_tier_details)
+
+        self._groups_mask = pd.Series(True, index=self._groups.index)
         self._risk_tier_grid = pd.DataFrame(
-            np.repeat(np.arange(10).reshape(1, 10), self.num_groups, axis=0)
+            np.repeat(
+                np.arange(prev_rt_count).reshape(1, prev_rt_count),
+                repeats=len(self._groups),
+                axis=0,
+            )
         )
+        self._default_risk_tier_grid = self._risk_tier_grid.copy()
+
+    @t.override
+    @property
+    def groups(self) -> pd.Series:
+        return self._groups.loc[self._groups_mask]
 
     @property
     def risk_tier_grid(self) -> pd.DataFrame:
-        return self._risk_tier_grid.loc[self._group_mask, :]
+        return self._risk_tier_grid.loc[self._groups_mask, :]
 
-    def set_risk_tier_grid(
-        self, group_index: int, previous_iteration_rt, value
-    ) -> None:
-        self._check_group_index(group_index)
+    def add_group(self, group_index: int | None = None):
+        if group_index is None:
+            group_index = len(self._groups)
 
-        if previous_iteration_rt not in self.risk_tier_grid.columns:
-            raise ValueError(
-                f"Invalid value for risk tier provided: {previous_iteration_rt}"
-            )
+        if group_index < 0:
+            raise ValueError(f"Invalid argument for 'group_index': {group_index}")
 
-        self._risk_tier_grid.loc[group_index, previous_iteration_rt] = value
+        num_groups = len(self._groups)
 
-    def add_group(self, group_index):
-        super().add_group(group_index)
+        if group_index >= num_groups:
+            self._groups.loc[num_groups] = self._new_group_default_value_factory()
+
+        self._groups_mask.loc[min(group_index, num_groups)] = True
 
         if len(self._risk_tier_grid) == len(self._groups):
             return
@@ -143,34 +183,76 @@ class DoubleVarIteration(IterationBase):
             [self._risk_tier_grid, last_row], ignore_index=True
         )
 
-    def reverse_group_order(self):
-        """Reverses the order of groups and risk tier grid."""
-        super().reverse_group_order()
-        self._risk_tier_grid = self._risk_tier_grid.iloc[::-1].reset_index(drop=True)
+    def set_risk_tier_grid(self, group_index: int, previous_rt_index: int, value: int):
+        self._check_group_index(group_index)
+
+        if previous_rt_index not in self.risk_tier_grid.columns:
+            raise ValueError(
+                f"Invalid value for risk tier provided: {previous_rt_index}"
+            )
+
+        self._risk_tier_grid.loc[group_index, previous_rt_index] = value
+
+    def remove_group(self, group_index: int):
+        self._check_group_index(group_index)
+
+        if self._groups_mask.drop(group_index).any():
+            self._groups_mask.iloc[group_index] = False
+        else:
+            raise ValueError("Can not remove the last group.")
+
+    @t.override
+    def get_risk_tiers(self, previous_risk_tiers: pd.Series = None) -> IterationOutput:
+        iteration_output = self.get_group_mapping()
+        risk_tier_column = pd.Series(index=self.variable.index)
+
+        if not iteration_output["errors"]:
+            risk_tier_grid = self.risk_tier_grid
+
+            for prev_rt in risk_tier_grid.columns:
+                for curr_rt in risk_tier_grid.index:
+                    mask = (previous_risk_tiers == prev_rt) & (
+                        iteration_output["risk_tier_column"] == curr_rt
+                    )
+
+                    risk_tier_column.loc[mask] = risk_tier_grid.loc[curr_rt, prev_rt]
+
+        risk_tier_column = risk_tier_column.astype(
+            pd.CategoricalDtype(categories=self.risk_tier_grid.columns)
+        )
+
+        iteration_output.update({"risk_tier_column": risk_tier_column})
+
+        return iteration_output
 
 
 class NumericalIteration(IterationBase):
-    var_type = "numerical"
+    var_type = VariableType.NUMERICAL
 
+    @t.override
     @staticmethod
     def _new_group_default_value_factory():
         return (np.nan, np.nan)
 
-    def __init__(self, _id, name, variable, initial_group_count):
-        super().__init__(_id, name, variable, initial_group_count)
-
-    def _create_initial_groups(self, initial_group_count: int):
+    @t.override
+    @staticmethod
+    def _create_initial_groups(variable, initial_group_count):
         quantiles = np.linspace(0, 1, initial_group_count + 1)
-        percentiles = self.variable.quantile(quantiles)
+        percentiles = variable.quantile(quantiles)
         pairs = list(zip(percentiles.iloc[:-1], percentiles.iloc[1:]))
 
         pairs[0] = (pairs[0][0] - 1, pairs[0][1])
 
-        self._groups = pd.Series(pairs, name=self.variable.name)
+        return pd.Series(pairs, name=RangeColumn.GROUPS)
 
+    @t.override
+    def set_group(self, group_index: int, lower_bound: float, upper_bound: float):
+        self._check_group_index(group_index)
+
+        self._groups.loc[group_index] = (lower_bound, upper_bound)
+
+    @t.override
     def _validate(self) -> tuple[list[str], list[str], list]:
-        groups = self._groups.loc[self._group_mask]
-
         invalid_groups = []
         warnings = []
         errors = []
@@ -178,7 +260,7 @@ class NumericalIteration(IterationBase):
 
         mask = pd.Series(False, index=self.variable.index)
 
-        for group_index, (lower_bound, upper_bound) in groups.items():
+        for group_index, (lower_bound, upper_bound) in self.groups.items():
             missing_bound = False
 
             if lower_bound is None or np.isnan(lower_bound):
@@ -203,9 +285,10 @@ class NumericalIteration(IterationBase):
                 invalid_groups.append(group_index)
 
             if group_index not in invalid_groups:
-                intervals.append(
-                    (group_index, pd.Interval(lower_bound, upper_bound, closed="right"))
-                )
+                intervals.append((
+                    group_index,
+                    pd.Interval(lower_bound, upper_bound, closed="right"),
+                ))
                 mask |= (self.variable > lower_bound) & (self.variable <= upper_bound)
 
         intervals.sort(key=lambda t: t[1].left)
@@ -229,46 +312,40 @@ class NumericalIteration(IterationBase):
 
         return warnings, errors, invalid_groups
 
-    # pylint: disable=arguments-differ
-    def set_group(
-        self, group_index: int, lower_bound: float, upper_bound: float
-    ) -> None:
-        self._check_group_index(group_index)
-
-        self._groups.loc[group_index] = (lower_bound, upper_bound)
-
-    # pylint: enable=arguments-differ
-
-    def get_group_mapping(self) -> tuple[pd.Series, list[str], list[str], list]:
-        groups = self.groups
-
+    @t.override
+    def get_group_mapping(self) -> IterationOutput:
         warnings, error, invalid_groups = self._validate()
-        group_indices = pd.Series(index=self.variable.index)
+        group_indices = pd.Series(
+            index=self.variable.index, name=GridColumn.GROUP_INDEX
+        )
 
-        if error:
-            return group_indices, error, warnings, invalid_groups
+        if not error:
+            valid_groups = self.groups.drop(invalid_groups)
 
-        valid_groups = groups.drop(invalid_groups)
+            for group_index, (lower_bound, upper_bound) in valid_groups.items():
+                mask = (self.variable > lower_bound) & (self.variable <= upper_bound)
+                group_indices.loc[mask] = group_index
 
-        for group_index, (lower_bound, upper_bound) in valid_groups.items():
-            mask = (self.variable > lower_bound) & (self.variable <= upper_bound)
-            group_indices.loc[mask] = group_index
-
-        return group_indices, error, warnings, invalid_groups
+        return {
+            "risk_tier_column": group_indices,
+            "errors": error,
+            "warnings": warnings,
+            "invalid_groups": invalid_groups,
+        }
 
 
 class CategoricalIteration(IterationBase):
-    var_type = "categorical"
+    var_type = VariableType.CATEGORICAL
 
+    @t.override
     @staticmethod
     def _new_group_default_value_factory():
         return []
 
-    def __init__(self, _id, name, variable, initial_group_count):
-        super().__init__(_id, name, variable, initial_group_count)
-
-    def _create_initial_groups(self, initial_group_count: int):
-        unique_values = list(sorted(list(self.variable.unique())))
+    @t.override
+    @staticmethod
+    def _create_initial_groups(variable, initial_group_count):
+        unique_values = list(sorted(list(variable.unique())))
         groups = [set() for _ in range(initial_group_count)]
 
         while unique_values:
@@ -277,11 +354,16 @@ class CategoricalIteration(IterationBase):
                 if not unique_values:
                     break
 
-        self._groups = pd.Series(groups, name=self.variable.name)
+        return pd.Series(groups, name=RangeColumn.GROUPS)
 
+    @t.override
+    def set_group(self, group_index: int, categories: t.Iterable[str]):
+        self._check_group_index(group_index)
+
+        self._groups.loc[group_index] = list(sorted(categories))
+
+    @t.override
     def _validate(self) -> tuple[list[str], list[str], list]:
-        groups = self._groups.loc[self._group_mask]
-
         invalid_groups = []
         warnings = []
         errors = []
@@ -289,7 +371,7 @@ class CategoricalIteration(IterationBase):
         all_categories = set(self.variable.cat.categories)
         assigned_categories = set()
 
-        for group_index, category_list in groups.items():
+        for group_index, category_list in self.groups.items():
             if not isinstance(category_list, set):
                 warnings.append(
                     f"Group at index {group_index} is not a set: {category_list}"
@@ -332,108 +414,66 @@ class CategoricalIteration(IterationBase):
 
         return warnings, errors, invalid_groups
 
-    # pylint: disable=arguments-differ
-    def set_group(self, group_index: int, categories: set[str]) -> None:
-        self._check_group_index(group_index)
-
-        self._groups.loc[group_index] = categories
-
-    # pylint: enable=arguments-differ
-
-    def get_group_mapping(self) -> tuple[pd.Series, list[str], list[str], list]:
-        groups = self.groups
-
+    @t.override
+    def get_group_mapping(self) -> IterationOutput:
         warnings, error, invalid_groups = self._validate()
         group_indices = pd.Series(index=self.variable.index)
 
-        if error:
-            return group_indices, error, warnings, invalid_groups
+        if not error:
+            valid_groups = self.groups.drop(invalid_groups)
 
-        valid_groups = groups.drop(invalid_groups)
+            for group_index, category_list in valid_groups.items():
+                mask = self.variable.isin(category_list)
+                group_indices.loc[mask] = group_index
 
-        for group_index, category_list in valid_groups.items():
-            mask = self.variable.isin(category_list)
-            group_indices.loc[mask] = group_index
-
-        return group_indices, error, warnings, invalid_groups
+        return {
+            "risk_tier_column": group_indices,
+            "errors": error,
+            "warnings": warnings,
+            "invalid_groups": invalid_groups,
+        }
 
 
 class NumericalSingleVarIteration(NumericalIteration, SingleVarIteration):
-    def __init__(self, _id, name, variable, initial_group_count):
-        super().__init__(_id, name, variable, initial_group_count)
-
-    def get_risk_tiers(
-        self, previous_risk_tiers: pd.Series = None
-    ) -> tuple[pd.Series, list[str], list[str], list]:
-        return self.get_group_mapping()
+    def __init__(
+        self, _id: str, name: str, variable: pd.Series, risk_tier_details: pd.DataFrame
+    ):
+        super().__init__(
+            _id=_id, name=name, variable=variable, risk_tier_details=risk_tier_details
+        )
 
 
 class CategoricalSingleVarIteration(CategoricalIteration, SingleVarIteration):
-    def __init__(self, _id, name, variable, initial_group_count):
-        super().__init__(_id, name, variable, initial_group_count)
-
-    def get_risk_tiers(
-        self, previous_risk_tiers: pd.Series = None
-    ) -> tuple[pd.Series, list[str], list[str], list]:
-        return self.get_group_mapping()
+    def __init__(
+        self, _id: str, name: str, variable: pd.Series, risk_tier_details: pd.DataFrame
+    ):
+        super().__init__(
+            _id=_id, name=name, variable=variable, risk_tier_details=risk_tier_details
+        )
 
 
 class NumericalDoubleVarIteration(NumericalIteration, DoubleVarIteration):
-    def __init__(self, _id, name, variable, initial_group_count):
-        super().__init__(_id, name, variable, initial_group_count)
-
-    def get_risk_tiers(
-        self, previous_risk_tiers: pd.Series = None
-    ) -> tuple[pd.Series, list[str], list[str], list]:
-        group_indices, error, warnings, invalid_groups = self.get_group_mapping()
-        risk_tier_column = pd.Series(index=self.variable.index)
-
-        if error:
-            return risk_tier_column, error, warnings, invalid_groups
-
-        risk_tier_grid = self.risk_tier_grid
-
-        for prev_rt in risk_tier_grid.columns:
-            for curr_rt in risk_tier_grid.index:
-                mask = (previous_risk_tiers == prev_rt) & (group_indices == curr_rt)
-
-                risk_tier_column.loc[mask] = risk_tier_grid.loc[curr_rt, prev_rt]
-
-        return risk_tier_column, error, warnings, invalid_groups
+    def __init__(
+        self, _id: str, name: str, variable: pd.Series, risk_tier_details: pd.DataFrame
+    ):
+        super().__init__(
+            _id=_id, name=name, variable=variable, risk_tier_details=risk_tier_details
+        )
 
 
 class CategoricalDoubleVarIteration(CategoricalIteration, DoubleVarIteration):
-    def __init__(self, _id, name, variable, initial_group_count):
-        super().__init__(_id, name, variable, initial_group_count)
-
-    def get_risk_tiers(
-        self, previous_risk_tiers: pd.Series = None
-    ) -> tuple[pd.Series, list[str], list[str], list]:
-        group_indices, error, warnings, invalid_groups = self.get_group_mapping()
-        risk_tier_column = pd.Series(index=self.variable.index)
-
-        if error:
-            return risk_tier_column, error, warnings, invalid_groups
-
-        risk_tier_grid = self.risk_tier_grid
-
-        for prev_rt in risk_tier_grid.columns:
-            for curr_rt in risk_tier_grid.index:
-                mask = (previous_risk_tiers == prev_rt) & (group_indices == curr_rt)
-
-                risk_tier_column.loc[mask] = risk_tier_grid.loc[curr_rt, prev_rt]
-
-        return risk_tier_column, error, warnings, invalid_groups
+    def __init__(
+        self, _id: str, name: str, variable: pd.Series, risk_tier_details: pd.DataFrame
+    ):
+        super().__init__(
+            _id=_id, name=name, variable=variable, risk_tier_details=risk_tier_details
+        )
 
 
 __all__ = [
-    "IterationBase",
-    "SingleVarIteration",
-    "DoubleVarIteration",
-    "NumericalIteration",
+    "IterationOutput",
     "NumericalSingleVarIteration",
     "NumericalDoubleVarIteration",
-    "CategoricalIteration",
     "CategoricalSingleVarIteration",
     "CategoricalDoubleVarIteration",
 ]

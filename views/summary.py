@@ -1,8 +1,8 @@
 import typing as t
 
-import pandas as pd
 import streamlit as st
 
+from classes.constants import Metric, MetricTableColumn
 from classes.session import Session
 from views.iterations_widgets.dialogs import show_metric_selector
 from views.iterations_widgets.single_var_iteration import show_edited_range
@@ -33,7 +33,7 @@ def show_welcome_page():
 
 def show_iteration_result(
     selected_iteration: t.Literal[1, 2],
-    metrics: pd.Series,
+    metrics: list[Metric],
     scalars_enabled: bool,
     key: int = 0,
 ):
@@ -89,10 +89,12 @@ def show_summary_page():
 
     st.title("Summary")
 
-    metrics_df = home_page_state.metrcis
-    showing_metrics = metrics_df.sort_values("order").loc[
-        metrics_df["showing"], "metric"
-    ]
+    metrics = home_page_state.metrics
+    showing_metrics = (
+        metrics.sort_values(MetricTableColumn.ORDER)
+        .loc[metrics[MetricTableColumn.SHOWING], MetricTableColumn.METRIC]
+        .to_list()
+    )
 
     with st.sidebar:
         if st.button(
@@ -101,7 +103,7 @@ def show_summary_page():
             icon=":material/functions:",
             help="Set metrics to display in the table",
         ):
-            show_metric_selector(metrics_df)
+            show_metric_selector()
 
         if st.button(
             label=f"Change to {'Column' if home_page_state.comparison_view_mode == 'row' else 'Row'} View",

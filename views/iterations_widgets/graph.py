@@ -1,12 +1,10 @@
-import pathlib as p
-
-import pandas as pd
 import streamlit as st
 from streamlit_flow import streamlit_flow
 from streamlit_flow.elements import StreamlitFlowNode, StreamlitFlowEdge
 from streamlit_flow.state import StreamlitFlowState
 from streamlit_flow.layouts import TreeLayout
 
+from classes.constants import IterationType
 from classes.iteration_graph import IterationGraph
 from classes.session import Session
 
@@ -16,7 +14,14 @@ def streamlit_flow_graph(iteration_graph: IterationGraph) -> StreamlitFlowState:
     connections = iteration_graph.connections
     selected_node_id = iteration_graph.selected_node_id
 
-    node_style = {"border-radius": "1em"}
+    node_style = {
+        "background": "rgba(255, 255, 255, 0.9)",
+        "box-shadow": "0 8px 32px 0 rgba( 31, 38, 135, 0.37 )",
+        "backdrop-filter": "blur( 4.5px )",
+        "-webkit-backdrop-filter": "blur( 4.5px )",
+        "border-radius": "10px",
+        "border": "1px solid rgba( 255, 255, 255, 0.18 )",
+    }
 
     nodes = []
 
@@ -98,36 +103,6 @@ def streamlit_flow_graph(iteration_graph: IterationGraph) -> StreamlitFlowState:
     return new_state
 
 
-@st.dialog("Choose a variable")
-def show_add_iter_dialog(parent_node_id: str | None = None):
-    session: Session = st.session_state["session"]
-    data = session.data
-
-    if not data.sample_loaded:
-        st.error("Please load data first")
-        if st.button("Load Data"):
-            st.switch_page(p.Path(__file__).parent.parent / "data_importer.py")
-        return
-
-    variable_name = st.selectbox("Select a variable", data.sample_df.columns)
-    iteration_name = st.text_input("Iteration Name")
-    variable_dtype = st.selectbox("Variable Type", ["numerical", "categorical"])
-
-    if st.button("Select"):
-        variable = data.load_column(variable_name)
-
-        if not pd.api.types.is_numeric_dtype(variable):
-            variable_dtype = "categorical"
-
-        session.iteration_graph.add_node(
-            name=iteration_name,
-            variable=variable,
-            variable_dtype=variable_dtype,
-            previous_node_id=parent_node_id,
-        )
-        st.rerun()
-
-
 @st.dialog("Confirm Delete")
 def show_delete_confirmation_dialog(node_id: str):
     session: Session = st.session_state["session"]
@@ -151,6 +126,7 @@ def show_delete_confirmation_dialog(node_id: str):
 def show_iteration_graph_widgets():
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
+    options = session.options
 
     st.title("Iteration Graph")
 
@@ -167,25 +143,31 @@ def show_iteration_graph_widgets():
             st.rerun()
 
     if new_state.selected_id is None:
-        if st.sidebar.button(
+        st.sidebar.button(
             label="Add New Iteration",
             icon=":material/add:",
             use_container_width=True,
             type="secondary",
-        ):
-            show_add_iter_dialog()
+            on_click=iteration_graph.set_current_iter_create_mode,
+            kwargs={"iteration_type": IterationType.SINGLE},
+        )
+
     else:
         if (
             iteration_graph.iteration_depth(new_state.selected_id)
-            < iteration_graph.MAX_DEPTH
+            < options.max_iteration_depth
         ):
-            if st.sidebar.button(
+            st.sidebar.button(
                 label="Add Child Iteration",
                 icon=":material/add:",
                 use_container_width=True,
                 type="secondary",
-            ):
-                show_add_iter_dialog(new_state.selected_id)
+                on_click=iteration_graph.set_current_iter_create_mode,
+                kwargs={
+                    "iteration_type": IterationType.DOUBLE,
+                    "parent_node_id": new_state.selected_id,
+                },
+            )
 
         if st.sidebar.button(
             label="Delete Iteration",

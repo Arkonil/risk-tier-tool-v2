@@ -97,6 +97,8 @@ def show_risk_tier_details_selector() -> None:
         RTDetCol.UPPER_RATE: st.column_config.NumberColumn(
             label=RTDetCol.UPPER_RATE,
             format="%.2f %%",
+            min_value=0.0,
+            max_value=100.0,
         ),
         RTDetCol.BG_COLOR: st.column_config.TextColumn(
             label=RTDetCol.BG_COLOR,

@@ -310,6 +310,9 @@ class NumericalIteration(IterationBase):
                 f"{self.variable[~mask].drop_duplicates().sort_values().tolist()}"
             )
 
+        warnings = [f"Iteration {self.id}: {warning}" for warning in warnings]
+        errors = [f"Iteration {self.id}: {error}" for error in errors]
+
         return warnings, errors, invalid_groups
 
     @t.override
@@ -388,7 +391,7 @@ class CategoricalIteration(IterationBase):
                 if not isinstance(category, type(self.variable.iloc[0])):
                     warnings.append(
                         f"Invalid type {type(category)} for category {category} "
-                        f"in group at index {group_index}"
+                        f"in group at index {group_index}. Expected type: {type(self.variable.iloc[0])}"
                     )
                     invalid_groups.append(group_index)
 
@@ -411,6 +414,9 @@ class CategoricalIteration(IterationBase):
                 f"The following categories are not assigned to any group: "
                 f"{', '.join(all_categories - assigned_categories)}"
             )
+
+        warnings = [f"Iteration {self.id}: {warning}" for warning in warnings]
+        errors = [f"Iteration {self.id}: {error}" for error in errors]
 
         return warnings, errors, invalid_groups
 

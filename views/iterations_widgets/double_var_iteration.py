@@ -17,6 +17,7 @@ from views.iterations_widgets.single_var_iteration import (
     get_risk_tier_details,
     show_category_editor,
     show_edited_range,
+    show_error_and_warnings,
 )
 from views.variable_selector import show_variable_selector_dialog
 
@@ -429,18 +430,7 @@ def show_grid_layout(iteration_id: str, metrics: list[Metric]):
         show_grid_editor(iteration_id=iteration_id, key=1)
 
     with status_container:
-        if warnings:
-            st.warning(
-                "Warnings: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", warnings)),
-                icon=":material/warning:",
-            )
-
-        if errors:
-            st.error(
-                "Errors: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", errors)),
-                icon=":material/error:",
-            )
-            return
+        show_error_and_warnings(errors, warnings)
 
     if not metrics:
         return
@@ -495,18 +485,7 @@ def show_liner_layout(iteration_id: str, metrics: list[Metric]):
 
     show_grid_editor(iteration_id=iteration_id, key=1)
 
-    if warnings:
-        st.warning(
-            "Warnings: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", warnings)),
-            icon=":material/warning:",
-        )
-
-    if errors:
-        st.error(
-            "Errors: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", errors)),
-            icon=":material/error:",
-        )
-        return
+    show_error_and_warnings(errors, warnings)
 
     column_config = {
         RangeColumn.LOWER_BOUND: st.column_config.NumberColumn(

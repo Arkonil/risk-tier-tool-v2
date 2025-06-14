@@ -152,6 +152,28 @@ def get_risk_tier_details(iteration_id: str, recheck: bool) -> tuple[pd.DataFram
     return root_iter.risk_tier_details, message
 
 
+def show_error_and_warnings(errors: list[str], warnings: list[str]):
+    if errors or warnings:
+        severe = len(errors) > 0
+
+        with st.expander(
+            f"{len(errors)} Errors and {len(warnings)} Warnings", expanded=severe
+        ):
+            if errors:
+                message = "Errors: \n\n" + "\n\n".join(
+                    map(lambda msg: f"- {msg}", errors)
+                )
+
+                st.error(message, icon=":material/error:")
+
+            if warnings:
+                message = "Warnings: \n\n" + "\n\n".join(
+                    map(lambda msg: f"- {msg}", warnings)
+                )
+
+                st.warning(message, icon=":material/warning:")
+
+
 def show_edited_range(
     iteration_id: str,
     editable: bool,
@@ -335,17 +357,7 @@ def show_edited_range(
             st.rerun()
 
     if editable:
-        if errors:
-            message = "Errors: \n\n" + "\n\n".join(map(lambda msg: f"- {msg}", errors))
-
-            st.error(message, icon=":material/error:")
-
-        if warnings:
-            message = "Warnings: \n\n" + "\n\n".join(
-                map(lambda msg: f"- {msg}", warnings)
-            )
-
-            st.warning(message, icon=":material/warning:")
+        show_error_and_warnings(errors, warnings)
 
 
 def show_single_var_iteration_widgets():

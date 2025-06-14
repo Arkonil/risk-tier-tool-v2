@@ -489,7 +489,9 @@ name = "risk-tier-tool"
 version = "0.2.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "numpy" },
     { name = "openpyxl" },
+    { name = "pandas" },
     { name = "streamlit" },
     { name = "streamlit-flow-component" },
     { name = "streamlit-sortables" },
@@ -502,7 +504,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "numpy", specifier = ">=2.2.5" },
     { name = "openpyxl", specifier = ">=3.1.5" },
+    { name = "pandas", specifier = ">=2.2.3" },
     { name = "streamlit", specifier = ">=1.45.0" },
     { name = "streamlit-flow-component", specifier = ">=1.6.1" },
     { name = "streamlit-sortables", specifier = ">=0.3.1" },

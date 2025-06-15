@@ -100,20 +100,27 @@ def sidebar_options(iteration_id: str):
         st.rerun()
 
 
-def show_grid_editor(iteration_id: str, key: int):
-    st.subheader("Editable Grid")
-
+def show_grid_editor(iteration_id: str, key: int, default: bool = False):
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
 
     iteration = iteration_graph.iterations[iteration_id]
     iteration_metadata = iteration_graph.iteration_metadata[iteration.id]
 
+    if default:
+        st.markdown("##### Default Grid")
+        iteration_groups = iteration.default_groups
+        iteration_risk_tier_grid = iteration.default_risk_tier_grid
+    else:
+        st.markdown("##### Editable Grid")
+        iteration_groups = iteration.groups
+        iteration_risk_tier_grid = iteration.risk_tier_grid
+
     risk_tier_details, _ = get_risk_tier_details(iteration.id, recheck=False)
 
     grid_columns = risk_tier_details[RTDetCol.RISK_TIER]
 
-    groups = pd.DataFrame({RangeColumn.GROUPS: iteration.groups})
+    groups = pd.DataFrame({RangeColumn.GROUPS: iteration_groups})
     grid_index = groups.copy()
 
     if iteration.var_type == VariableType.NUMERICAL:
@@ -130,7 +137,7 @@ def show_grid_editor(iteration_id: str, key: int):
         )
 
     grid_df = grid_index.merge(
-        iteration.risk_tier_grid.replace(grid_columns),
+        iteration_risk_tier_grid.replace(grid_columns),
         how="left",
         left_index=True,
         right_index=True,
@@ -138,10 +145,10 @@ def show_grid_editor(iteration_id: str, key: int):
 
     column_config = {
         RangeColumn.LOWER_BOUND: st.column_config.NumberColumn(
-            label=RangeColumn.LOWER_BOUND, disabled=False, format="plain"
+            label=RangeColumn.LOWER_BOUND, disabled=default, format="plain"
         ),
         RangeColumn.UPPER_BOUND: st.column_config.NumberColumn(
-            label=RangeColumn.UPPER_BOUND, disabled=False, format="plain"
+            label=RangeColumn.UPPER_BOUND, disabled=default, format="plain"
         ),
     }
 
@@ -150,7 +157,7 @@ def show_grid_editor(iteration_id: str, key: int):
             label=column,
             options=risk_tier_details[RTDetCol.RISK_TIER],
             required=True,
-            disabled=not iteration_metadata["editable"],
+            disabled=(not iteration_metadata["editable"]) or default,
         )
 
     idx = pd.IndexSlice
@@ -176,13 +183,17 @@ def show_grid_editor(iteration_id: str, key: int):
             )
 
     # Grid Editor
+    key = f"{'Default' if default else 'Editable'} Grid-{iteration.id}-{key}"
     edited_grid = st.data_editor(
         grid_df_styled,
         column_config=column_config,
         hide_index=True,
         use_container_width=True,
-        key=f"editable_grid-{iteration.id}-{key}",
+        key=key,
     )
+
+    if default:
+        return
 
     risk_tier_inv_map = pd.Series(
         risk_tier_details.index.values, index=risk_tier_details[RTDetCol.RISK_TIER]
@@ -202,7 +213,7 @@ def show_grid_editor(iteration_id: str, key: int):
 
             if iteration.risk_tier_grid.loc[i, j] != edited_grid.loc[i, j]:
                 iteration.set_risk_tier_grid(i, j, edited_grid.loc[i, j])
-                iteration_graph.add_to_calculation_queue()
+                iteration_graph.add_to_calculation_queue(iteration_id, default=False)
                 needs_rerun = True
 
     # Check if the edited groups are different from the original groups
@@ -222,14 +233,14 @@ def show_grid_editor(iteration_id: str, key: int):
                 curr_ub = edited_groups.loc[index, RangeColumn.UPPER_BOUND]
 
                 iteration.set_group(index, curr_lb, curr_ub)
-                iteration_graph.add_to_calculation_queue()
+                iteration_graph.add_to_calculation_queue(iteration_id, default=False)
                 needs_rerun = True
 
     if needs_rerun:
         st.rerun()
 
 
-def calculate_summ_df(iteration_id: str):
+def calculate_summ_df(iteration_id: str, default: bool = False):
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
     data = session.data
@@ -243,9 +254,9 @@ def calculate_summ_df(iteration_id: str):
     ]
 
     prev_iteration_results = iteration_graph.get_risk_tiers(
-        iteration_graph.get_parent(iteration.id)
+        iteration_graph.get_parent(iteration.id), default=False
     )
-    curr_iteration_results = iteration.get_group_mapping()
+    curr_iteration_results = iteration.get_group_mapping(default=default)
 
     errors = prev_iteration_results["errors"] + curr_iteration_results["errors"]
     warnings = prev_iteration_results["warnings"] + curr_iteration_results["warnings"]
@@ -264,7 +275,10 @@ def calculate_summ_df(iteration_id: str):
 
 
 def show_grid_metric(
-    iteration_id: str, metric_summary: pd.Series, show_group_details: bool
+    iteration_id: str,
+    metric_summary: pd.Series,
+    show_group_details: bool,
+    default: bool = False,
 ):
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
@@ -276,8 +290,15 @@ def show_grid_metric(
     metric_name = metric_summary.name
     risk_tier_details, _ = get_risk_tier_details(iteration.id, recheck=False)
 
+    if default:
+        iteration_groups = iteration.default_groups
+        iteration_risk_tier_grid = iteration.default_risk_tier_grid
+    else:
+        iteration_groups = iteration.groups
+        iteration_risk_tier_grid = iteration.risk_tier_grid
+
     # Index
-    groups = pd.DataFrame({RangeColumn.GROUPS: iteration.groups})
+    groups = pd.DataFrame({RangeColumn.GROUPS: iteration_groups})
     grid_index = groups.copy()
 
     if show_group_details:
@@ -305,7 +326,7 @@ def show_grid_metric(
         metric_summary = (
             pd.merge(
                 left=metric_summary,
-                right=iteration.risk_tier_grid.stack()
+                right=iteration_risk_tier_grid.stack()
                 .rename_axis(index=[GridColumn.GROUP_INDEX, GridColumn.PREV_RISK_TIER])
                 .rename(GridColumn.CURR_RISK_TIER),
                 how="left",
@@ -416,18 +437,22 @@ def show_grid_metric(
     return metric_summary_grid_styled
 
 
-def show_grid_layout(iteration_id: str, metrics: list[Metric]):
-    summ_df, errors, warnings = calculate_summ_df(iteration_id=iteration_id)
+def show_grid_layout(
+    iteration_id: str, metrics: list[Metric], key: int = 0, default: bool = False
+):
+    summ_df, errors, warnings = calculate_summ_df(
+        iteration_id=iteration_id, default=default
+    )
 
     if not metrics:
-        grid_container, col2 = st.container(key="editor_grid_container"), None
+        grid_container, col2 = st.container(key=f"editor_grid_container-{key}"), None
     else:
         grid_container, col2 = st.columns(2)
 
-    status_container = st.container(key="editor_status_container")
+    status_container = st.container(key=f"editor_status_container-{key}")
 
     with grid_container:
-        show_grid_editor(iteration_id=iteration_id, key=1)
+        show_grid_editor(iteration_id=iteration_id, key=key, default=default)
 
     with status_container:
         show_error_and_warnings(errors, warnings)
@@ -446,12 +471,13 @@ def show_grid_layout(iteration_id: str, metrics: list[Metric]):
 
     with col2:
         metric = metrics[0]
-        st.subheader(metric)
+        st.markdown(f"##### {metric}")
         st.dataframe(
             show_grid_metric(
                 iteration_id=iteration_id,
                 metric_summary=summ_df[metric],
                 show_group_details=False,
+                default=default,
             ),
             hide_index=True,
             column_config=column_config,
@@ -467,12 +493,13 @@ def show_grid_layout(iteration_id: str, metrics: list[Metric]):
 
     for metric in metrics[1:]:
         with columns.pop(0):
-            st.subheader(metric)
+            st.markdown(f"##### {metric}")
             st.dataframe(
                 show_grid_metric(
                     iteration_id=iteration_id,
                     metric_summary=summ_df[metric],
                     show_group_details=show_details,
+                    default=default,
                 ),
                 hide_index=True,
                 column_config=column_config,
@@ -480,10 +507,12 @@ def show_grid_layout(iteration_id: str, metrics: list[Metric]):
             show_details = not show_details
 
 
-def show_liner_layout(iteration_id: str, metrics: list[Metric]):
-    summ_df, errors, warnings = calculate_summ_df(iteration_id=iteration_id)
+def show_liner_layout(iteration_id: str, metrics: list[Metric], key: int = 0):
+    summ_df, errors, warnings = calculate_summ_df(
+        iteration_id=iteration_id, default=False
+    )
 
-    show_grid_editor(iteration_id=iteration_id, key=1)
+    show_grid_editor(iteration_id=iteration_id, key=key, default=False)
 
     show_error_and_warnings(errors, warnings)
 
@@ -497,12 +526,13 @@ def show_liner_layout(iteration_id: str, metrics: list[Metric]):
     }
 
     for metric in metrics:
-        st.subheader(metric)
+        st.markdown(f"##### {metric}")
         st.dataframe(
             show_grid_metric(
                 iteration_id=iteration_id,
                 metric_summary=summ_df[metric],
                 show_group_details=True,
+                default=False,
             ),
             hide_index=True,
             column_config=column_config,
@@ -513,7 +543,7 @@ def show_double_var_iteration_widgets():
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
 
-    iteration = iteration_graph.iterations[iteration_graph.current_node_id]
+    iteration = iteration_graph.current_iteration
     iteration_metadata = iteration_graph.iteration_metadata[iteration.id]
 
     split_view_enabled = iteration_metadata["split_view_enabled"]
@@ -541,28 +571,42 @@ def show_double_var_iteration_widgets():
     if message:
         st.error(message, icon=":material/error:")
 
+    ## Default View
+    st.markdown("## Default View")
+    show_grid_layout(
+        iteration_id=iteration.id, metrics=showing_metrics[:1], key=0, default=True
+    )
+
+    st.divider()
+
+    st.markdown("## Editable View")
     ## Category Editor
     if iteration.var_type == VariableType.CATEGORICAL:
         show_category_editor(iteration.id)
 
     ## Grids
     if split_view_enabled:
-        show_grid_layout(iteration_id=iteration.id, metrics=showing_metrics)
+        show_grid_layout(
+            iteration_id=iteration.id, metrics=showing_metrics, key=1, default=False
+        )
     else:
-        show_liner_layout(iteration_id=iteration.id, metrics=showing_metrics)
+        show_liner_layout(iteration_id=iteration.id, metrics=showing_metrics, key=2)
 
-    with st.expander("Final Risk Tier View"):
-        iter_id = iteration.id
+    iter_id = iteration.id
+
+    with st.container(border=True):
+        st.markdown("## Previous Iterations")
 
         while iter_id is not None:
-            st.title(f"Iteration #{iter_id}")
+            st.markdown(f"#### Iteration #{iter_id}")
             st.markdown(
-                f"##### Variable: `{iteration_graph.iterations[iter_id].variable.name}`"
+                f"###### Variable: `{iteration_graph.iterations[iter_id].variable.name}`"
             )
             show_edited_range(
                 iteration_id=iter_id,
                 editable=False,
                 scalars_enabled=iteration_metadata["scalars_enabled"],
                 metrics=showing_metrics,
+                default=False,
             )
             iter_id = iteration_graph.get_parent(iter_id)

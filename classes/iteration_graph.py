@@ -1,6 +1,5 @@
 import typing as t
 
-import numpy as np
 import pandas as pd
 
 from classes.constants import (
@@ -46,7 +45,9 @@ class IterationGraph:
         self.connections: dict[str, list[str]] = {}
         self.iteration_metadata: dict[str, IterationMetadata] = {}
 
-        self._iteration_outputs: dict[str, IterationOutput] = {}
+        self._iteration_outputs: dict[
+            tuple[str, t.Literal["default", "edited"]], IterationOutput
+        ] = {}
 
         self._selected_node_id: str | None = None
         self._current_node_id: str | None = None
@@ -150,24 +151,6 @@ class IterationGraph:
 
         return descendants
 
-    def get_parent_tiers(self, node_id: str = None) -> list[int]:
-        if node_id is None:
-            node_id = self.current_node_id
-
-        if self.is_root(node_id):
-            return []
-
-        parent_node_id = self.get_parent(node_id)
-        parent_node = self.iterations[parent_node_id]
-
-        if parent_node.var_count == 1:
-            return parent_node.groups.index.tolist()
-
-        if parent_node.var_count == 2:
-            return np.unique(parent_node.risk_tier_grid.values.flatten()).tolist()
-
-        raise ValueError(f"Invalid iteration type: {type(parent_node)}")
-
     def get_root_iter_id(self, node_id: str = None) -> str:
         if node_id is None:
             node_id = self.current_node_id
@@ -241,7 +224,8 @@ class IterationGraph:
         self.iteration_metadata[new_node_id] = (
             DefaultOptions().default_iteation_metadata
         )
-        self._recalculation_required.add(new_node_id)
+        self._recalculation_required.add((new_node_id, "default"))
+        self._recalculation_required.add((new_node_id, "edited"))
 
         return iteration
 
@@ -283,6 +267,8 @@ class IterationGraph:
             DefaultOptions().default_iteation_metadata
         )
         self.connections.setdefault(previous_node_id, []).append(new_node_id)
+        self._recalculation_required.add((new_node_id, "default"))
+        self._recalculation_required.add((new_node_id, "edited"))
 
         return iteration
 
@@ -293,8 +279,11 @@ class IterationGraph:
             if node in self.iterations:
                 del self.iterations[node]
 
-            if node in self._iteration_outputs:
-                del self._iteration_outputs[node]
+            if (node, "default") in self._iteration_outputs:
+                del self._iteration_outputs[(node, "default")]
+
+            if (node, "edited") in self._iteration_outputs:
+                del self._iteration_outputs[(node, "edited")]
 
             if node in self.connections:
                 del self.connections[node]
@@ -306,38 +295,50 @@ class IterationGraph:
 
         self.select_graph_view()
 
-    def add_to_calculation_queue(self, node_id: str = None):
+    def add_to_calculation_queue(
+        self, node_id: str = None, default: t.Literal[False] = False
+    ):
         if node_id is None:
             node_id = self.current_node_id
 
-        self._recalculation_required.add(node_id)
+        default_or_edited = "default" if default else "edited"
+
+        self._recalculation_required.add((node_id, default_or_edited))
         for descendant in self.get_descendants(node_id):
-            self._recalculation_required.add(descendant)
+            self._recalculation_required.add((descendant, "default"))
+            self._recalculation_required.add((descendant, "edited"))
 
-    def get_risk_tiers(self, node_id: str = None) -> IterationOutput:
+    def get_risk_tiers(
+        self, node_id: str = None, default: bool = False
+    ) -> IterationOutput:
         if node_id is None:
             node_id = self.current_node_id
 
-        if node_id not in self._iteration_outputs:
-            self._recalculation_required.add(node_id)
+        default_or_edited = "default" if default else "edited"
+
+        if (node_id, default_or_edited) not in self._iteration_outputs:
+            self._recalculation_required.add((node_id, default_or_edited))
 
         # No calculation required. Taking from cache.
-        if node_id not in self._recalculation_required:
-            return self._iteration_outputs[node_id]
+        if (node_id, default_or_edited) not in self._recalculation_required:
+            return self._iteration_outputs[(node_id, default_or_edited)]
 
         # Calculation Required.
         previous_risk_tiers = None
 
         if not self.is_root(node_id):
-            previous_node_output = self.get_risk_tiers(self.get_parent(node_id))
+            previous_node_output = self.get_risk_tiers(
+                self.get_parent(node_id), default=False
+            )
             previous_risk_tiers = previous_node_output["risk_tier_column"]
 
         iteration_output = self.iterations[node_id].get_risk_tiers(
-            previous_risk_tiers=previous_risk_tiers
+            previous_risk_tiers=previous_risk_tiers,
+            default=default,
         )
 
-        self._iteration_outputs[node_id] = iteration_output
-        self._recalculation_required.remove(node_id)
+        self._iteration_outputs[(node_id, default_or_edited)] = iteration_output
+        self._recalculation_required.remove((node_id, default_or_edited))
 
         return iteration_output
 

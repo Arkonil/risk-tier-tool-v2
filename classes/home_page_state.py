@@ -8,5 +8,8 @@ class HomePageState:
         self.scalars_enabled = True
         self.metrics = DefaultOptions().default_metrics
         self.comparison_mode = False
-        self.selected_iterations = [None, None]
+        self.selected_iterations: list[tuple[str, bool]] = [
+            [None, None],
+            [None, None],
+        ]
         self.comparison_view_mode: t.Literal["column", "row"] = "column"

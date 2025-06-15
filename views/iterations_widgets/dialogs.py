@@ -130,5 +130,5 @@ def set_groups(iteration_id: str):
         st.rerun(scope="fragment")
 
     if st.button("Submit"):
-        iteration_graph.add_to_calculation_queue(iteration_id)
+        iteration_graph.add_to_calculation_queue(iteration_id, default=False)
         st.rerun()

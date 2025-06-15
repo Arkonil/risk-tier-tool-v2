@@ -93,7 +93,9 @@ def show_category_editor(iteration_id: str):
 
                 if group != new_group:
                     iteration.set_group(group_index, new_group)
-                    iteration_graph.add_to_calculation_queue(iteration.id)
+                    iteration_graph.add_to_calculation_queue(
+                        iteration.id, default=False
+                    )
                     st.rerun()
 
 
@@ -179,6 +181,7 @@ def show_edited_range(
     editable: bool,
     scalars_enabled: bool,
     metrics: list[Metric],
+    default: bool,
     key: int = 0,
 ):
     session: Session = st.session_state["session"]
@@ -189,10 +192,10 @@ def show_edited_range(
 
     risk_tier_details, _ = get_risk_tier_details(iteration.id, recheck=False)
 
-    if iteration.iter_type == IterationType.DOUBLE:
+    if iteration.iter_type == IterationType.DOUBLE or default:
         editable = False
 
-    iteration_output = iteration_graph.get_risk_tiers(iteration.id)
+    iteration_output = iteration_graph.get_risk_tiers(iteration.id, default=default)
 
     new_risk_tiers = iteration_output["risk_tier_column"]
     errors = iteration_output["errors"]
@@ -203,7 +206,10 @@ def show_edited_range(
 
     if iteration.iter_type == IterationType.SINGLE:
         groups = groups.merge(
-            iteration.groups, how="left", left_index=True, right_index=True
+            iteration.default_groups if default else iteration.groups,
+            how="left",
+            left_index=True,
+            right_index=True,
         )
 
         if iteration.var_type == VariableType.NUMERICAL:
@@ -349,7 +355,7 @@ def show_edited_range(
                 new_ub = edited_groups.loc[index, RangeColumn.UPPER_BOUND]
 
                 iteration.set_group(index, new_lb, new_ub)
-                iteration_graph.add_to_calculation_queue(iteration.id)
+                iteration_graph.add_to_calculation_queue(iteration.id, default=False)
                 needs_rerun = True
 
         if needs_rerun:
@@ -391,6 +397,16 @@ def show_single_var_iteration_widgets():
     if message:
         st.error(message, icon=":material/error:")
 
+    ## Default View
+    show_edited_range(
+        iteration_id=iteration.id,
+        editable=True,
+        scalars_enabled=iteration_metadata["scalars_enabled"],
+        metrics=showing_metrics,
+        default=True,
+        key=0,
+    )
+
     ## Category Editor
     if iteration.var_type == VariableType.CATEGORICAL:
         show_category_editor(iteration.id)
@@ -401,4 +417,6 @@ def show_single_var_iteration_widgets():
         editable=True,
         scalars_enabled=iteration_metadata["scalars_enabled"],
         metrics=showing_metrics,
+        default=False,
+        key=1,
     )

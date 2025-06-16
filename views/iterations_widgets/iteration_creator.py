@@ -4,9 +4,17 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from classes.constants import RTDetCol, IterationType, VariableType
+from classes.constants import (
+    DefaultOptions,
+    LossRateTypes,
+    RTDetCol,
+    IterationType,
+    VariableType,
+)
 from classes.session import Session
 from views.iterations_widgets.navigation import show_navigation_buttons
+from views.iterations_widgets.single_var_iteration import show_error_and_warnings
+from views.variable_selector import show_variable_selector_dialog
 
 
 def show_load_data_first_error() -> bool:
@@ -24,6 +32,17 @@ def show_load_data_first_error() -> bool:
     return False
 
 
+def sidebar_options():
+    st.button(
+        label="Set Variables",
+        use_container_width=True,
+        icon=":material/data_table:",
+        help="Select variables for calculations",
+        type="primary",
+        on_click=show_variable_selector_dialog,
+    )
+
+
 def show_iteration_creation_page() -> None:
     if show_load_data_first_error():
         return
@@ -31,6 +50,12 @@ def show_iteration_creation_page() -> None:
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
     options = session.options
+    data = session.data
+    dlr_scalar = session.dlr_scalars
+    ulr_scalar = session.ulr_scalars
+
+    with st.sidebar:
+        sidebar_options()
 
     show_navigation_buttons()
 
@@ -58,8 +83,32 @@ def show_iteration_creation_page() -> None:
             label_visibility="collapsed",
         )
 
-        st.markdown("##### ")
-        auto_band = st.checkbox("Create Automatic Banding", value=True)
+        col11, col12 = st.columns(2)
+
+        with col11:
+            auto_band = st.checkbox("Create Automatic Banding", value=False)
+
+        if auto_band:
+            use_scalars = col12.checkbox("Use Scalars", value=True)
+
+            st.markdown("##### Loss Rate Type")
+            all_options = list(map(lambda m: m.value, LossRateTypes))
+            default_option = DefaultOptions().default_iteation_metadata[
+                "loss_rate_type"
+            ]
+            loss_rate_type = LossRateTypes(
+                st.selectbox(
+                    label="Loss Rate Type",
+                    options=all_options,
+                    label_visibility="collapsed",
+                    index=all_options.index(default_option),
+                )
+            )
+
+        else:
+            loss_rate_type = DefaultOptions().default_iteation_metadata[
+                "loss_rate_type"
+            ]
 
     if iteration_graph.current_iter_create_mode == IterationType.SINGLE:
         previous_node_id = None
@@ -120,7 +169,10 @@ def show_iteration_creation_page() -> None:
     }
 
     with col2:
-        st.markdown("##### Select Risk Tiers")
+        if iteration_graph.current_iter_create_mode == IterationType.SINGLE:
+            st.markdown("##### Select Risk Tiers")
+        else:
+            st.markdown("##### Selected Risk Tiers *(from Root Node)*")
 
         edited_rt_details = st.data_editor(
             data=rt_details_styled,
@@ -142,7 +194,44 @@ def show_iteration_creation_page() -> None:
             edited_rt_details[edited_rt_details[RTDetCol.SELECTED]].index
         ].reset_index(drop=False)
 
-    if st.button("Create", type="primary"):
+    errors = []
+
+    if auto_band:
+        if loss_rate_type == LossRateTypes.DLR and (
+            data.var_dlr_wrt_off is None or data.var_avg_bal is None
+        ):
+            errors.append(
+                "Variables for :red-badge[`$ Write Off`] and :red-badge[`Avg Balance`] are not selected."
+            )
+
+        if loss_rate_type == LossRateTypes.ULR and data.var_unt_wrt_off is None:
+            errors.append("Variable for :red-badge[`# Write Off`] is not selected.")
+
+        if use_scalars:
+            if loss_rate_type == LossRateTypes.DLR and np.isnan(
+                dlr_scalar.portfolio_scalar
+            ):
+                errors.append("Scalars for :red-badge[`$ Write Off`] are not set.")
+
+            if loss_rate_type == LossRateTypes.ULR and np.isnan(
+                ulr_scalar.portfolio_scalar
+            ):
+                errors.append("Scalars for :red-badge[`# Write Off`] are not set.")
+
+    if errors:
+        show_error_and_warnings(errors, [])
+
+    if iteration_graph.current_iter_create_mode == IterationType.SINGLE:
+        button_label = "Create Root Iteration"
+    else:
+        button_label = "Create Child Iteration"
+
+    if st.button(
+        label=button_label,
+        type="primary",
+        disabled=bool(errors),
+        icon=":material/add:",
+    ):
         variable_dtype = VariableType(variable_dtype)
         variable = session.data.load_column(variable_name, variable_dtype)
 
@@ -155,6 +244,23 @@ def show_iteration_creation_page() -> None:
                 variable=variable,
                 variable_dtype=variable_dtype,
                 risk_tier_details=risk_tier_details,
+                loss_rate_type=loss_rate_type,
+                auto_band=auto_band,
+                dlr_scalar=dlr_scalar if auto_band and use_scalars else None,
+                ulr_scalar=ulr_scalar if auto_band and use_scalars else None,
+                dlr_wrt_off=data.load_column(
+                    data.var_dlr_wrt_off, VariableType.NUMERICAL
+                )
+                if auto_band
+                else None,
+                unt_wrt_off=data.load_column(
+                    data.var_unt_wrt_off, VariableType.NUMERICAL
+                )
+                if auto_band
+                else None,
+                avg_bal=data.load_column(data.var_avg_bal, VariableType.NUMERICAL)
+                if auto_band
+                else None,
             )
 
             iteration_graph.select_current_node_id(iteration.id)
@@ -170,11 +276,3 @@ def show_iteration_creation_page() -> None:
 
             iteration_graph.select_current_node_id(iteration.id)
             st.rerun()
-
-    st.write({
-        "variable_name": variable_name,
-        "iteration_name": iteration_name,
-        "variable_type": variable_dtype,
-        "risk_tier_details": risk_tier_details,
-        "auto_band": auto_band,
-    })

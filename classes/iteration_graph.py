@@ -2,10 +2,12 @@ import typing as t
 
 import pandas as pd
 
+from classes.auto_band import create_auto_bands
 from classes.constants import (
     DefaultOptions,
     IterationMetadata,
     IterationType,
+    LossRateTypes,
     RTDetCol,
     VariableType,
 )
@@ -16,6 +18,7 @@ from classes.iteration import (
     NumericalDoubleVarIteration,
     NumericalSingleVarIteration,
 )
+from classes.scalars import Scalar
 from classes.utils import integer_generator
 
 
@@ -200,6 +203,13 @@ class IterationGraph:
         variable: pd.Series,
         variable_dtype: VariableType,
         risk_tier_details: pd.DataFrame,
+        loss_rate_type: LossRateTypes,
+        auto_band: bool,
+        dlr_scalar: Scalar = None,
+        ulr_scalar: Scalar = None,
+        dlr_wrt_off: pd.Series = None,
+        unt_wrt_off: pd.Series = None,
+        avg_bal: pd.Series = None,
     ) -> NumericalSingleVarIteration | CategoricalSingleVarIteration:
         new_node_id = new_id(current_ids=self.iterations.keys())
 
@@ -221,9 +231,27 @@ class IterationGraph:
             raise ValueError(f"Invalid variable type: {variable_dtype}")
 
         self.iterations[new_node_id] = iteration
-        self.iteration_metadata[new_node_id] = (
-            DefaultOptions().default_iteation_metadata
-        )
+        self.iteration_metadata[new_node_id] = {
+            **DefaultOptions().default_iteation_metadata,
+            "loss_rate_type": loss_rate_type,
+        }
+
+        if auto_band:
+            groups = create_auto_bands(
+                variable=variable,
+                mask=pd.Series(True, index=variable.index),
+                risk_tier_details=risk_tier_details,
+                dlr_scalar=dlr_scalar,
+                ulr_scalar=ulr_scalar,
+                loss_rate_type=loss_rate_type,
+                dlr_wrt_off=dlr_wrt_off,
+                unt_wrt_off=unt_wrt_off,
+                avg_bal=avg_bal,
+            )
+
+            iteration._default_groups = groups
+            iteration._groups = groups
+
         self._recalculation_required.add((new_node_id, "default"))
         self._recalculation_required.add((new_node_id, "edited"))
 
@@ -263,9 +291,12 @@ class IterationGraph:
             raise ValueError(f"Invalid variable type: {variable_dtype}")
 
         self.iterations[new_node_id] = iteration
-        self.iteration_metadata[new_node_id] = (
-            DefaultOptions().default_iteation_metadata
-        )
+        self.iteration_metadata[new_node_id] = {
+            **DefaultOptions().default_iteation_metadata,
+            "loss_rate_type": self.iteration_metadata[previous_node_id][
+                "loss_rate_type"
+            ],
+        }
         self.connections.setdefault(previous_node_id, []).append(new_node_id)
         self._recalculation_required.add((new_node_id, "default"))
         self._recalculation_required.add((new_node_id, "edited"))

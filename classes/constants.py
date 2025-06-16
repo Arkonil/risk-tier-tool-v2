@@ -88,6 +88,7 @@ class IterationMetadata(t.TypedDict):
     metrics: pd.DataFrame
     scalars_enabled: bool
     split_view_enabled: bool
+    loss_rate_type: LossRateTypes
 
 
 class DefaultOptions(Singleton):
@@ -141,6 +142,7 @@ class DefaultOptions(Singleton):
             "metrics": self.default_metrics,
             "scalars_enabled": True,
             "split_view_enabled": False,
+            "loss_rate_type": LossRateTypes.DLR,
         }
 
 

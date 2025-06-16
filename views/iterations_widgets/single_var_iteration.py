@@ -158,9 +158,15 @@ def show_error_and_warnings(errors: list[str], warnings: list[str]):
     if errors or warnings:
         severe = len(errors) > 0
 
-        with st.expander(
-            f"{len(errors)} Errors and {len(warnings)} Warnings", expanded=severe
-        ):
+        counts = []
+        if errors:
+            counts.append(f"{len(errors)} Errors")
+        if warnings:
+            counts.append(f"{len(warnings)} Warnings")
+
+        count_label = " and ".join(counts)
+
+        with st.expander(count_label, expanded=severe):
             if errors:
                 message = "Errors: \n\n" + "\n\n".join(
                     map(lambda msg: f"- {msg}", errors)

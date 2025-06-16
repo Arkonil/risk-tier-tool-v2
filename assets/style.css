@@ -3,3 +3,23 @@
   border-left-color: gray;
   padding-left: 25px;
 }
+
+div[data-testid=stAlertContentError] span.is-badge code {
+  color: #ffdede;
+  font-size: inherit;
+}
+
+div[data-testid=stAlertContentInfo] span.is-badge code {
+  color: #c7ebff;
+  font-size: inherit;
+}
+
+div[data-testid=stAlertContentWarning] span.is-badge code {
+  color: #ffffc2;
+  font-size: inherit;
+}
+
+div[data-testid=stAlertContentSuccess] span.is-badge code {
+  color: #dffde9;
+  font-size: inherit;
+}

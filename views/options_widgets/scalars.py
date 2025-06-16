@@ -158,9 +158,9 @@ def show_scalar_calculation() -> None:
         scalar_edit_widget(session.ulr_scalars, session.data)
 
     st.info(
-        ":blue-badge[**Risk Scalar Factor**] is calculated as "
+        ":blue-badge[`Risk Scalar Factor`] is calculated as "
         ":blue-badge[`max(portfolio_scalar * maturity_adjustment_factor, 1)`], "
         "as the loss rate at :blue-badge[`n + 1`] th MOB will be more than or eqaul to "
-        "the loss rate of :blue-badge[`n`] th MOB",
+        "the loss rate of :blue-badge[`n`] th MOB.",
         icon=":material/info:",
     )

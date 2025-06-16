@@ -234,7 +234,7 @@ class Data:
                 self.df[preferred_column_name] = temp_column
                 return self.df[preferred_column_name]
             except ValueError:
-                self.df[alternative_column_name] = column
+                self.df[alternative_column_name] = column.astype("category")
                 return self.df[alternative_column_name]
 
         self.df[preferred_column_name] = column.astype("category")

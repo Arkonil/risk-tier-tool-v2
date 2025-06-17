@@ -1,3 +1,4 @@
+import itertools
 import typing as t
 
 import pandas as pd
@@ -9,6 +10,7 @@ from classes.constants import (
     IterationType,
     LossRateTypes,
     RTDetCol,
+    RangeColumn,
     VariableType,
 )
 from classes.iteration import (
@@ -249,6 +251,19 @@ class IterationGraph:
                 avg_bal=avg_bal,
             )
 
+            if variable_dtype == VariableType.NUMERICAL:
+                groups = (
+                    groups.apply(
+                        lambda row: (
+                            row[RangeColumn.LOWER_BOUND],
+                            row[RangeColumn.UPPER_BOUND],
+                        ),
+                        axis=1,
+                    )
+                    .rename(RangeColumn.GROUPS)
+                    .rename_axis(index=[""])
+                )
+
             iteration._default_groups = groups
             iteration._groups = groups
 
@@ -263,6 +278,13 @@ class IterationGraph:
         variable: pd.Series,
         variable_dtype: VariableType,
         previous_node_id: str,
+        auto_band: bool,
+        upgrade_downgrade_limit: int = None,
+        dlr_scalar: Scalar = None,
+        ulr_scalar: Scalar = None,
+        dlr_wrt_off: pd.Series = None,
+        unt_wrt_off: pd.Series = None,
+        avg_bal: pd.Series = None,
     ) -> NumericalDoubleVarIteration | CategoricalDoubleVarIteration:
         if previous_node_id not in self.iterations:
             raise ValueError(
@@ -290,14 +312,97 @@ class IterationGraph:
         else:
             raise ValueError(f"Invalid variable type: {variable_dtype}")
 
+        loss_rate_type = self.iteration_metadata[previous_node_id]["loss_rate_type"]
+
         self.iterations[new_node_id] = iteration
         self.iteration_metadata[new_node_id] = {
             **DefaultOptions().default_iteation_metadata,
-            "loss_rate_type": self.iteration_metadata[previous_node_id][
-                "loss_rate_type"
-            ],
+            "loss_rate_type": loss_rate_type,
         }
         self.connections.setdefault(previous_node_id, []).append(new_node_id)
+
+        if auto_band:
+            previous_iter_output = self.get_risk_tiers(previous_node_id, default=False)
+
+            if not previous_iter_output["errors"]:
+                previous_risk_tiers = previous_iter_output["risk_tier_column"]
+                unique_tiers = (
+                    previous_risk_tiers.dropna()
+                    .drop_duplicates(ignore_index=True)
+                    .sort_values()
+                )
+                rt_groups: dict[int, pd.Series] = {}
+
+                for rt in unique_tiers:
+                    groups = create_auto_bands(
+                        variable=variable,
+                        mask=previous_risk_tiers == rt,
+                        risk_tier_details=risk_tier_details.iloc[
+                            max(0, rt - upgrade_downgrade_limit) : rt
+                            + upgrade_downgrade_limit
+                            + 1
+                        ].copy(),
+                        dlr_scalar=dlr_scalar,
+                        ulr_scalar=ulr_scalar,
+                        loss_rate_type=loss_rate_type,
+                        dlr_wrt_off=dlr_wrt_off,
+                        unt_wrt_off=unt_wrt_off,
+                        avg_bal=avg_bal,
+                    )
+
+                    if variable_dtype == VariableType.NUMERICAL:
+                        groups = (
+                            groups.replace({
+                                groups.min().min(): variable.min() - 1,
+                                groups.max().max(): variable.max(),
+                            })
+                            .apply(
+                                lambda row: (
+                                    row[RangeColumn.LOWER_BOUND],
+                                    row[RangeColumn.UPPER_BOUND],
+                                ),
+                                axis=1,
+                            )
+                            .rename(RangeColumn.GROUPS)
+                            .rename_axis(index=[""])
+                        )
+
+                    rt_groups[rt] = groups
+
+                if variable_dtype == VariableType.NUMERICAL:
+                    cut_points = map(
+                        lambda s: list(sum(s.to_list(), ())), rt_groups.values()
+                    )
+                    cut_points = list(sorted(list(set(sum(cut_points, [])))))
+                    pairs = itertools.pairwise(cut_points)
+
+                    groups = pd.Series(pairs, name=RangeColumn.GROUPS)
+                    risk_tier_grid = pd.DataFrame(
+                        index=groups.index, columns=risk_tier_details.index
+                    )
+
+                    for i in risk_tier_grid.index:
+                        for j in risk_tier_grid.columns:
+                            lower_bound = groups[i][0]
+                            upper_bound = groups[i][1]
+
+                            rt_group = rt_groups.get(j)
+                            if rt_group is None:
+                                risk_tier_grid.loc[i, j] = j
+                                continue
+
+                            for index, (lb, ub) in rt_group.items():
+                                if lb <= lower_bound and ub >= upper_bound:
+                                    risk_tier_grid.loc[i, j] = index
+                                    break
+                            else:
+                                risk_tier_grid.loc[i, j] = j
+
+                    iteration._default_groups = groups
+                    iteration._groups = groups
+                    iteration._risk_tier_grid = risk_tier_grid
+                    iteration.default_risk_tier_grid = risk_tier_grid
+
         self._recalculation_required.add((new_node_id, "default"))
         self._recalculation_required.add((new_node_id, "edited"))
 

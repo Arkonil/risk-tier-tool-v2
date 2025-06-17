@@ -27,41 +27,52 @@ def create_auto_numeric_bands(
     numerators: pd.Series,
     denominators: pd.Series,
 ) -> pd.DataFrame:
-    data = pd.DataFrame({
-        DataColumns.VARIABLE: variable,
-        DataColumns.NUMERATOR: numerators,
-        DataColumns.DENOMINATOR: denominators,
-    })
+    transformed_variable = False
 
-    # Check Monotonicity
-    mtc = (
-        data.groupby(DataColumns.VARIABLE)[
-            [DataColumns.NUMERATOR, DataColumns.DENOMINATOR]
-        ]
-        .sum()
-        .sort_index()
-    )
-    mtc[DataColumns.RATIO] = mtc[DataColumns.NUMERATOR] / mtc[DataColumns.DENOMINATOR]
+    while True:
+        data = pd.DataFrame({
+            DataColumns.VARIABLE: variable,
+            DataColumns.NUMERATOR: numerators,
+            DataColumns.DENOMINATOR: denominators,
+        })
 
-    # hv_imp_hr = High Value of the variable implies high risk
-    hv_imp_hr = (
-        np.nan_to_num(np.heaviside(mtc[DataColumns.RATIO].diff(), np.nan) * 2 - 1).sum()
-        >= 0
-    )
+        # Check Monotonicity
+        mtc = (
+            data.groupby(DataColumns.VARIABLE)[
+                [DataColumns.NUMERATOR, DataColumns.DENOMINATOR]
+            ]
+            .sum()
+            .sort_index()
+        )
 
-    if not hv_imp_hr:
-        mtc = mtc.iloc[::-1]
+        mtc[DataColumns.RATIO] = (
+            mtc[DataColumns.NUMERATOR] / mtc[DataColumns.DENOMINATOR]
+        )
+
+        # hv_imp_lr = High Value of the variable implies Low risk
+        hv_imp_hr = (
+            np.nan_to_num(
+                np.heaviside(mtc[DataColumns.RATIO].diff(), np.nan) * 2 - 1
+            ).sum()
+            >= 0
+        )
+
+        if hv_imp_hr:
+            break
+
+        variable = variable * -1
+        transformed_variable = True
 
     groups = pd.DataFrame(
         columns=[RangeColumn.LOWER_BOUND, RangeColumn.UPPER_BOUND],
         index=risk_tier_details.index,
     )
 
-    if hv_imp_hr:
-        # negating a small positive number as intervals are left open & right closed
-        current_lower_bound = mtc.index[0] - 1
-    else:
-        current_upper_bound = mtc.index[0]
+    # negating a small positive number as intervals are left open & right closed
+    delta = 1
+
+    current_lower_bound = mtc.index[0] - delta
+    last_value = current_lower_bound
 
     if loss_rate_type == LossRateTypes.DLR:
         rsf_column = RangeColumn.RISK_SCALAR_FACTOR_DLR
@@ -80,38 +91,46 @@ def create_auto_numeric_bands(
         ) * rsf
         mask = (cumm_loss_rates < upper_rate).cummin()
 
-        if hv_imp_hr:
+        if len(mtc[mask]) > 0:
             last_value = mtc[mask].index[-1]
-            groups.loc[index, RangeColumn.LOWER_BOUND] = current_lower_bound
-            groups.loc[index, RangeColumn.UPPER_BOUND] = last_value
 
-            mtc = mtc[~mask]
-            current_lower_bound = last_value
-        else:
-            first_value = mtc[~mask].index[0]
+        mtc_upper = mtc[mask].copy()
+        mtc_lower = mtc[~mask].copy()
 
-            groups.loc[index, RangeColumn.LOWER_BOUND] = first_value
-            groups.loc[index, RangeColumn.UPPER_BOUND] = current_upper_bound
+        mtc_upper = mtc_upper.iloc[::-1]
 
-            mtc = mtc[~mask]
-            current_upper_bound = first_value
+        mtc_upper[DataColumns.NUMERATOR + "_cum"] = mtc_upper[
+            DataColumns.NUMERATOR
+        ].cumsum()
+        mtc_upper[DataColumns.DENOMINATOR + "_cum"] = mtc_upper[
+            DataColumns.DENOMINATOR
+        ].cumsum()
 
-            if len(mtc) == 0:
-                break
+        mtc_upper = mtc_upper.iloc[::-1]
 
-    if hv_imp_hr:
-        groups.loc[groups.index[-1], RangeColumn.UPPER_BOUND] = variable.max()
-    else:
-        groups.loc[groups.index[-1], RangeColumn.LOWER_BOUND] = variable.min() - 1
+        cumm_loss_rates = (
+            mtc_upper[DataColumns.NUMERATOR + "_cum"]
+            / mtc_upper[DataColumns.DENOMINATOR + "_cum"]
+        ) * rsf
+        mask = (cumm_loss_rates < upper_rate).cummin()
 
-    groups = (
-        groups.apply(
-            lambda row: (row[RangeColumn.LOWER_BOUND], row[RangeColumn.UPPER_BOUND]),
-            axis=1,
-        )
-        .rename(RangeColumn.GROUPS)
-        .rename_axis(index=[""])
-    )
+        if len(mtc_upper[mask]) > 0:
+            last_value = mtc_upper[mask].index[-1]
+
+        groups.loc[index, RangeColumn.LOWER_BOUND] = current_lower_bound
+        groups.loc[index, RangeColumn.UPPER_BOUND] = last_value
+
+        mtc = pd.concat([mtc_upper[~mask], mtc_lower], axis=0)
+        current_lower_bound = last_value
+
+    groups.loc[groups.index[-1], RangeColumn.UPPER_BOUND] = variable.max()
+
+    if transformed_variable:
+        lower_bound = groups[RangeColumn.LOWER_BOUND]
+        upper_bound = groups[RangeColumn.UPPER_BOUND]
+
+        groups[RangeColumn.LOWER_BOUND] = -upper_bound - delta
+        groups[RangeColumn.UPPER_BOUND] = -lower_bound - delta
 
     return groups
 
@@ -122,7 +141,7 @@ def create_auto_categorical_bands(
     loss_rate_type: LossRateTypes,
     numerators: pd.Series,
     denominators: pd.Series,
-) -> pd.DataFrame:
+) -> pd.Series:
     data = pd.DataFrame({
         DataColumns.VARIABLE: variable,
         DataColumns.NUMERATOR: numerators,

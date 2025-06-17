@@ -86,26 +86,41 @@ def show_iteration_creation_page() -> None:
         col11, col12 = st.columns(2)
 
         with col11:
-            auto_band = st.checkbox("Create Automatic Banding", value=False)
+            auto_band = st.checkbox("Create Automatic Banding", value=True)
 
         if auto_band:
             use_scalars = col12.checkbox("Use Scalars", value=True)
 
-            st.markdown("##### Loss Rate Type")
-            all_options = list(map(lambda m: m.value, LossRateTypes))
-            default_option = DefaultOptions().default_iteation_metadata[
-                "loss_rate_type"
-            ]
-            loss_rate_type = LossRateTypes(
-                st.selectbox(
-                    label="Loss Rate Type",
-                    options=all_options,
-                    label_visibility="collapsed",
-                    index=all_options.index(default_option),
+            if iteration_graph.current_iter_create_mode == IterationType.SINGLE:
+                all_options = list(map(lambda m: m.value, LossRateTypes))
+                default_option = DefaultOptions().default_iteation_metadata[
+                    "loss_rate_type"
+                ]
+
+                st.markdown("##### Loss Rate Type")
+                loss_rate_type = LossRateTypes(
+                    st.selectbox(
+                        label="Loss Rate Type",
+                        options=all_options,
+                        label_visibility="collapsed",
+                        index=all_options.index(default_option),
+                    )
                 )
-            )
+
+            if iteration_graph.current_iter_create_mode == IterationType.DOUBLE:
+                st.markdown("##### Upgrade/Downgrade Limit")
+                upgrade_downgrade_limit = st.number_input(
+                    label="Upgrade Downgrade Limit",
+                    min_value=0,
+                    step=1,
+                    format="%d",
+                    label_visibility="collapsed",
+                    key="upgrade_downgrade_limit",
+                    value=1,
+                )
 
         else:
+            use_scalars = False
             loss_rate_type = DefaultOptions().default_iteation_metadata[
                 "loss_rate_type"
             ]
@@ -116,6 +131,9 @@ def show_iteration_creation_page() -> None:
     else:
         previous_node_id = iteration_graph.current_iter_create_parent_id
         rt_details = iteration_graph.get_risk_tier_details(previous_node_id).copy()
+        loss_rate_type = iteration_graph.iteration_metadata[previous_node_id][
+            "loss_rate_type"
+        ]
 
     # Column Modification
     rt_details[RTDetCol.LOWER_RATE] = (rt_details[RTDetCol.LOWER_RATE] * 100).map(
@@ -181,8 +199,6 @@ def show_iteration_creation_page() -> None:
                 RTDetCol.RISK_TIER,
                 RTDetCol.LOWER_RATE,
                 RTDetCol.UPPER_RATE,
-                # RTDetCol.MAF_DLR,
-                # RTDetCol.MAF_ULR,
             ],
             column_config=coloumn_config,
             use_container_width=True,
@@ -272,6 +288,23 @@ def show_iteration_creation_page() -> None:
                 variable=variable,
                 variable_dtype=variable_dtype,
                 previous_node_id=previous_node_id,
+                auto_band=auto_band,
+                upgrade_downgrade_limit=upgrade_downgrade_limit if auto_band else None,
+                dlr_scalar=dlr_scalar if auto_band and use_scalars else None,
+                ulr_scalar=ulr_scalar if auto_band and use_scalars else None,
+                dlr_wrt_off=data.load_column(
+                    data.var_dlr_wrt_off, VariableType.NUMERICAL
+                )
+                if auto_band
+                else None,
+                unt_wrt_off=data.load_column(
+                    data.var_unt_wrt_off, VariableType.NUMERICAL
+                )
+                if auto_band
+                else None,
+                avg_bal=data.load_column(data.var_avg_bal, VariableType.NUMERICAL)
+                if auto_band
+                else None,
             )
 
             iteration_graph.select_current_node_id(iteration.id)

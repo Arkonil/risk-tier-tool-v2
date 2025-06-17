@@ -8,10 +8,8 @@
       "name": "Python Debugger: Streamlit",
       "type": "debugpy",
       "request": "launch",
-      "module": "uv",
+      "module": "streamlit",
       "args": [
-        "run",
-        "streamlit",
         "run",
         "main.py",
         "--server.port",

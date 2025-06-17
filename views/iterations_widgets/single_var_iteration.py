@@ -404,6 +404,8 @@ def show_single_var_iteration_widgets():
         st.error(message, icon=":material/error:")
 
     ## Default View
+
+    st.markdown("##### Default Range")
     show_edited_range(
         iteration_id=iteration.id,
         editable=True,
@@ -418,6 +420,7 @@ def show_single_var_iteration_widgets():
         show_category_editor(iteration.id)
 
     ## Ranges
+    st.markdown("##### Editable Ranges")
     show_edited_range(
         iteration_id=iteration.id,
         editable=True,

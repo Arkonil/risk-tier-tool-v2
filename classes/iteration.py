@@ -387,7 +387,7 @@ class CategoricalIteration(IterationBase):
     def set_group(self, group_index: int, categories: t.Iterable[str]):
         self._check_group_index(group_index)
 
-        self._groups.loc[group_index] = list(sorted(categories))
+        self._groups.loc[group_index] = set(categories)
 
     @t.override
     def _validate(self, default: bool = False) -> tuple[list[str], list[str], list]:

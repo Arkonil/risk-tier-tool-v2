@@ -188,12 +188,16 @@ def create_auto_bands(
     mask: pd.Series,
     risk_tier_details: pd.DataFrame,
     loss_rate_type: LossRateTypes,
+    mob: int,
     dlr_scalar: Scalar = None,
     ulr_scalar: Scalar = None,
     dlr_wrt_off: pd.Series = None,
     unt_wrt_off: pd.Series = None,
     avg_bal: pd.Series = None,
 ):
+    if mob is None:
+        mob = 12
+
     if len(variable) != len(mask):
         raise ValueError(
             f"Variable (length={len(variable)}) and Mask (length={len(mask)}) must be the same length"
@@ -256,6 +260,9 @@ def create_auto_bands(
         risk_tier_details[RangeColumn.RISK_SCALAR_FACTOR_ULR] = (
             ulr_scalar.get_risk_scalar_factor(risk_tier_details[RTDetCol.MAF_ULR])
         )
+
+    risk_tier_details[RangeColumn.RISK_SCALAR_FACTOR_DLR] *= 12 / mob
+    risk_tier_details[RangeColumn.RISK_SCALAR_FACTOR_ULR] *= 12 / mob
 
     # Adjusting risk_tier_details to get unique rates
     risk_tier_details = risk_tier_details.sort_values([

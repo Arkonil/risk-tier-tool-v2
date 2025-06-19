@@ -262,6 +262,7 @@ def show_iteration_creation_page() -> None:
                 risk_tier_details=risk_tier_details,
                 loss_rate_type=loss_rate_type,
                 auto_band=auto_band,
+                mob=data.current_rate_mob if auto_band else None,
                 dlr_scalar=dlr_scalar if auto_band and use_scalars else None,
                 ulr_scalar=ulr_scalar if auto_band and use_scalars else None,
                 dlr_wrt_off=data.load_column(
@@ -289,6 +290,7 @@ def show_iteration_creation_page() -> None:
                 variable_dtype=variable_dtype,
                 previous_node_id=previous_node_id,
                 auto_band=auto_band,
+                mob=data.current_rate_mob if auto_band else None,
                 upgrade_downgrade_limit=upgrade_downgrade_limit if auto_band else None,
                 dlr_scalar=dlr_scalar if auto_band and use_scalars else None,
                 ulr_scalar=ulr_scalar if auto_band and use_scalars else None,

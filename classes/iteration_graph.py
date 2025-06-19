@@ -355,21 +355,23 @@ class IterationGraph:
                     )
 
                     if variable_dtype == VariableType.NUMERICAL:
-                        groups = (
-                            groups.replace({
-                                groups.min().min(): variable.min() - 1,
-                                groups.max().max(): variable.max(),
-                            })
-                            .apply(
-                                lambda row: (
-                                    row[RangeColumn.LOWER_BOUND],
-                                    row[RangeColumn.UPPER_BOUND],
-                                ),
-                                axis=1,
+                        with pd.option_context("future.no_silent_downcasting", True):
+                            groups = (
+                                groups.replace({
+                                    groups.min().min(): variable.min() - 1,
+                                    groups.max().max(): variable.max(),
+                                })
+                                .infer_objects(copy=False)
+                                .apply(
+                                    lambda row: (
+                                        row[RangeColumn.LOWER_BOUND],
+                                        row[RangeColumn.UPPER_BOUND],
+                                    ),
+                                    axis=1,
+                                )
+                                .rename(RangeColumn.GROUPS)
+                                .rename_axis(index=[""])
                             )
-                            .rename(RangeColumn.GROUPS)
-                            .rename_axis(index=[""])
-                        )
 
                     rt_groups[rt] = groups
 

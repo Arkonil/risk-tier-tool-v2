@@ -55,12 +55,19 @@ def show_risk_tier_details_selector() -> None:
 
     risk_tier_details = options.risk_tier_details.copy()
 
-    risk_tier_details[RTDetCol.LOWER_RATE] = (
-        risk_tier_details[RTDetCol.LOWER_RATE].replace({-np.inf: np.nan}) * 100
-    )
-    risk_tier_details[RTDetCol.UPPER_RATE] = (
-        risk_tier_details[RTDetCol.UPPER_RATE].replace({np.inf: np.nan}) * 100
-    )
+    with pd.option_context("future.no_silent_downcasting", True):
+        risk_tier_details[RTDetCol.LOWER_RATE] = (
+            risk_tier_details[RTDetCol.LOWER_RATE]
+            .replace({-np.inf: np.nan})
+            .infer_objects(copy=False)
+            * 100
+        )
+        risk_tier_details[RTDetCol.UPPER_RATE] = (
+            risk_tier_details[RTDetCol.UPPER_RATE]
+            .replace({np.inf: np.nan})
+            .infer_objects(copy=False)
+            * 100
+        )
     risk_tier_details[RTDetCol.SELECTED] = False
 
     risk_tier_details_styled = risk_tier_details.style

@@ -59,7 +59,7 @@ def sidebar_options(iteration_id: str):
 
     def add_new_group():
         iteration.add_group()
-        iteration_graph.add_to_calculation_queue(iteration_id)
+        iteration_graph.add_to_calculation_queue(iteration_id, default=False)
 
     col2.button(
         label="",
@@ -136,12 +136,13 @@ def show_grid_editor(iteration_id: str, key: int, default: bool = False):
             columns={RangeColumn.GROUPS: RangeColumn.CATEGORIES}, inplace=True
         )
 
-    grid_df = grid_index.merge(
-        iteration_risk_tier_grid.replace(grid_columns),
-        how="left",
-        left_index=True,
-        right_index=True,
-    ).rename(columns=grid_columns)
+    with pd.option_context("future.no_silent_downcasting", True):
+        grid_df = grid_index.merge(
+            iteration_risk_tier_grid.replace(grid_columns).infer_objects(copy=False),
+            how="left",
+            left_index=True,
+            right_index=True,
+        ).rename(columns=grid_columns)
 
     column_config = {
         RangeColumn.LOWER_BOUND: st.column_config.NumberColumn(
@@ -200,8 +201,10 @@ def show_grid_editor(iteration_id: str, key: int, default: bool = False):
     )
 
     with pd.option_context("future.no_silent_downcasting", True):
-        edited_grid = edited_grid.replace(risk_tier_inv_map).rename(
-            columns=risk_tier_inv_map
+        edited_grid = (
+            edited_grid.replace(risk_tier_inv_map)
+            .infer_objects(copy=False)
+            .rename(columns=risk_tier_inv_map)
         )
 
     # Check if the edited grid is different from the original risk tier grid
@@ -438,7 +441,7 @@ def show_grid_metric(
 
 
 def show_grid_layout(
-    iteration_id: str, metrics: list[Metric], key: int = 0, default: bool = False
+    iteration_id: str, metrics: list[Metric], default: bool, key: int = 0
 ):
     summ_df, errors, warnings = calculate_summ_df(
         iteration_id=iteration_id, default=default
@@ -574,7 +577,7 @@ def show_double_var_iteration_widgets():
     ## Default View
     st.markdown("## Default View")
     show_grid_layout(
-        iteration_id=iteration.id, metrics=showing_metrics[:1], key=0, default=True
+        iteration_id=iteration.id, metrics=showing_metrics[:1], default=True, key=0
     )
 
     st.divider()
@@ -587,7 +590,7 @@ def show_double_var_iteration_widgets():
     ## Grids
     if split_view_enabled:
         show_grid_layout(
-            iteration_id=iteration.id, metrics=showing_metrics, key=1, default=False
+            iteration_id=iteration.id, metrics=showing_metrics, default=False, key=1
         )
     else:
         show_liner_layout(iteration_id=iteration.id, metrics=showing_metrics, key=2)

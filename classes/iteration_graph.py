@@ -117,24 +117,21 @@ class IterationGraph:
     def current_iteration(self):
         return self.iterations[self.current_node_id]
 
-    def get_parent(self, node_id: str = None) -> str | None:
-        if node_id is None:
-            node_id = self.current_node_id
-
+    def get_parent(self, node_id: str) -> str | None:
         for parent, children in self.connections.items():
             if node_id in children:
                 return parent
 
         return None
 
-    def iteration_depth(self, node_id: str = None) -> int:
+    def iteration_depth(self, node_id: str) -> int:
         parent_node_id = self.get_parent(node_id)
         if parent_node_id is None:
             return 1
 
         return 1 + self.iteration_depth(parent_node_id)
 
-    def get_ancestors(self, node_id: str = None) -> list[str]:
+    def get_ancestors(self, node_id: str) -> list[str]:
         ancestors = []
         parent_node_id = self.get_parent(node_id)
         while parent_node_id is not None:
@@ -143,10 +140,7 @@ class IterationGraph:
 
         return list(reversed(ancestors))
 
-    def get_descendants(self, node_id: str = None) -> list[str]:
-        if node_id is None:
-            node_id = self.current_node_id
-
+    def get_descendants(self, node_id: str) -> list[str]:
         if node_id not in self.connections:
             return []
 
@@ -156,26 +150,17 @@ class IterationGraph:
 
         return descendants
 
-    def get_root_iter_id(self, node_id: str = None) -> str:
-        if node_id is None:
-            node_id = self.current_node_id
-
+    def get_root_iter_id(self, node_id: str) -> str:
         if self.is_root(node_id):
             return node_id
 
         return self.get_root_iter_id(self.get_parent(node_id))
 
-    def get_risk_tier_details(self, node_id: str = None) -> pd.DataFrame:
-        if node_id is None:
-            node_id = self.current_node_id
-
+    def get_risk_tier_details(self, node_id: str) -> pd.DataFrame:
         root_iter_id = self.get_root_iter_id(node_id)
         return self.iterations[root_iter_id].risk_tier_details
 
-    def get_color(self, rt_label: str, node_id: str = None):
-        if node_id is None:
-            node_id = self.current_node_id
-
+    def get_color(self, rt_label: str, node_id: str):
         risk_tier_details = self.get_risk_tier_details(node_id)
 
         font_color = risk_tier_details.loc[
@@ -187,16 +172,10 @@ class IterationGraph:
 
         return font_color.iloc[0], bg_color.iloc[0]
 
-    def is_root(self, node_id: str = None) -> bool:
-        if node_id is None:
-            node_id = self.current_node_id
-
+    def is_root(self, node_id: str) -> bool:
         return self.get_parent(node_id) is None
 
-    def is_leaf(self, node_id: str = None) -> bool:
-        if node_id is None:
-            node_id = self.current_node_id
-
+    def is_leaf(self, node_id: str) -> bool:
         return node_id not in self.connections or len(self.connections[node_id]) == 0
 
     def add_single_var_node(
@@ -434,12 +413,7 @@ class IterationGraph:
 
         self.select_graph_view()
 
-    def add_to_calculation_queue(
-        self, node_id: str = None, default: t.Literal[False] = False
-    ):
-        if node_id is None:
-            node_id = self.current_node_id
-
+    def add_to_calculation_queue(self, node_id: str, default: bool):
         default_or_edited = "default" if default else "edited"
 
         self._recalculation_required.add((node_id, default_or_edited))
@@ -447,12 +421,7 @@ class IterationGraph:
             self._recalculation_required.add((descendant, "default"))
             self._recalculation_required.add((descendant, "edited"))
 
-    def get_risk_tiers(
-        self, node_id: str = None, default: bool = False
-    ) -> IterationOutput:
-        if node_id is None:
-            node_id = self.current_node_id
-
+    def get_risk_tiers(self, node_id: str, default: bool) -> IterationOutput:
         default_or_edited = "default" if default else "edited"
 
         if (node_id, default_or_edited) not in self._iteration_outputs:

@@ -15,7 +15,7 @@ def show_iteration_widgets():
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
 
-    if iteration_graph.is_root():
+    if iteration_graph.is_root(iteration_graph.current_iteration.id):
         show_single_var_iteration_widgets()
     else:
         show_double_var_iteration_widgets()

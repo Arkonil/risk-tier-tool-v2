@@ -73,7 +73,7 @@ class IterationBase(ABC):
 
     @abstractmethod
     def get_risk_tiers(
-        self, previous_risk_tiers: pd.Series = None, default: bool = False
+        self, previous_risk_tiers: pd.Series | None, default: bool
     ) -> IterationOutput:
         raise NotImplementedError()
 
@@ -82,11 +82,11 @@ class IterationBase(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def _validate(self, default: bool = False) -> tuple[list[str], list[str], list]:
+    def _validate(self, default: bool) -> tuple[list[str], list[str], list]:
         raise NotImplementedError()
 
     @abstractmethod
-    def get_group_mapping(self, default: bool = False) -> IterationOutput:
+    def get_group_mapping(self, default: bool) -> IterationOutput:
         raise NotImplementedError()
 
     def _check_group_index(self, group_index: int) -> None:
@@ -129,7 +129,7 @@ class SingleVarIteration(IterationBase):
 
     @t.override
     def get_risk_tiers(
-        self, previous_risk_tiers: pd.Series = None, default: bool = False
+        self, previous_risk_tiers: pd.Series | None, default: bool
     ) -> IterationOutput:
         output = self.get_group_mapping(default=default)
 
@@ -220,7 +220,7 @@ class DoubleVarIteration(IterationBase):
 
     @t.override
     def get_risk_tiers(
-        self, previous_risk_tiers: pd.Series = None, default: bool = False
+        self, previous_risk_tiers: pd.Series | None, default: bool
     ) -> IterationOutput:
         iteration_output = self.get_group_mapping(default=default)
         risk_tier_column = pd.Series(index=self.variable.index)
@@ -273,7 +273,7 @@ class NumericalIteration(IterationBase):
         self._groups.loc[group_index] = (lower_bound, upper_bound)
 
     @t.override
-    def _validate(self, default: bool = False) -> tuple[list[str], list[str], list]:
+    def _validate(self, default: bool) -> tuple[list[str], list[str], list]:
         invalid_groups = []
         warnings = []
         errors = []
@@ -338,8 +338,8 @@ class NumericalIteration(IterationBase):
         return warnings, errors, invalid_groups
 
     @t.override
-    def get_group_mapping(self, default: bool = False) -> IterationOutput:
-        warnings, error, invalid_groups = self._validate()
+    def get_group_mapping(self, default: bool) -> IterationOutput:
+        warnings, error, invalid_groups = self._validate(default=default)
         group_indices = pd.Series(
             index=self.variable.index, name=GridColumn.GROUP_INDEX
         )
@@ -390,7 +390,7 @@ class CategoricalIteration(IterationBase):
         self._groups.loc[group_index] = set(categories)
 
     @t.override
-    def _validate(self, default: bool = False) -> tuple[list[str], list[str], list]:
+    def _validate(self, default: bool) -> tuple[list[str], list[str], list]:
         invalid_groups = []
         warnings = []
         errors = []
@@ -446,8 +446,8 @@ class CategoricalIteration(IterationBase):
         return warnings, errors, invalid_groups
 
     @t.override
-    def get_group_mapping(self, default: bool = False) -> IterationOutput:
-        warnings, error, invalid_groups = self._validate()
+    def get_group_mapping(self, default: bool) -> IterationOutput:
+        warnings, error, invalid_groups = self._validate(default=default)
         group_indices = pd.Series(index=self.variable.index)
 
         groups = self.default_groups if default else self.groups

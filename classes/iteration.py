@@ -67,6 +67,10 @@ class IterationBase(ABC):
     def default_groups(self) -> pd.Series:
         return self._default_groups
 
+    def set_default_groups(self, default_groups: pd.Series):
+        self._default_groups = default_groups.copy()
+        self._groups = default_groups.copy()
+
     @abstractmethod
     def get_risk_tiers(
         self, previous_risk_tiers: pd.Series = None, default: bool = False
@@ -186,6 +190,15 @@ class DoubleVarIteration(IterationBase):
         self._risk_tier_grid = pd.concat(
             [self._risk_tier_grid, last_row], ignore_index=True
         )
+
+    @t.override
+    def set_default_groups(self, default_groups: pd.Series):
+        super().set_default_groups(default_groups)
+        self._groups_mask = pd.Series(True, index=self._groups.index)
+
+    def set_default_risk_tier_grid(self, default_risk_tier_grid: pd.DataFrame):
+        self.default_risk_tier_grid = default_risk_tier_grid.copy()
+        self._risk_tier_grid = default_risk_tier_grid.copy()
 
     def set_risk_tier_grid(self, group_index: int, previous_rt_index: int, value: int):
         self._check_group_index(group_index)

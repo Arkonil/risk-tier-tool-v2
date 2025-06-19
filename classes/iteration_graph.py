@@ -266,8 +266,7 @@ class IterationGraph:
                     .rename_axis(index=[""])
                 )
 
-            iteration._default_groups = groups
-            iteration._groups = groups
+            iteration.set_default_groups(groups)
 
         self._recalculation_required.add((new_node_id, "default"))
         self._recalculation_required.add((new_node_id, "edited"))
@@ -404,10 +403,8 @@ class IterationGraph:
                             else:
                                 risk_tier_grid.loc[i, j] = j
 
-                    iteration._default_groups = groups
-                    iteration._groups = groups
-                    iteration._risk_tier_grid = risk_tier_grid
-                    iteration.default_risk_tier_grid = risk_tier_grid
+                    iteration.set_default_groups(groups)
+                    iteration.set_default_risk_tier_grid(risk_tier_grid)
 
         self._recalculation_required.add((new_node_id, "default"))
         self._recalculation_required.add((new_node_id, "edited"))

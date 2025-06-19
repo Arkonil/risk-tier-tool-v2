@@ -178,9 +178,6 @@ def create_auto_categorical_bands(
         groups.loc[index] = set(mtc[mask].index)
         mtc = mtc[~mask]
 
-        if len(mtc) == 0:
-            break
-
     groups.iloc[-1] |= set(mtc.index)
 
     return groups

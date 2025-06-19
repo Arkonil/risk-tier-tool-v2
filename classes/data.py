@@ -1,6 +1,5 @@
 import pathlib
 import typing as t
-import collections.abc
 
 import numpy as np
 import pandas as pd
@@ -73,7 +72,7 @@ class Data:
         sheet_name: str,
         header_row: int,
         nrows: int | None = None,
-        usecols: collections.abc.Callable[[str], bool] = None,
+        usecols: list[str | int] | None = None,
     ) -> pd.DataFrame:
         """
         This function reads data from a file into a pandas DataFrame based on the specified parameters.

@@ -19,7 +19,7 @@ from views.iterations_widgets.single_var_iteration import (
     show_edited_range,
     show_error_and_warnings,
 )
-from views.variable_selector import show_variable_selector_dialog
+from views.components.variable_selector import show_variable_selector_dialog
 
 
 def sidebar_options(iteration_id: str):

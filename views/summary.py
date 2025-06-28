@@ -7,7 +7,7 @@ from classes.session import Session
 from views.home import home_page
 from views.iterations_widgets.dialogs import show_metric_selector
 from views.iterations_widgets.single_var_iteration import show_edited_range
-from views.variable_selector import show_variable_selector_dialog
+from views.components.variable_selector import show_variable_selector_dialog
 
 
 def sidebar_options():

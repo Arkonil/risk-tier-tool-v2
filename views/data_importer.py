@@ -4,7 +4,7 @@ import typing as t
 import streamlit as st
 
 from classes.session import Session
-from views.variable_selector import show_variable_selector
+from views.components.variable_selector import show_variable_selector
 
 
 def filepath_input(default_value=None) -> pathlib.Path:

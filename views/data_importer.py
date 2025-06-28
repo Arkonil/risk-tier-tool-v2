@@ -149,6 +149,10 @@ def show_data_import_options():
         button_text = "Refresh Sample Data"
         button_icon = ":material/autorenew:"
         button_type = "secondary"
+
+        st.markdown(
+            "*Note: Refreshing the data will reset all options and iterations.*"
+        )
     else:
         button_text = "Import Sample Data"
         button_icon = ":material/file_upload:"
@@ -157,7 +161,7 @@ def show_data_import_options():
     if st.button(button_text, icon=button_icon, type=button_type):
         with st.status("Importing data...", state="running") as status:
             try:
-                data.reset()
+                session.reset()
                 data.load_sample(
                     filepath=filepath,
                     read_mode=read_mode,

@@ -28,10 +28,12 @@ class Session:
     def __init__(self):
         super().__init__()
 
+        self.data = Data()
+
         self.reset()
 
     def reset(self):
-        self.data = Data()
+        self.data.reset()
         self.dlr_scalars = Scalar(LossRateTypes.DLR)
         self.ulr_scalars = Scalar(LossRateTypes.ULR)
         self.iteration_graph = IterationGraph()

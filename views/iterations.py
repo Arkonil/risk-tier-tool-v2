@@ -8,7 +8,7 @@ from views.iterations_widgets import (
 )
 
 
-def show_iterations_page():
+def iterations():
     session = st.session_state["session"]
     iteration_graph: IterationGraph = session.iteration_graph
 
@@ -20,4 +20,11 @@ def show_iterations_page():
         show_iteration_graph_widgets()
 
 
-show_iterations_page()
+iteration_graph_page = st.Page(
+    page=iterations,
+    title="Iterations",
+    icon=":material/account_tree:",
+)
+
+
+__all__ = ["iteration_graph_page"]

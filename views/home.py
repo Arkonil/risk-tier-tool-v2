@@ -39,8 +39,11 @@ def show_welcome_page():
             st.switch_page("views/data_importer.py")
 
 
-def show_home_page():
+def home():
     show_welcome_page()
 
 
-show_home_page()
+home_page = st.Page(page=home, title="Home", icon=":material/home:", default=True)
+
+
+__all__ = ["home_page"]

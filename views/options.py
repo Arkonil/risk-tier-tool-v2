@@ -6,7 +6,7 @@ from views.options_widgets import (
 )
 
 
-def show_options_page() -> None:
+def options() -> None:
     st.markdown("# Options")
 
     st.divider()
@@ -18,4 +18,11 @@ def show_options_page() -> None:
     show_scalar_calculation()
 
 
-show_options_page()
+options_page = st.Page(
+    page=options,
+    title="Options",
+    icon=":material/settings:",
+)
+
+
+__all__ = ["options_page"]

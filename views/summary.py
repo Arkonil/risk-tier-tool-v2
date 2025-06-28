@@ -4,6 +4,7 @@ import streamlit as st
 
 from classes.constants import Metric, MetricTableColumn
 from classes.session import Session
+from views.home import home_page
 from views.iterations_widgets.dialogs import show_metric_selector
 from views.iterations_widgets.single_var_iteration import show_edited_range
 from views.variable_selector import show_variable_selector_dialog
@@ -60,29 +61,6 @@ def sidebar_options():
     if comparison_mode != home_page_state.comparison_mode:
         home_page_state.comparison_mode = comparison_mode
         st.rerun()
-
-
-def show_welcome_page():
-    st.title("Risk Tier Development Tool")
-
-    st.write("")
-    st.write("")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        with st.container(border=True):
-            st.markdown("##### Import Data to get started")
-            st.write('Supported file formats: `".csv"`, `".xlsx"`, `".xls"`')
-            if st.button("Import Data", icon=":material/file_upload:", type="primary"):
-                st.switch_page("views/data_importer.py")
-
-    with col2:
-        with st.container(border=True):
-            st.markdown("##### Import a `.rt.zip` file to continue working on it")
-            st.write('Supported file formats: `".zip"`')
-            if st.button("Import `.rt.zip` file", icon=":material/file_upload:"):
-                st.switch_page("views/data_importer.py")
 
 
 def show_iteration_result(
@@ -156,13 +134,13 @@ def show_iteration_result(
     )
 
 
-def show_summary_page():
+def summary():
     session: Session = st.session_state["session"]
     home_page_state = session.home_page_state
     iteration_graph = session.iteration_graph
 
     if iteration_graph.is_empty:
-        st.switch_page("views/home.py")
+        st.switch_page(home_page)
         return
 
     with st.sidebar:
@@ -220,4 +198,10 @@ def show_summary_page():
     )
 
 
-show_summary_page()
+summary_page = st.Page(
+    page=summary,
+    title="Summary",
+    icon=":material/dashboard_2:",
+)
+
+__all__ = ["summary_page"]

@@ -5,7 +5,7 @@ from classes.session import Session
 from classes.constants import README_CONTENT
 
 
-def show_export_page():
+def export():
     session: Session = st.session_state["session"]
 
     st.title("Export")
@@ -33,4 +33,11 @@ def show_export_page():
         # st.success("Downloading started. Please wait...")
 
 
-show_export_page()
+export_page = st.Page(
+    page=export,
+    title="Export",
+    icon=":material/file_download:",
+)
+
+
+__all__ = ["export_page"]

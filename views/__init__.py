@@ -1,57 +1,26 @@
 import streamlit as st
 
-__all__ = ["set_page_navigation"]
-
-_homepage = st.Page(
-    page=f"{__name__}/home.py", title="Home", icon=":material/home:", default=True
-)
-
-_summary_page = st.Page(
-    page=f"{__name__}/summary.py",
-    title="Summary",
-    icon=":material/dashboard_2:",
-)
-
-_data_importer_page = st.Page(
-    page=f"{__name__}/data_importer.py",
-    title="Data Importer",
-    icon=":material/file_upload:",
-)
-
-_options_page = st.Page(
-    page=f"{__name__}/options.py",
-    title="Options",
-    icon=":material/settings:",
-)
-
-_iteration_graph_page = st.Page(
-    page=f"{__name__}/iterations.py",
-    title="Iterations",
-    icon=":material/account_tree:",
-)
-
-_charts_page = st.Page(
-    page=f"{__name__}/charts.py",
-    title="Charts",
-    icon=":material/monitoring:",
-)
-
-_export_page = st.Page(
-    page=f"{__name__}/export.py",
-    title="Export",
-    icon=":material/file_download:",
-)
+from views.home import home_page
+from views.summary import summary_page
+from views.data_importer import data_importer_page
+from views.options import options_page
+from views.iterations import iteration_graph_page
+from views.charts import charts_page
+from views.export import export_page
 
 
 def set_page_navigation():
     pg = st.navigation({
-        "Home": [_homepage, _summary_page],
+        "Home": [home_page, summary_page],
         "Tools": [
-            _data_importer_page,
-            _options_page,
-            _iteration_graph_page,
+            data_importer_page,
+            options_page,
+            iteration_graph_page,
         ],
-        "Results": [_charts_page, _export_page],
+        "Results": [charts_page, export_page],
     })
 
     pg.run()
+
+
+__all__ = ["set_page_navigation"]

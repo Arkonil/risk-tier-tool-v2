@@ -197,7 +197,7 @@ def show_variable_selector_():
         show_variable_selector()
 
 
-def show_data_importer_page():
+def data_importer():
     session: Session = st.session_state["session"]
     data = session.data
 
@@ -219,4 +219,11 @@ def show_data_importer_page():
     show_variable_selector_()
 
 
-show_data_importer_page()
+data_importer_page = st.Page(
+    page=data_importer,
+    title="Data Importer",
+    icon=":material/file_upload:",
+)
+
+
+__all__ = ["data_importer_page"]

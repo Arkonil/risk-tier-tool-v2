@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 
 from classes.constants import Metric, VariableType
-from classes.metadata import Metadata
 
 
 class Data:
@@ -41,8 +40,6 @@ class Data:
         self.var_avg_bal: str | None = None
         self.current_rate_mob: int = 12
         self.lifetime_rate_mob: int = 36
-
-        self.metadata: Metadata | None = None
 
     def get_col_pos(self, col_name: str | None) -> int:
         if col_name is None or col_name not in self.sample_df.columns:

@@ -115,13 +115,16 @@ class DefaultOptions(Singleton):
                 RTDetCol.MAF_DLR,
                 RTDetCol.MAF_ULR,
             ],
-        ).rename_axis(index=RTDetCol.ORIG_INDEX)
+        ).rename_axis(index=RTDetCol.ORIG_INDEX.value)
+        self._risk_tier_details.columns = self._risk_tier_details.columns.map(str)
+
         self._max_iteration_depth = 10
         self._default_metrics = pd.DataFrame({
-            MetricTableColumn.METRIC: list(Metric),
+            MetricTableColumn.METRIC: list(map(lambda m: m.value, list(Metric))),
             MetricTableColumn.ORDER: [i for i, _ in enumerate(Metric)],
             MetricTableColumn.SHOWING: [i < 3 for i, _ in enumerate(Metric)],
         })
+        self._default_metrics.columns = self._default_metrics.columns.map(str)
 
     @property
     def risk_tier_details(self) -> pd.DataFrame:
@@ -146,9 +149,27 @@ class DefaultOptions(Singleton):
         }
 
 
+README_CONTENT = """
+### Exported File Contents
+
+This zip file contains all the data and options to recreate the workspace.
+
+#### Contents:
+
+- `data.json`: Contains the data used in the session.
+- `dlr_scalars.json`: Contains the DLR scalars.
+- `ulr_scalars.json`: Contains the ULR scalars.
+- `iteration_graph.json`: Contains the iteration graph data.
+- `home_page_state.json`: Contains the state of the home page.
+- `options.json`: Contains the options set for the session.
+- `df.parquet`: Contains the main DataFrame in Parquet format.
+- `sample_df.parquet`: Contains a sample of the main DataFrame in Parquet format.
+"""
+
 __all__ = [
     "DefaultOptions",
     "RTDetCol",
     "LossRateTypes",
     "ScalarTableColumn",
+    "README_CONTENT",
 ]

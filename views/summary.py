@@ -162,7 +162,7 @@ def show_summary_page():
     iteration_graph = session.iteration_graph
 
     if iteration_graph.is_empty:
-        show_welcome_page()
+        st.switch_page("views/home.py")
         return
 
     with st.sidebar:

@@ -13,12 +13,14 @@ from classes.constants import (
     RangeColumn,
     VariableType,
 )
+from classes.data import Data
 from classes.iteration import (
     CategoricalDoubleVarIteration,
     CategoricalSingleVarIteration,
     IterationOutput,
     NumericalDoubleVarIteration,
     NumericalSingleVarIteration,
+    from_dict as iteration_from_dict,
 )
 from classes.scalars import Scalar
 from classes.utils import integer_generator
@@ -449,6 +451,54 @@ class IterationGraph:
         self._recalculation_required.remove((node_id, default_or_edited))
 
         return iteration_output
+
+    def to_dict(self):
+        return {
+            "iterations": {k: v.to_dict() for k, v in self.iterations.items()},
+            "connections": self.connections,
+            "iteration_metadata": {
+                node_id: {
+                    "editable": metadata["editable"],
+                    "metrics": metadata["metrics"].to_dict(orient="tight"),
+                    "scalars_enabled": metadata["scalars_enabled"],
+                    "split_view_enabled": metadata["split_view_enabled"],
+                    "loss_rate_type": metadata["loss_rate_type"].value,
+                }
+                for node_id, metadata in self.iteration_metadata.items()
+            },
+            "selected_node_id": self.selected_node_id,
+            "current_node_id": self.current_node_id,
+            "current_iter_create_mode": self.current_iter_create_mode,
+            "current_iter_create_parent_id": self.current_iter_create_parent_id,
+        }
+
+    @classmethod
+    def from_dict(cls, dict_data: dict, data: Data):
+        graph = cls()
+        graph.iterations = {
+            k: iteration_from_dict(v, data) for k, v in dict_data["iterations"].items()
+        }
+        graph.connections = dict_data["connections"]
+
+        graph.iteration_metadata = {
+            node_id: {
+                "editable": metadata["editable"],
+                "metrics": pd.DataFrame.from_dict(metadata["metrics"], orient="tight"),
+                "scalars_enabled": metadata["scalars_enabled"],
+                "split_view_enabled": metadata["split_view_enabled"],
+                "loss_rate_type": LossRateTypes(metadata["loss_rate_type"]),
+            }
+            for node_id, metadata in dict_data.get("iteration_metadata", {}).items()
+        }
+
+        graph._selected_node_id = dict_data["selected_node_id"]
+        graph._current_node_id = dict_data["current_node_id"]
+        graph._current_iter_create_mode = dict_data["current_iter_create_mode"]
+        graph._current_iter_create_parent_id = dict_data[
+            "current_iter_create_parent_id"
+        ]
+
+        return graph
 
 
 __all__ = [

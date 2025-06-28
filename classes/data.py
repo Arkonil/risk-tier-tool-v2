@@ -33,7 +33,6 @@ class Data:
         self.sample_row_count: int = 100
 
         self.sample_df: pd.DataFrame | None = None
-        self.raw_csv_lines: list[str] = []
         self.df: pd.DataFrame | None = None
         self.df_size: int | None = None
 
@@ -346,3 +345,39 @@ class Data:
             )
 
         return grouped_df
+
+    def to_dict(self):
+        return {
+            "filepath": str(self.filepath) if self.filepath else None,
+            "read_mode": self.read_mode,
+            "delimiter": self.delimiter,
+            "sheet_name": self.sheet_name,
+            "header_row": self.header_row,
+            "sample_row_count": self.sample_row_count,
+            "df_size": self.df_size,
+            "var_unt_wrt_off": self.var_unt_wrt_off,
+            "var_dlr_wrt_off": self.var_dlr_wrt_off,
+            "var_avg_bal": self.var_avg_bal,
+            "current_rate_mob": self.current_rate_mob,
+            "lifetime_rate_mob": self.lifetime_rate_mob,
+        }
+
+    @classmethod
+    def from_dict(cls, dict_data: dict) -> "Data":
+        data = cls()
+        data.filepath = (
+            pathlib.Path(dict_data["filepath"]) if dict_data["filepath"] else None
+        )
+        data.read_mode = dict_data["read_mode"]
+        data.delimiter = dict_data["delimiter"]
+        data.sheet_name = dict_data["sheet_name"]
+        data.header_row = dict_data["header_row"]
+        data.sample_row_count = dict_data["sample_row_count"]
+        data.df_size = dict_data["df_size"]
+        data.var_unt_wrt_off = dict_data["var_unt_wrt_off"]
+        data.var_dlr_wrt_off = dict_data["var_dlr_wrt_off"]
+        data.var_avg_bal = dict_data["var_avg_bal"]
+        data.current_rate_mob = dict_data["current_rate_mob"]
+        data.lifetime_rate_mob = dict_data["lifetime_rate_mob"]
+
+        return data

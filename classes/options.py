@@ -56,19 +56,19 @@ class Options:
                 self.risk_tier_details,
                 pd.DataFrame(
                     {
-                        RTDetCol.RISK_TIER: "",
-                        RTDetCol.LOWER_RATE: -np.inf,
-                        RTDetCol.UPPER_RATE: np.inf,
-                        RTDetCol.BG_COLOR: "#000000",
-                        RTDetCol.FONT_COLOR: "#FFFFFF",
-                        RTDetCol.MAF_DLR: 1.0,
-                        RTDetCol.MAF_ULR: 1.0,
+                        RTDetCol.RISK_TIER.value: "",
+                        RTDetCol.LOWER_RATE.value: -np.inf,
+                        RTDetCol.UPPER_RATE.value: np.inf,
+                        RTDetCol.BG_COLOR.value: "#000000",
+                        RTDetCol.FONT_COLOR.value: "#FFFFFF",
+                        RTDetCol.MAF_DLR.value: 1.0,
+                        RTDetCol.MAF_ULR.value: 1.0,
                     },
                     index=[self.risk_tier_details.index.max() + 1],
                 ),
             ],
             ignore_index=False,
-        ).rename_axis(index=RTDetCol.ORIG_INDEX)
+        ).rename_axis(index=RTDetCol.ORIG_INDEX.value)
 
         self._recalculate_lower_bounds()
 
@@ -109,6 +109,31 @@ class Options:
             else RTDetCol.MAF_ULR
         )
         self.risk_tier_details.loc[row_index, column_name] = maf
+
+    def to_dict(self) -> dict[str, t.Any]:
+        """Serializes the Options object to a dictionary."""
+        risk_tier_details_data = self.risk_tier_details.to_dict(orient="tight")
+
+        return {
+            "risk_tier_details": risk_tier_details_data,
+            "max_iteration_depth": self.max_iteration_depth,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, t.Any]) -> "Options":
+        """Creates an Options object from a dictionary."""
+        instance = cls()  # Initialize with default values
+
+        if "risk_tier_details" in data and data["risk_tier_details"] is not None:
+            df = pd.DataFrame.from_dict(data["risk_tier_details"], orient="tight")
+
+            instance.risk_tier_details = df
+
+        instance.max_iteration_depth = data.get(
+            "max_iteration_depth", default_options.max_iteration_depth
+        )
+
+        return instance
 
 
 __all__ = ["Options"]

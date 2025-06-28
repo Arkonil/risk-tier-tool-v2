@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 from classes.constants import (
+    DefaultOptions,
     GridColumn,
     IterationType,
     LossRateTypes,
@@ -12,6 +13,7 @@ from classes.constants import (
     RangeColumn,
     VariableType,
 )
+from classes.data import Data
 
 
 class IterationOutput(t.TypedDict):
@@ -98,6 +100,18 @@ class IterationBase(ABC):
                 f"Provided value: {group_index}"
             )
 
+    def to_dict(self) -> dict[str, t.Any]:
+        """Serializes the IterationBase object to a dictionary."""
+        return {
+            "var_type": self.var_type.value,
+            "iter_type": self.iter_type.value,
+            "id": self._id,
+            "name": self._name,
+            "variable_name": self._variable.name,
+            "groups": self._groups.to_dict(),
+            "default_groups": self._default_groups.to_dict(),
+        }
+
 
 class SingleVarIteration(IterationBase):
     iter_type = IterationType.SINGLE
@@ -139,6 +153,17 @@ class SingleVarIteration(IterationBase):
 
         return output
 
+    def to_dict(self):
+        dict_data = super().to_dict()
+
+        risk_tier_details_data = self._risk_tier_details.to_dict(orient="tight")
+
+        dict_data.update({
+            "risk_tier_details": risk_tier_details_data,
+        })
+
+        return dict_data
+
 
 class DoubleVarIteration(IterationBase):
     iter_type = IterationType.DOUBLE
@@ -158,7 +183,7 @@ class DoubleVarIteration(IterationBase):
                 axis=0,
             )
         )
-        self.default_risk_tier_grid = self._risk_tier_grid.copy()
+        self._default_risk_tier_grid = self._risk_tier_grid.copy()
 
     @t.override
     @property
@@ -168,6 +193,10 @@ class DoubleVarIteration(IterationBase):
     @property
     def risk_tier_grid(self) -> pd.DataFrame:
         return self._risk_tier_grid.loc[self._groups_mask, :]
+
+    @property
+    def default_risk_tier_grid(self) -> pd.DataFrame:
+        return self._default_risk_tier_grid
 
     def add_group(self, group_index: int | None = None):
         if group_index is None:
@@ -197,7 +226,7 @@ class DoubleVarIteration(IterationBase):
         self._groups_mask = pd.Series(True, index=self._groups.index)
 
     def set_default_risk_tier_grid(self, default_risk_tier_grid: pd.DataFrame):
-        self.default_risk_tier_grid = default_risk_tier_grid.copy()
+        self._default_risk_tier_grid = default_risk_tier_grid.copy()
         self._risk_tier_grid = default_risk_tier_grid.copy()
 
     def set_risk_tier_grid(self, group_index: int, previous_rt_index: int, value: int):
@@ -245,6 +274,23 @@ class DoubleVarIteration(IterationBase):
         iteration_output.update({"risk_tier_column": risk_tier_column})
 
         return iteration_output
+
+    def to_dict(self):
+        dict_data = super().to_dict()
+
+        groups_mask_data = self._groups_mask.to_dict()
+        risk_tier_grid_data = self._risk_tier_grid.to_dict(orient="tight")
+        default_risk_tier_grid_data = self._default_risk_tier_grid.to_dict(
+            orient="tight"
+        )
+
+        dict_data.update({
+            "groups_mask": groups_mask_data,
+            "risk_tier_grid": risk_tier_grid_data,
+            "default_risk_tier_grid": default_risk_tier_grid_data,
+        })
+
+        return dict_data
 
 
 class NumericalIteration(IterationBase):
@@ -475,6 +521,26 @@ class NumericalSingleVarIteration(NumericalIteration, SingleVarIteration):
             _id=_id, name=name, variable=variable, risk_tier_details=risk_tier_details
         )
 
+    @classmethod
+    def from_dict(
+        dict_data: dict[str, t.Any], data: Data
+    ) -> "NumericalSingleVarIteration":
+        """Creates a NumericalSingleVarIteration object from a dictionary."""
+
+        _id = dict_data["id"]
+        name = dict_data["name"]
+        variable = data.load_column(
+            dict_data["variable_name"], VariableType(dict_data["variable_type"])
+        )
+        rt_df = pd.DataFrame.from_dict(dict_data["risk_tier_details"], orient="tight")
+
+        return NumericalSingleVarIteration(
+            _id=_id,
+            name=name,
+            variable=variable,
+            risk_tier_details=rt_df,
+        )
+
 
 class CategoricalSingleVarIteration(CategoricalIteration, SingleVarIteration):
     def __init__(
@@ -501,6 +567,72 @@ class CategoricalDoubleVarIteration(CategoricalIteration, DoubleVarIteration):
         super().__init__(
             _id=_id, name=name, variable=variable, risk_tier_details=risk_tier_details
         )
+
+
+def from_dict(dict_data: dict[str, t.Any], data: Data) -> IterationBase:
+    """Creates an IterationBase object from a dictionary."""
+    try:
+        iter_type = IterationType(dict_data.get("iter_type"))
+    except ValueError:
+        raise ValueError(f"Unsupported iteration type: {dict_data.get('iter_type')}")
+
+    try:
+        var_type = VariableType(dict_data.get("var_type"))
+    except ValueError:
+        raise ValueError(f"Unsupported variable type: {dict_data.get('var_type')}")
+
+    class_map = {
+        (IterationType.SINGLE, VariableType.NUMERICAL): NumericalSingleVarIteration,
+        (IterationType.SINGLE, VariableType.CATEGORICAL): CategoricalSingleVarIteration,
+        (IterationType.DOUBLE, VariableType.NUMERICAL): NumericalDoubleVarIteration,
+        (IterationType.DOUBLE, VariableType.CATEGORICAL): CategoricalDoubleVarIteration,
+    }
+
+    cls = class_map.get((iter_type, var_type))
+
+    _id = dict_data.get("id")
+    name = dict_data.get("name")
+    variable_name = dict_data.get("variable_name")
+    variable = data.df[variable_name]
+
+    instance: IterationBase = cls(
+        _id=_id,
+        name=name,
+        variable=variable,
+        risk_tier_details=DefaultOptions().risk_tier_details,
+    )
+
+    map_func = tuple if var_type == VariableType.NUMERICAL else set
+
+    groups = pd.Series(dict_data.get("groups", {}), name=RangeColumn.GROUPS).map(
+        map_func
+    )
+    groups.index = groups.index.astype(int)
+
+    default_groups = pd.Series(
+        dict_data.get("default_groups", {}), name=RangeColumn.GROUPS
+    ).map(map_func)
+    default_groups.index = default_groups.index.astype(int)
+
+    instance._groups = groups
+    instance._default_groups = default_groups
+
+    if iter_type == IterationType.SINGLE:
+        risk_tier_details = pd.DataFrame.from_dict(
+            dict_data.get("risk_tier_details", {}), orient="tight"
+        )
+        instance._risk_tier_details = risk_tier_details
+    else:
+        instance._groups_mask = pd.Series(dict_data.get("groups_mask", {}))
+        instance._groups_mask.index = instance._groups_mask.index.astype(int)
+        instance._risk_tier_grid = pd.DataFrame.from_dict(
+            dict_data.get("risk_tier_grid", {}), orient="tight"
+        )
+        instance._default_risk_tier_grid = pd.DataFrame.from_dict(
+            dict_data.get("default_risk_tier_grid", {}), orient="tight"
+        )
+
+    return instance
 
 
 __all__ = [

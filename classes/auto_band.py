@@ -38,7 +38,7 @@ def create_auto_numeric_bands(
 
         # Check Monotonicity
         mtc = (
-            data.groupby(DataColumns.VARIABLE)[
+            data.groupby(DataColumns.VARIABLE, observed=False)[
                 [DataColumns.NUMERATOR, DataColumns.DENOMINATOR]
             ]
             .sum()
@@ -148,7 +148,7 @@ def create_auto_categorical_bands(
         DataColumns.DENOMINATOR: denominators,
     })
 
-    mtc = data.groupby(DataColumns.VARIABLE)[
+    mtc = data.groupby(DataColumns.VARIABLE, observed=False)[
         [DataColumns.NUMERATOR, DataColumns.DENOMINATOR]
     ].sum()
 
@@ -156,7 +156,9 @@ def create_auto_categorical_bands(
 
     mtc.sort_values(DataColumns.RATIO, inplace=True)
 
-    groups = pd.Series(index=risk_tier_details.index, name=RangeColumn.GROUPS)
+    groups = pd.Series(
+        index=risk_tier_details.index, name=RangeColumn.GROUPS, dtype=object
+    )
 
     if loss_rate_type == LossRateTypes.DLR:
         rsf_column = RangeColumn.RISK_SCALAR_FACTOR_DLR
@@ -288,7 +290,9 @@ def create_auto_bands(
         return df
 
     risk_tier_details = (
-        risk_tier_details.groupby(RTDetCol.UPPER_RATE)[risk_tier_details.columns]
+        risk_tier_details.groupby(RTDetCol.UPPER_RATE, observed=False)[
+            risk_tier_details.columns
+        ]
         .apply(create_intermidiate_rates)
         .droplevel(level=0, axis=0)
     )

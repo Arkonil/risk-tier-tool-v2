@@ -1,5 +1,6 @@
 import io
 import json
+import re
 import zipfile
 
 import numpy as np
@@ -10,7 +11,7 @@ from classes.home_page_state import HomePageState
 from classes.scalars import Scalar
 from classes.iteration_graph import IterationGraph
 from classes.options import Options
-from classes.constants import LossRateTypes, README_CONTENT
+from classes.constants import LossRateTypes, README_CONTENT, VariableType
 
 
 class NpEncoder(json.JSONEncoder):
@@ -106,6 +107,11 @@ class Session:
                 # Read df from Parquet if it exists
                 df_parquet_buffer = io.BytesIO(zipf.read("df.parquet"))
                 df = pd.read_parquet(df_parquet_buffer)
+                df = df.convert_dtypes()
+
+                for col in df.columns:
+                    if re.match(rf".+ \({VariableType.CATEGORICAL}\)$", col):
+                        df[col] = df[col].astype("category")
 
                 # Read sample_df from Parquet if it exists
                 sample_df_parquet_buffer = io.BytesIO(zipf.read("sample_df.parquet"))

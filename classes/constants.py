@@ -40,8 +40,8 @@ class StrEnumMeta(EnumMeta):
 
 
 class VariableType(StrEnum, metaclass=StrEnumMeta):
-    NUMERICAL = "numerical"
-    CATEGORICAL = "categorical"
+    NUMERICAL = "Numerical"
+    CATEGORICAL = "Categorical"
 
 
 class IterationType(StrEnum, metaclass=StrEnumMeta):

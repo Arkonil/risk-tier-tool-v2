@@ -1,6 +1,7 @@
 import streamlit as st
 
 from classes.session import Session
+from views.data_importer import data_importer_page
 
 
 def show_welcome_page():
@@ -15,7 +16,7 @@ def show_welcome_page():
         st.write('Supported file formats: `".csv"`, `".xlsx"`, `".xls"`')
         st.write("")
         if st.button("Import Data", icon=":material/file_upload:", type="primary"):
-            st.switch_page("views/data_importer.py")
+            st.switch_page(data_importer_page)
 
     st.write("")
     st.write("")
@@ -36,7 +37,7 @@ def show_welcome_page():
             session.import_rt_zip(uploaded_file)
 
             # st.write(uploaded_file)
-            st.switch_page("views/data_importer.py")
+            st.switch_page(data_importer_page)
 
 
 def home():

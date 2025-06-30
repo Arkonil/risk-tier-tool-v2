@@ -1,5 +1,3 @@
-import pathlib as p
-
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -15,6 +13,7 @@ from classes.session import Session
 from views.iterations_widgets.navigation import show_navigation_buttons
 from views.iterations_widgets.single_var_iteration import show_error_and_warnings
 from views.components.variable_selector import show_variable_selector_dialog
+from views.data_importer import data_importer_page
 
 
 def show_load_data_first_error() -> bool:
@@ -26,7 +25,7 @@ def show_load_data_first_error() -> bool:
         st.error("Please load data first")
         if st.button("Load Data"):
             iteration_graph.select_graph_view()
-            st.switch_page(p.Path(__file__).parent.parent / "data_importer.py")
+            st.switch_page(data_importer_page)
         return True
 
     return False

@@ -472,11 +472,20 @@ class CategoricalIteration(IterationBase):
                 invalid_groups.append(group_index)
                 continue
 
+            possible_types = [type(self.variable.iloc[0])]
+
+            if pd.api.types.is_integer_dtype(self.variable.cat.categories.dtype):
+                possible_types.append(int)
+            elif pd.api.types.is_float_dtype(self.variable.cat.categories.dtype):
+                possible_types.append(float)
+            elif pd.api.types.is_string_dtype(self.variable.cat.categories.dtype):
+                possible_types.append(str)
+
             for category in category_list:
-                if not isinstance(category, type(self.variable.iloc[0])):
+                if not isinstance(category, tuple(possible_types)):
                     warnings.append(
                         f"Invalid type {type(category)} for category {category} "
-                        f"in group at index {group_index}. Expected type: {type(self.variable.iloc[0])}"
+                        f"in group at index {group_index}. Expected type: {', '.join(map(str, possible_types))}."
                     )
                     invalid_groups.append(group_index)
 

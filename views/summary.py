@@ -84,10 +84,7 @@ def show_iteration_result(
 
     selected_option_index = 0
     for i, option in enumerate(all_options):
-        if (
-            option[0] == selected_iteration_option[0]
-            and option[1] == selected_iteration_option[1]
-        ):
+        if option == selected_iteration_option:
             selected_option_index = i
             break
 
@@ -108,16 +105,11 @@ def show_iteration_result(
         label="Select Iteration",
         options=all_options,
         key=f"selected_iteration_{key}",
-        index=selected_option_index
-        if selected_iteration_option in iteration_ids
-        else 0,
+        index=selected_option_index,
         format_func=format_func,
     )
 
-    if (
-        iteration_id != selected_iteration_option[0]
-        or is_default != selected_iteration_option[1]
-    ):
+    if (iteration_id, is_default) != selected_iteration_option:
         home_page_state.selected_iterations[selected_iteration] = (
             iteration_id,
             is_default,

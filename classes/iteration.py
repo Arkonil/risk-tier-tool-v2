@@ -359,6 +359,8 @@ class NumericalIteration(IterationBase):
                 ))
                 mask |= (self.variable > lower_bound) & (self.variable <= upper_bound)
 
+        lbs = pd.Series(map(lambda i: i[1].left, intervals))
+        ubs = pd.Series(map(lambda i: i[1].right, intervals))
         intervals.sort(key=lambda t: t[1].left)
 
         overlaps = []
@@ -368,6 +370,18 @@ class NumericalIteration(IterationBase):
                     f"{intervals[i][0]}. {intervals[i][1]} "
                     f"and {intervals[i + 1][0]}. {intervals[i + 1][1]}"
                 )
+
+        if not lbs.is_monotonic_decreasing and not lbs.is_monotonic_increasing:
+            warnings.append(
+                "Lower bounds of the groups are not monotonic. "
+                "This may lead to unexpected behavior."
+            )
+
+        if not ubs.is_monotonic_decreasing and not ubs.is_monotonic_increasing:
+            warnings.append(
+                "Upper bounds of the groups are not monotonic. "
+                "This may lead to unexpected behavior."
+            )
 
         if overlaps:
             errors.append(f"Following intervals overlap: {overlaps}")

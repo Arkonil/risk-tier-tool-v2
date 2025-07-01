@@ -141,6 +141,21 @@ class SingleVarIteration(IterationBase):
         else:
             raise ValueError(f"Invalid loss rate type: {loss_rate_type}")
 
+    def update_color(
+        self,
+        color_type: t.Literal[RTDetCol.BG_COLOR, RTDetCol.FONT_COLOR],
+        color: pd.Series,
+    ):
+        if len(color) != len(self._risk_tier_details):
+            raise ValueError(f"Invalid color length: {len(color)}")
+
+        if color_type == RTDetCol.BG_COLOR:
+            self._risk_tier_details[RTDetCol.BG_COLOR] = color.to_list()
+        elif color_type == RTDetCol.FONT_COLOR:
+            self._risk_tier_details[RTDetCol.FONT_COLOR] = color.to_list()
+        else:
+            raise ValueError(f"Invalid color type: {color_type}")
+
     @t.override
     def get_risk_tiers(
         self, previous_risk_tiers: pd.Series | None, default: bool

@@ -145,6 +145,16 @@ def get_risk_tier_details(iteration_id: str, recheck: bool) -> tuple[pd.DataFram
                 maf=global_rt_details[RTDetCol.MAF_ULR],
             )
 
+        root_iter.update_color(
+            color_type=RTDetCol.BG_COLOR,
+            color=global_rt_details[RTDetCol.BG_COLOR],
+        )
+
+        root_iter.update_color(
+            color_type=RTDetCol.FONT_COLOR,
+            color=global_rt_details[RTDetCol.FONT_COLOR],
+        )
+
     else:
         message = (
             "Risk Tier Details have been changed after creating the iteration."

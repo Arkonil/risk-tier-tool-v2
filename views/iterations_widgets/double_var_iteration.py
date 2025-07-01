@@ -211,10 +211,10 @@ def show_grid_editor(iteration_id: str, key: int, default: bool = False):
     needs_rerun = False
     for i in edited_grid.index:
         for j in edited_grid.columns:
-            if j not in iteration.risk_tier_grid.columns:
+            if j not in iteration_risk_tier_grid.columns:
                 continue
 
-            if iteration.risk_tier_grid.loc[i, j] != edited_grid.loc[i, j]:
+            if iteration_risk_tier_grid.loc[i, j] != edited_grid.loc[i, j]:
                 iteration.set_risk_tier_grid(i, j, edited_grid.loc[i, j])
                 iteration_graph.add_to_calculation_queue(iteration_id, default=False)
                 needs_rerun = True
@@ -406,7 +406,7 @@ def show_grid_metric(
             col_index = risk_tier_details.loc[
                 risk_tier_details[RTDetCol.RISK_TIER] == col_label
             ].index[0]
-            rt_label = iteration.risk_tier_grid.loc[row_index, col_index]
+            rt_label = iteration_risk_tier_grid.loc[row_index, col_index]
 
             font_color = risk_tier_details.loc[rt_label, RTDetCol.FONT_COLOR]
             bg_color = risk_tier_details.loc[rt_label, RTDetCol.BG_COLOR]

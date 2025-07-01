@@ -271,14 +271,14 @@ def show_edited_range(
                 * calculated_df[RangeColumn.RISK_SCALAR_FACTOR_DLR]
             )
 
-    int_cols = [Metric.VOLUME, Metric.WO_COUNT]
-    dec_cols = [Metric.WO_BAL, Metric.AVG_BAL]
-    perc_cols = [
+    int_cols = {Metric.VOLUME, Metric.WO_COUNT} & set(calculated_df.columns)
+    dec_cols = {Metric.WO_BAL, Metric.AVG_BAL} & set(calculated_df.columns)
+    perc_cols = {
         Metric.WO_BAL_PCT,
         Metric.WO_COUNT_PCT,
         Metric.ANNL_WO_COUNT_PCT,
         Metric.ANNL_WO_BAL_PCT,
-    ]
+    } & set(calculated_df.columns)
 
     def get_style(rt_label: str) -> str:
         font_color, bg_color = iteration_graph.get_color(rt_label, iteration_id)
@@ -289,9 +289,9 @@ def show_edited_range(
             get_style,
             subset=[RTDetCol.RISK_TIER],
         )
-        .format(precision=0, thousands=",", subset=int_cols)
-        .format(precision=2, thousands=",", subset=dec_cols)
-        .format("{:.2f} %", subset=perc_cols)
+        .format(precision=0, thousands=",", subset=list(int_cols))
+        .format(precision=2, thousands=",", subset=list(dec_cols))
+        .format("{:.2f} %", subset=list(perc_cols))
     )
 
     disabled = not editable

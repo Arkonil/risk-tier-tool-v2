@@ -89,38 +89,18 @@ def create_auto_numeric_bands(
         cumm_loss_rates = (
             mtc[DataColumns.NUMERATOR + "_cum"] / mtc[DataColumns.DENOMINATOR + "_cum"]
         ) * rsf
-        mask = (cumm_loss_rates < upper_rate).cummin()
+
+        loss_rates = (mtc[DataColumns.NUMERATOR] / mtc[DataColumns.DENOMINATOR]) * rsf
+
+        mask = ((cumm_loss_rates < upper_rate) & (loss_rates < upper_rate)).cummin()
 
         if len(mtc[mask]) > 0:
             last_value = mtc[mask].index[-1]
 
-        mtc_upper = mtc[mask].copy()
-        mtc_lower = mtc[~mask].copy()
-
-        mtc_upper = mtc_upper.iloc[::-1]
-
-        mtc_upper[DataColumns.NUMERATOR + "_cum"] = mtc_upper[
-            DataColumns.NUMERATOR
-        ].cumsum()
-        mtc_upper[DataColumns.DENOMINATOR + "_cum"] = mtc_upper[
-            DataColumns.DENOMINATOR
-        ].cumsum()
-
-        mtc_upper = mtc_upper.iloc[::-1]
-
-        cumm_loss_rates = (
-            mtc_upper[DataColumns.NUMERATOR + "_cum"]
-            / mtc_upper[DataColumns.DENOMINATOR + "_cum"]
-        ) * rsf
-        mask = (cumm_loss_rates < upper_rate).cummin()
-
-        if len(mtc_upper[mask]) > 0:
-            last_value = mtc_upper[mask].index[-1]
-
         groups.loc[index, RangeColumn.LOWER_BOUND] = current_lower_bound
         groups.loc[index, RangeColumn.UPPER_BOUND] = last_value
 
-        mtc = pd.concat([mtc_upper[~mask], mtc_lower], axis=0)
+        mtc = mtc[~mask]
         current_lower_bound = last_value
 
     groups.loc[groups.index[-1], RangeColumn.UPPER_BOUND] = variable.max()
@@ -246,18 +226,14 @@ def create_auto_bands(
     volume = pd.Series(1, index=variable_filtered.index)
 
     if dlr_scalar is None:
-        risk_tier_details[RangeColumn.RISK_SCALAR_FACTOR_DLR] = risk_tier_details[
-            RTDetCol.MAF_DLR
-        ]
+        risk_tier_details[RangeColumn.RISK_SCALAR_FACTOR_DLR] = 1
     else:
         risk_tier_details[RangeColumn.RISK_SCALAR_FACTOR_DLR] = (
             dlr_scalar.get_risk_scalar_factor(risk_tier_details[RTDetCol.MAF_DLR])
         )
 
     if ulr_scalar is None:
-        risk_tier_details[RangeColumn.RISK_SCALAR_FACTOR_ULR] = risk_tier_details[
-            RTDetCol.MAF_ULR
-        ]
+        risk_tier_details[RangeColumn.RISK_SCALAR_FACTOR_ULR] = 1
     else:
         risk_tier_details[RangeColumn.RISK_SCALAR_FACTOR_ULR] = (
             ulr_scalar.get_risk_scalar_factor(risk_tier_details[RTDetCol.MAF_ULR])

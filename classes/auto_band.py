@@ -83,24 +83,51 @@ def create_auto_numeric_bands(
         upper_rate = risk_tier_row[RTDetCol.UPPER_RATE]
         rsf = risk_tier_row[rsf_column]
 
-        mtc[DataColumns.NUMERATOR + "_cum"] = mtc[DataColumns.NUMERATOR].cumsum()
-        mtc[DataColumns.DENOMINATOR + "_cum"] = mtc[DataColumns.DENOMINATOR].cumsum()
+        mtc_mask = pd.Series(pd.NA, index=mtc.index, dtype="boolean")
+        mtc_temp = mtc.copy()
 
-        cumm_loss_rates = (
-            mtc[DataColumns.NUMERATOR + "_cum"] / mtc[DataColumns.DENOMINATOR + "_cum"]
-        ) * rsf
+        for _ in range(100):
+            # Forward Pass
+            if len(mtc_temp) == 0:
+                break
 
-        loss_rates = (mtc[DataColumns.NUMERATOR] / mtc[DataColumns.DENOMINATOR]) * rsf
+            cumm_numerator = mtc_temp[DataColumns.NUMERATOR].cumsum()
+            cumm_denominator = mtc_temp[DataColumns.DENOMINATOR].cumsum()
+            cumm_loss_rates = (cumm_numerator / cumm_denominator) * rsf
 
-        mask = ((cumm_loss_rates < upper_rate) & (loss_rates < upper_rate)).cummin()
+            mask = (cumm_loss_rates < upper_rate).cummin()
 
-        if len(mtc[mask]) > 0:
-            last_value = mtc[mask].index[-1]
+            mtc_mask.loc[mask[~mask].index] = False
+
+            mtc_temp = mtc_temp[mask]
+
+            # Backward Pass
+            if len(mtc_temp) == 0:
+                break
+
+            cumm_numerator = (
+                mtc_temp[DataColumns.NUMERATOR].iloc[::-1].cumsum().iloc[::-1]
+            )
+            cumm_denominator = (
+                mtc_temp[DataColumns.DENOMINATOR].iloc[::-1].cumsum().iloc[::-1]
+            )
+            cumm_loss_rates = (cumm_numerator / cumm_denominator) * rsf
+
+            mask = (cumm_loss_rates < upper_rate).cummin()
+
+            mtc_mask.loc[mask[mask].index] = True
+
+            mtc_temp = mtc_temp[~mask]
+
+        mtc_mask = mtc_mask.fillna(False)
+
+        if len(mtc[mtc_mask]) > 0:
+            last_value = mtc[mtc_mask].index[-1]
 
         groups.loc[index, RangeColumn.LOWER_BOUND] = current_lower_bound
         groups.loc[index, RangeColumn.UPPER_BOUND] = last_value
 
-        mtc = mtc[~mask]
+        mtc = mtc[~mtc_mask]
         current_lower_bound = last_value
 
     groups.loc[groups.index[-1], RangeColumn.UPPER_BOUND] = variable.max()

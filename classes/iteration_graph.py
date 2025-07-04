@@ -1,4 +1,5 @@
 import itertools
+import re
 import typing as t
 
 import pandas as pd
@@ -451,6 +452,86 @@ class IterationGraph:
         self._recalculation_required.remove((node_id, default_or_edited))
 
         return iteration_output
+
+    def get_sas_code(self, node_id: str, default: bool, use_macro: bool) -> str:
+        node_chain = self.get_ancestors(node_id)
+        node_chain.append(node_id)
+
+        risk_tier_details = self.get_risk_tier_details(node_id)
+        output_value_mapping = {
+            f"GROUP_INDEX_{k}": f'"{v}"'
+            for k, v in risk_tier_details[RTDetCol.RISK_TIER].to_dict().items()
+        }
+
+        code_templates = []
+        pattern = re.compile(r"(.+) \((Numerical|Categorical)\)")
+
+        for i, node in enumerate(node_chain):
+            if i < len(node_chain) - 1:
+                _default = False
+            else:
+                _default = default
+
+            iteration = self.iterations[node]
+            if match := pattern.match(iteration.variable.name):
+                variable_name = match.group(1)
+            else:
+                variable_name = iteration.variable.name
+
+            # Ordering here is important
+            if self.is_root(node):
+                output_variable_name = (
+                    f"Risk_Tier_{node}_{'default' if _default else 'custom'}"
+                )
+                previous_iter_out_name = ""
+            else:
+                previous_iter_out_name = output_variable_name
+                output_variable_name = (
+                    f"Risk_Tier_{node}_{'default' if _default else 'custom'}"
+                )
+
+            code_templates.append({
+                "node_id": node,
+                "template": iteration.generate_sas_code(default=_default),
+                "substitute": {
+                    "VARIABLE_NAME": variable_name,
+                    "OUTPUT_VARIABLE_NAME": output_variable_name,
+                    "PREV_ITER_OUT_NAME": previous_iter_out_name,
+                }
+                | output_value_mapping,
+            })
+
+        code = ""
+
+        if use_macro:
+            code += "/* Macro Definitions: */\n"
+
+            raw_variables = {}
+            result_variables = {}
+
+            for i, item in enumerate(code_templates):
+                substitute_d = item["substitute"]
+
+                raw_variables[f"variable_{i}"] = substitute_d["VARIABLE_NAME"]
+                result_variables[f"result_{i}"] = substitute_d["OUTPUT_VARIABLE_NAME"]
+
+                substitute_d["VARIABLE_NAME"] = f"&variable_{i}."
+                substitute_d["OUTPUT_VARIABLE_NAME"] = f"&result_{i}."
+
+            for macro, value in raw_variables.items():
+                code += f"%let {macro} = {value};\n"
+
+            for macro, value in result_variables.items():
+                code += f"%let {macro} = {value};\n"
+
+            code += "\n"
+
+        for item in code_templates:
+            code += f"/* Iteration {item['node_id']} */\n\n"
+            code += item["template"].safe_substitute(item["substitute"])
+            code += "\n" * 2
+
+        return code.strip()
 
     def to_dict(self):
         return {

@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
+from string import Template
+import textwrap
 import typing as t
+
 
 import numpy as np
 import pandas as pd
@@ -14,6 +17,7 @@ from classes.constants import (
     VariableType,
 )
 from classes.data import Data
+from classes.utils import wrap_text
 
 
 class IterationOutput(t.TypedDict):
@@ -112,6 +116,48 @@ class IterationBase(ABC):
             "default_groups": self._default_groups.to_dict(),
         }
 
+    def generate_sas_code_for_groups(self, default: bool) -> str:
+        """Generates SAS code to create this iteration."""
+        groups = self.default_groups if default else self.groups
+
+        code_template = 'if missing($VARIABLE_NAME) then $OUTPUT_VARIABLE_NAME = "";\n'
+
+        for group_index, group_value in groups.items():
+            if self.var_type == VariableType.NUMERICAL:
+                lower_bound, upper_bound = group_value
+                code_template += (
+                    f"else if {lower_bound} < $VARIABLE_NAME <= {upper_bound} then\n"
+                    f"    $OUTPUT_VARIABLE_NAME = $GROUP_INDEX_{group_index};\n"
+                )
+            elif self.var_type == VariableType.CATEGORICAL:
+                if pd.api.types.is_numeric_dtype(self.variable.cat.categories.dtype):
+                    categories = ", ".join(str(cat) for cat in group_value)
+                else:
+                    categories = ", ".join(f'"{cat}"' for cat in group_value)
+
+                categories = wrap_text(
+                    categories,
+                    width=80,
+                    break_long_words=False,
+                    break_on_hyphens=False,
+                )
+
+                if len(categories) > 1:
+                    category_text = textwrap.indent("\n".join(categories), "    ")
+                    category_text = "\n" + category_text + "\n"
+                else:
+                    category_text = categories[0]
+
+                code_template += (
+                    f"else if $VARIABLE_NAME in ({category_text}) "
+                    f"then $OUTPUT_VARIABLE_NAME = $GROUP_INDEX_{group_index};\n"
+                )
+
+            else:
+                raise ValueError(f"Unsupported variable type: {self.var_type}")
+
+        return code_template
+
 
 class SingleVarIteration(IterationBase):
     iter_type = IterationType.SINGLE
@@ -178,6 +224,10 @@ class SingleVarIteration(IterationBase):
         })
 
         return dict_data
+
+    def generate_sas_code(self, default: bool) -> Template:
+        code_template = super().generate_sas_code_for_groups(default)
+        return Template(code_template)
 
 
 class DoubleVarIteration(IterationBase):
@@ -306,6 +356,25 @@ class DoubleVarIteration(IterationBase):
         })
 
         return dict_data
+
+    def generate_sas_code(self, default: bool) -> Template:
+        grid = self.default_risk_tier_grid if default else self.risk_tier_grid
+
+        code_template = 'if missing($VARIABLE_NAME) or missing($PREV_ITER_OUT_NAME) then $OUTPUT_VARIABLE_NAME = "";\n'
+
+        for column in grid.columns:
+            code_template += (
+                f"else if $PREV_ITER_OUT_NAME = $GROUP_INDEX_{column} then do;\n"
+            )
+
+            code_template += textwrap.indent(
+                text=self.generate_sas_code_for_groups(default=default),
+                prefix="    ",
+            )
+
+            code_template += "end;\n"
+
+        return Template(code_template)
 
 
 class NumericalIteration(IterationBase):

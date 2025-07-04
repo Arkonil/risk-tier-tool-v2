@@ -7,7 +7,7 @@ from classes.session import Session
 from views.home import home_page
 from views.iterations_widgets.dialogs import show_metric_selector
 from views.iterations_widgets.single_var_iteration import show_edited_range
-from views.components import show_variable_selector_dialog
+from views.components import show_variable_selector_dialog, show_iteration_selector
 
 
 def sidebar_options():
@@ -71,42 +71,13 @@ def show_iteration_result(
 ):
     session: Session = st.session_state["session"]
     home_page_state = session.home_page_state
-    iteration_graph = session.iteration_graph
 
     selected_iteration_option = home_page_state.selected_iterations[selected_iteration]
 
-    iteration_ids = list(iteration_graph.iterations.keys())
-    all_options = [
-        (iter_id, is_default)
-        for iter_id in iteration_ids
-        for is_default in [True, False]
-    ]
-
-    selected_option_index = 0
-    for i, option in enumerate(all_options):
-        if option == selected_iteration_option:
-            selected_option_index = i
-            break
-
-    def format_func(option: tuple[str, bool]) -> str:
-        if option is None:
-            return "No Iteration Selected"
-
-        iteration_id, is_default = option
-        default_or_edited = "Default" if is_default else "Edited"
-
-        iteration = iteration_graph.iterations[iteration_id]
-        if iteration.name:
-            return f"Iteration {iteration_id} - {iteration.name} - {default_or_edited}"
-
-        return f"Iteration {iteration_id} - {iteration.variable.name} - {default_or_edited}"
-
-    iteration_id, is_default = st.selectbox(
-        label="Select Iteration",
-        options=all_options,
-        key=f"selected_iteration_{key}",
-        index=selected_option_index,
-        format_func=format_func,
+    iteration_id, is_default = show_iteration_selector(
+        selected_iteration_id=selected_iteration_option[0],
+        is_default=selected_iteration_option[1],
+        key=key,
     )
 
     if (iteration_id, is_default) != selected_iteration_option:

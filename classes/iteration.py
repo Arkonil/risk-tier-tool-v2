@@ -122,14 +122,26 @@ class IterationBase(ABC):
 
         code_template = 'if missing($VARIABLE_NAME) then $OUTPUT_VARIABLE_NAME = "";\n'
 
-        for group_index, group_value in groups.items():
-            if self.var_type == VariableType.NUMERICAL:
+        if self.var_type == VariableType.NUMERICAL:
+            for group_index, group_value in groups.items():
                 lower_bound, upper_bound = group_value
+                if (
+                    np.isnan(lower_bound)
+                    or np.isnan(upper_bound)
+                    or lower_bound >= upper_bound
+                ):
+                    continue
+
                 code_template += (
                     f"else if {lower_bound} < $VARIABLE_NAME <= {upper_bound} then\n"
                     f"    $OUTPUT_VARIABLE_NAME = $GROUP_INDEX_{group_index};\n"
                 )
-            elif self.var_type == VariableType.CATEGORICAL:
+
+        elif self.var_type == VariableType.CATEGORICAL:
+            for group_index, group_value in groups.items():
+                if len(group_value) == 0:
+                    continue
+
                 if pd.api.types.is_numeric_dtype(self.variable.cat.categories.dtype):
                     categories = ", ".join(str(cat) for cat in group_value)
                 else:
@@ -153,8 +165,10 @@ class IterationBase(ABC):
                     f"then $OUTPUT_VARIABLE_NAME = $GROUP_INDEX_{group_index};\n"
                 )
 
-            else:
-                raise ValueError(f"Unsupported variable type: {self.var_type}")
+        else:
+            raise ValueError(f"Unsupported variable type: {self.var_type}")
+
+        code_template += "else $OUTPUT_VARIABLE_NAME = $MISSING;\n"
 
         return code_template
 
@@ -373,6 +387,8 @@ class DoubleVarIteration(IterationBase):
             )
 
             code_template += "end;\n"
+
+        code_template += "else $OUTPUT_VARIABLE_NAME = $MISSING;\n"
 
         return Template(code_template)
 

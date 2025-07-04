@@ -497,6 +497,7 @@ class IterationGraph:
                     "VARIABLE_NAME": variable_name,
                     "OUTPUT_VARIABLE_NAME": output_variable_name,
                     "PREV_ITER_OUT_NAME": previous_iter_out_name,
+                    "MISSING": '""',
                 }
                 | output_value_mapping,
             })

@@ -12,7 +12,7 @@ from classes.constants import (
 from classes.session import Session
 from views.iterations_widgets.navigation import show_navigation_buttons
 from views.iterations_widgets.single_var_iteration import show_error_and_warnings
-from views.components.variable_selector import show_variable_selector_dialog
+from views.components import show_variable_selector_dialog
 from views.data_importer import data_importer_page
 
 

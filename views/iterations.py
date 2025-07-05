@@ -2,6 +2,7 @@ import streamlit as st
 
 from classes.session import Session
 from classes.iteration_graph import IterationGraph
+from views.components import show_load_data_first_error
 from views.iterations_widgets import (
     show_iteration_graph_widgets,
     show_iteration_creation_page,
@@ -21,6 +22,9 @@ def show_iteration_widgets():
 
 
 def iterations():
+    if show_load_data_first_error():
+        return
+
     session = st.session_state["session"]
     iteration_graph: IterationGraph = session.iteration_graph
 

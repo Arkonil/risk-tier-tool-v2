@@ -12,7 +12,7 @@ from classes.constants import (
 from classes.session import Session
 from views.iterations_widgets.navigation import show_navigation_buttons
 from views.iterations_widgets.single_var_iteration import show_error_and_warnings
-from views.components import show_variable_selector_dialog, show_load_data_first_error
+from views.components import show_variable_selector_dialog
 
 
 def sidebar_options():
@@ -27,9 +27,6 @@ def sidebar_options():
 
 
 def show_iteration_creation_page() -> None:
-    if show_load_data_first_error():
-        return
-
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
     options = session.options

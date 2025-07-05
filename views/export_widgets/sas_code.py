@@ -2,10 +2,13 @@ import textwrap
 import streamlit as st
 
 from classes.session import Session
-from views.components import show_iteration_selector
+from views.components import show_iteration_selector, show_load_data_first_error
 
 
 def show_sas_code_download():
+    if show_load_data_first_error(key=0):
+        return
+
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
 

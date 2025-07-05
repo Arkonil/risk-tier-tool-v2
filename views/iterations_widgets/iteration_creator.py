@@ -12,23 +12,7 @@ from classes.constants import (
 from classes.session import Session
 from views.iterations_widgets.navigation import show_navigation_buttons
 from views.iterations_widgets.single_var_iteration import show_error_and_warnings
-from views.components import show_variable_selector_dialog
-from views.data_importer import data_importer_page
-
-
-def show_load_data_first_error() -> bool:
-    session: Session = st.session_state["session"]
-    iteration_graph = session.iteration_graph
-    data = session.data
-
-    if not data.sample_loaded:
-        st.error("Please load data first")
-        if st.button("Load Data"):
-            iteration_graph.select_graph_view()
-            st.switch_page(data_importer_page)
-        return True
-
-    return False
+from views.components import show_variable_selector_dialog, show_load_data_first_error
 
 
 def sidebar_options():

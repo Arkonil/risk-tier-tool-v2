@@ -1,9 +1,13 @@
 import streamlit as st
 
 from classes.session import Session
+from views.components import show_iteration_selector, show_load_data_first_error
 
 
 def show_python_code_download():
+    if show_load_data_first_error(key=1):
+        return
+
     session: Session = st.session_state["session"]
 
     st.markdown("### Download Python Code")

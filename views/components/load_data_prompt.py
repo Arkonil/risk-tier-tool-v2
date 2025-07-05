@@ -21,7 +21,7 @@ def show_load_data_first_error(key: int = 0) -> bool:
 
         st.markdown(
             f"""
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 1em; margin-bottom: 1em;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 1em; margin: 7.5em 0 1em;">
                 <div style="height: 16em; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">{svg}</div>
                 <div style="display: flex; flex-direction: column; align-items: center; font-size: 2.5em; color: rgb(89, 89, 89);">Data is not Loaded</div>
             </div>

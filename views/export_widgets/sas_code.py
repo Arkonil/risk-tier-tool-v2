@@ -1,4 +1,3 @@
-import textwrap
 import streamlit as st
 
 from classes.session import Session
@@ -14,19 +13,13 @@ def show_sas_code_download():
 
     st.markdown("### Download SAS Code")
 
-    iteration_id, is_default = show_iteration_selector()
+    iteration_id, is_default = show_iteration_selector(key=0)
 
     use_macros = st.checkbox("Use Macros")
 
     code = iteration_graph.get_sas_code(iteration_id, is_default, use_macro=use_macros)
 
-    fullcode = "data result; /* Specify Output Data Name */\n"
-    fullcode += "    set source; /*  Specify Input Data Name */\n"
-    fullcode += "    \n"
-    fullcode += textwrap.indent(code, "    ")
-    fullcode += "\nrun;"
-
-    st.code(fullcode, language="sas")
+    st.code(code, language="sas")
 
 
 __all__ = ["show_sas_code_download"]

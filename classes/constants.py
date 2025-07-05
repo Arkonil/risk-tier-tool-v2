@@ -6,6 +6,8 @@ import pandas as pd
 
 from classes.singleton import Singleton
 
+TAB = "    "
+
 
 class RTDetCol(StrEnum):
     SELECTED = "Selected"

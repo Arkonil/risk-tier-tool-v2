@@ -1,11 +1,13 @@
 import itertools
 import re
+import textwrap
 import typing as t
 
 import pandas as pd
 
 from classes.auto_band import create_auto_bands
 from classes.constants import (
+    TAB,
     DefaultOptions,
     IterationMetadata,
     IterationType,
@@ -513,8 +515,8 @@ class IterationGraph:
             for i, item in enumerate(code_templates):
                 substitute_d = item["substitute"]
 
-                raw_variables[f"variable_{i}"] = substitute_d["VARIABLE_NAME"]
-                result_variables[f"result_{i}"] = substitute_d["OUTPUT_VARIABLE_NAME"]
+                raw_variables[f"variable_{i}_"] = substitute_d["VARIABLE_NAME"]
+                result_variables[f"result_{i}_"] = substitute_d["OUTPUT_VARIABLE_NAME"]
 
                 substitute_d["VARIABLE_NAME"] = f"&variable_{i}."
                 substitute_d["OUTPUT_VARIABLE_NAME"] = f"&result_{i}."
@@ -531,6 +533,167 @@ class IterationGraph:
             code += f"/* Iteration {item['node_id']} */\n\n"
             code += item["template"].safe_substitute(item["substitute"])
             code += "\n" * 2
+
+        fullcode = "/* Specify input/Output Data Name */\n"
+        fullcode += "data result;\n"
+        fullcode += textwrap.indent("set source;\n\n", TAB)
+        fullcode += textwrap.indent(code.strip(), TAB)
+        fullcode += "\nrun;"
+
+        return fullcode.strip()
+
+    def get_python_code(self, node_id: str, default: bool, data: Data) -> str:
+        node_chain = self.get_ancestors(node_id)
+        node_chain.append(node_id)
+
+        risk_tier_details = self.get_risk_tier_details(node_id)
+        output_value_mapping = {
+            f"GROUP_INDEX_{k}": f'"{v}"'
+            for k, v in risk_tier_details[RTDetCol.RISK_TIER].to_dict().items()
+        }
+
+        code_templates = []
+        pattern = re.compile(r"(.+) \((Numerical|Categorical)\)")
+
+        for i, node in enumerate(node_chain):
+            if i < len(node_chain) - 1:
+                _default = False
+            else:
+                _default = default
+
+            iteration = self.iterations[node]
+            if match := pattern.match(iteration.variable.name):
+                variable_name = match.group(1)
+            else:
+                variable_name = iteration.variable.name
+
+            # Ordering here is important
+            if self.is_root(node):
+                output_variable_name = (
+                    f"Risk_Tier_{node}_{'default' if _default else 'custom'}"
+                )
+                previous_iter_out_name = ""
+            else:
+                previous_iter_out_name = output_variable_name
+                output_variable_name = (
+                    f"Risk_Tier_{node}_{'default' if _default else 'custom'}"
+                )
+
+            code_templates.append({
+                "node_id": node,
+                "template": iteration.generate_python_code(default=_default),
+                "substitute": {
+                    "VARIABLE_NAME": variable_name,
+                    "OUTPUT_VARIABLE_NAME": output_variable_name,
+                    "PREV_ITER_OUT_NAME": previous_iter_out_name,
+                    "MISSING": '""',
+                    "DATA": "data",
+                }
+                | output_value_mapping,
+            })
+
+        module_import = textwrap.dedent("""
+            # Module Imports
+            import numpy as np
+            import pandas as pd
+            
+        """)
+
+        data_import_csv = textwrap.dedent(f"""
+            # Data Import
+            data = pd.read_csv(
+                filepath_or_buffer="{str(data.filepath.absolute())}",
+                delimiter="{data.delimiter}",
+                header={data.header_row},
+            )
+            
+        """)
+
+        data_import_excel = textwrap.dedent(f"""
+            # Data Import
+            data = pd.read_excel(
+                io="{str(data.filepath.absolute())}",
+                sheet_name={data.sheet_name if data.sheet_name.isnumeric() else f'"{data.sheet_name}"'},
+                header="{data.header_row}",
+            )
+            
+        """)
+
+        function_definitions = textwrap.dedent("""                   
+            # Function Definitions:
+            def create_mapped_variable(variable: pd.Series, mapping: pd.Series):
+                if isinstance(mapping.index.dtype, pd.IntervalDtype):
+                    return pd.cut(
+                        x = variable,
+                        bins = mapping.index,
+                    ).map(mapping).rename("output")
+                
+                output = pd.Series(index=data.index, name="output", dtype="string")
+                
+                for cats, out in mapping.items():
+                    output.loc[variable.isin(cats)] = out
+                
+                return output
+            
+            def create_grid_mapped_variable(
+                variable: pd.Series, 
+                prev_result_variable: pd.Series, 
+                mapping: pd.DataFrame,
+            ):
+                mapping = (
+                    mapping.copy()
+                    .stack()
+                    .rename_axis(index=["variable", "result"])
+                    .rename("output")
+                    .reset_index()
+                )
+                
+                df = pd.DataFrame({
+                    "variable": variable,
+                    "result": prev_result_variable,
+                })
+
+                if isinstance(mapping["variable"].dtype, pd.IntervalDtype):
+                    df["variable"] = pd.cut(
+                        x=df["variable"],
+                        bins=mapping["variable"].drop_duplicates(),
+                    )
+                    
+                    df = pd.merge(
+                        left=df,
+                        right=mapping,
+                        how="left",
+                        on=["variable", "result"],
+                    )
+                    
+                    return df["output"]
+                
+                output = pd.Series(index=data.index, name="output", dtype="string")
+                
+                for group in mapping.itertuples():
+                    categories = group.variable
+                    prev_result = group.result
+                    output_value = group.output
+                
+                    output.loc[variable.isin(categories) & (prev_result_variable == prev_result)] = output_value
+                
+                return output
+                
+        """)
+
+        code = module_import
+
+        if data.read_mode == "CSV":
+            code += data_import_csv
+        else:
+            code += data_import_excel
+
+        code += function_definitions
+
+        for item in code_templates:
+            code += f"## Iteration {item['node_id']}\n"
+            code += item["template"].safe_substitute(item["substitute"])
+            code += "\n"
 
         return code.strip()
 

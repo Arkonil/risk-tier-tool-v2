@@ -3,7 +3,6 @@ from string import Template
 import textwrap
 import typing as t
 
-
 import numpy as np
 import pandas as pd
 
@@ -15,6 +14,7 @@ from classes.constants import (
     RTDetCol,
     RangeColumn,
     VariableType,
+    TAB,
 )
 from classes.data import Data
 from classes.utils import wrap_text
@@ -155,7 +155,7 @@ class IterationBase(ABC):
                 )
 
                 if len(categories) > 1:
-                    category_text = textwrap.indent("\n".join(categories), "    ")
+                    category_text = textwrap.indent("\n".join(categories), TAB)
                     category_text = "\n" + category_text + "\n"
                 else:
                     category_text = categories[0]
@@ -240,7 +240,45 @@ class SingleVarIteration(IterationBase):
         return dict_data
 
     def generate_sas_code(self, default: bool) -> Template:
-        code_template = super().generate_sas_code_for_groups(default)
+        code_template = "format $OUTPUT_VARIABLE_NAME $$50.;\n\n"
+        code_template += super().generate_sas_code_for_groups(default)
+        return Template(code_template)
+
+    def generate_python_code(self, default: bool) -> Template:
+        groups = self.default_groups if default else self.groups
+
+        group_definitions = ""
+        if self.var_type == VariableType.NUMERICAL:
+            for group_index, group_value in groups.items():
+                lower_bound, upper_bound = group_value
+                if (
+                    np.isnan(lower_bound)
+                    or np.isnan(upper_bound)
+                    or lower_bound >= upper_bound
+                ):
+                    continue
+
+                group_definitions += f"pd.Interval({lower_bound}, {upper_bound}, closed='right'): $GROUP_INDEX_{group_index},\n"
+
+        elif self.var_type == VariableType.CATEGORICAL:
+            for group_index, group_value in groups.items():
+                if len(group_value) == 0:
+                    continue
+
+                if pd.api.types.is_numeric_dtype(self.variable.cat.categories.dtype):
+                    categories = ", ".join(str(cat) for cat in sorted(group_value))
+                else:
+                    categories = ", ".join(f'"{cat}"' for cat in sorted(group_value))
+
+                group_definitions += f"({categories},): $GROUP_INDEX_{group_index},\n"
+
+        code_template = f"iter_{self.id}_map = {{\n"
+        code_template += textwrap.indent(group_definitions, TAB)
+        code_template += "}\n"
+        code_template += f"iter_{self.id}_map = pd.Series(data=iter_{self.id}_map.values(), index=list(iter_{self.id}_map.keys()))\n\n"
+
+        code_template += f'$DATA["$OUTPUT_VARIABLE_NAME"] = create_mapped_variable($DATA["$VARIABLE_NAME"], iter_{self.id}_map)\n'
+
         return Template(code_template)
 
 
@@ -374,7 +412,8 @@ class DoubleVarIteration(IterationBase):
     def generate_sas_code(self, default: bool) -> Template:
         grid = self.default_risk_tier_grid if default else self.risk_tier_grid
 
-        code_template = 'if missing($VARIABLE_NAME) or missing($PREV_ITER_OUT_NAME) then $OUTPUT_VARIABLE_NAME = "";\n'
+        code_template = "format $OUTPUT_VARIABLE_NAME $$50.;\n\n"
+        code_template += 'if missing($VARIABLE_NAME) or missing($PREV_ITER_OUT_NAME) then $OUTPUT_VARIABLE_NAME = "";\n'
 
         for column in grid.columns:
             code_template += (
@@ -383,12 +422,76 @@ class DoubleVarIteration(IterationBase):
 
             code_template += textwrap.indent(
                 text=self.generate_sas_code_for_groups(default=default),
-                prefix="    ",
+                prefix=TAB,
             )
 
             code_template += "end;\n"
 
         code_template += "else $OUTPUT_VARIABLE_NAME = $MISSING;\n"
+
+        return Template(code_template)
+
+    def generate_python_code(self, default: bool) -> Template:
+        risk_tier_grid = self.default_risk_tier_grid if default else self.risk_tier_grid
+        groups = self.default_groups if default else self.groups
+
+        invalid_groups = []
+
+        group_definitions = ""
+        if self.var_type == VariableType.NUMERICAL:
+            for group_index, group_value in groups.items():
+                lower_bound, upper_bound = group_value
+                if (
+                    np.isnan(lower_bound)
+                    or np.isnan(upper_bound)
+                    or lower_bound >= upper_bound
+                ):
+                    invalid_groups.append(group_index)
+                    continue
+
+                group_definitions += (
+                    f"pd.Interval({lower_bound}, {upper_bound}, closed='right'),\n"
+                )
+        elif self.var_type == VariableType.CATEGORICAL:
+            for group_index, group_value in groups.items():
+                if len(group_value) == 0:
+                    invalid_groups.append(group_index)
+                    continue
+
+                if pd.api.types.is_numeric_dtype(self.variable.cat.categories.dtype):
+                    categories = ", ".join(str(cat) for cat in sorted(group_value))
+                else:
+                    categories = ", ".join(f'"{cat}"' for cat in sorted(group_value))
+
+                group_definitions += f"({categories},),\n"
+        group_definitions = "[\n" + textwrap.indent(group_definitions, TAB) + "]"
+
+        grid_definition = ""
+        for index in risk_tier_grid.index:
+            if index in invalid_groups:
+                continue
+
+            grid_definition += "["
+            grid_definition += ", ".join(
+                risk_tier_grid.loc[index].map(lambda v: f"$GROUP_INDEX_{v}")
+            )
+            grid_definition += "],\n"
+        grid_definition = "[\n" + textwrap.indent(grid_definition, TAB) + "]"
+
+        column_definition = (
+            "["
+            + ", ".join(risk_tier_grid.columns.map(lambda v: f"$GROUP_INDEX_{v}"))
+            + "]"
+        )
+
+        code_template = f"iter_{self.id}_grid = pd.DataFrame(\n"
+        code_template += textwrap.indent(f"data={grid_definition},\n", TAB)
+        code_template += textwrap.indent(f"columns={column_definition},\n", TAB)
+        code_template += textwrap.indent(f"index={group_definitions},\n", TAB)
+
+        code_template += ")\n\n"
+
+        code_template += f'$DATA["$OUTPUT_VARIABLE_NAME"] = create_grid_mapped_variable($DATA["$VARIABLE_NAME"], $DATA["$PREV_ITER_OUT_NAME"], iter_{self.id}_grid)\n'
 
         return Template(code_template)
 

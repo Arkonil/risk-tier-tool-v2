@@ -9,23 +9,15 @@ def show_python_code_download():
         return
 
     session: Session = st.session_state["session"]
+    iteration_graph = session.iteration_graph
+    data = session.data
 
     st.markdown("### Download Python Code")
 
-    code = ""
-    code += "# This is a placeholder for the Python code export.\n"
-    code += "# You can implement the logic to export the session data as Python code.\n"
-    code += "\n"
-    code += "import pandas as pd\n"
-    code += "import numpy as np\n"
-    code += "\n"
-    code += "# Example of creating a DataFrame from session data\n"
-    code += "data = {\n"
-    code += "    'column1': [1, 2, 3],\n"
-    code += "    'column2': [4, 5, 6]\n"
-    code += "}\n"
+    iteration_id, is_default = show_iteration_selector(key=1)
+    code_template = iteration_graph.get_python_code(iteration_id, is_default, data)
 
-    st.code(code, language="python")
+    st.code(code_template, language="python")
 
 
 __all__ = ["show_python_code_download"]

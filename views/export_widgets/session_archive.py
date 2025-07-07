@@ -27,3 +27,6 @@ def show_session_archive_download():
     )
 
     st.markdown(README_CONTENT)
+
+
+__all__ = ["show_session_archive_download"]

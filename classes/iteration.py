@@ -116,7 +116,9 @@ class IterationBase(ABC):
             "default_groups": self._default_groups.to_dict(),
         }
 
-    def generate_sas_code_for_groups(self, default: bool) -> str:
+    def generate_sas_code_for_groups(
+        self, default: bool, mapping: dict[int, int]
+    ) -> str:
         """Generates SAS code to create this iteration."""
         groups = self.default_groups if default else self.groups
 
@@ -134,7 +136,7 @@ class IterationBase(ABC):
 
                 code_template += (
                     f"else if {lower_bound} < $VARIABLE_NAME <= {upper_bound} then\n"
-                    f"    $OUTPUT_VARIABLE_NAME = $GROUP_INDEX_{group_index};\n"
+                    f"    $OUTPUT_VARIABLE_NAME = $GROUP_INDEX_{mapping.get(group_index, group_index)};\n"
                 )
 
         elif self.var_type == VariableType.CATEGORICAL:
@@ -162,7 +164,7 @@ class IterationBase(ABC):
 
                 code_template += (
                     f"else if $VARIABLE_NAME in ({category_text}) "
-                    f"then $OUTPUT_VARIABLE_NAME = $GROUP_INDEX_{group_index};\n"
+                    f"then $OUTPUT_VARIABLE_NAME = $GROUP_INDEX_{mapping.get(group_index, group_index)};\n"
                 )
 
         else:
@@ -240,8 +242,11 @@ class SingleVarIteration(IterationBase):
         return dict_data
 
     def generate_sas_code(self, default: bool) -> Template:
+        groups = self.default_groups if default else self.groups
+        mapping = {group_index: group_index for group_index in groups.index}
+
         code_template = "format $OUTPUT_VARIABLE_NAME $$50.;\n\n"
-        code_template += super().generate_sas_code_for_groups(default)
+        code_template += super().generate_sas_code_for_groups(default, mapping=mapping)
         return Template(code_template)
 
     def generate_python_code(self, default: bool) -> Template:
@@ -416,12 +421,19 @@ class DoubleVarIteration(IterationBase):
         code_template += 'if missing($VARIABLE_NAME) or missing($PREV_ITER_OUT_NAME) then $OUTPUT_VARIABLE_NAME = "";\n'
 
         for column in grid.columns:
+            mapping = {
+                group_index: grid_value
+                for group_index, grid_value in grid[column].to_dict().items()
+            }
+
             code_template += (
                 f"else if $PREV_ITER_OUT_NAME = $GROUP_INDEX_{column} then do;\n"
             )
 
             code_template += textwrap.indent(
-                text=self.generate_sas_code_for_groups(default=default),
+                text=self.generate_sas_code_for_groups(
+                    default=default, mapping=mapping
+                ),
                 prefix=TAB,
             )
 

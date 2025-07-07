@@ -11,18 +11,21 @@ from classes.constants import (
     VariableType,
 )
 from classes.session import Session
-from views.iterations_widgets.dialogs import set_groups, show_metric_selector
-from views.iterations_widgets.navigation import show_navigation_buttons
-from views.iterations_widgets.single_var_iteration import (
+from views.iterations_widgets.common import (
+    error_and_warning_widget,
+    category_editor_widget,
     get_risk_tier_details,
-    show_category_editor,
-    show_edited_range,
-    show_error_and_warnings,
+    editable_range_widget,
 )
-from views.components import show_variable_selector_dialog
+from views.iterations_widgets.dialogs import (
+    set_groups_dialog_widget,
+    metric_selector_dialog_widget,
+)
+from views.iterations_widgets.navigation import navigation_widgets
+from views.components import variable_selector_dialog_widget
 
 
-def sidebar_options(iteration_id: str):
+def sidebar_widgets(iteration_id: str):
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
 
@@ -35,7 +38,7 @@ def sidebar_options(iteration_id: str):
         icon=":material/data_table:",
         help="Select variables for calculations",
         type="primary",
-        on_click=show_variable_selector_dialog,
+        on_click=variable_selector_dialog_widget,
     )
 
     st.button(
@@ -43,7 +46,7 @@ def sidebar_options(iteration_id: str):
         use_container_width=True,
         icon=":material/functions:",
         help="Set metrics to display in the table",
-        on_click=show_metric_selector,
+        on_click=metric_selector_dialog_widget,
         args=(iteration_id,),
     )
 
@@ -53,7 +56,7 @@ def sidebar_options(iteration_id: str):
         label="Edit Groups",
         use_container_width=True,
         icon=":material/edit:",
-        on_click=set_groups,
+        on_click=set_groups_dialog_widget,
         args=(iteration_id,),
     )
 
@@ -100,7 +103,7 @@ def sidebar_options(iteration_id: str):
         st.rerun()
 
 
-def show_grid_editor(iteration_id: str, key: int, default: bool = False):
+def grid_editor_widget(iteration_id: str, key: int, default: bool = False):
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
 
@@ -277,7 +280,7 @@ def calculate_summ_df(iteration_id: str, default: bool = False):
     return summ_df, errors, warnings
 
 
-def show_grid_metric(
+def grid_metric_widget(
     iteration_id: str,
     metric_summary: pd.Series,
     show_group_details: bool,
@@ -440,7 +443,7 @@ def show_grid_metric(
     return metric_summary_grid_styled
 
 
-def show_grid_layout(
+def grid_layout_widget(
     iteration_id: str, metrics: list[Metric], default: bool, key: int = 0
 ):
     summ_df, errors, warnings = calculate_summ_df(
@@ -455,10 +458,10 @@ def show_grid_layout(
     status_container = st.container(key=f"editor_status_container-{key}")
 
     with grid_container:
-        show_grid_editor(iteration_id=iteration_id, key=key, default=default)
+        grid_editor_widget(iteration_id=iteration_id, key=key, default=default)
 
     with status_container:
-        show_error_and_warnings(errors, warnings)
+        error_and_warning_widget(errors, warnings)
 
     if not metrics:
         return
@@ -476,7 +479,7 @@ def show_grid_layout(
         metric = metrics[0]
         st.markdown(f"##### {metric}")
         st.dataframe(
-            show_grid_metric(
+            grid_metric_widget(
                 iteration_id=iteration_id,
                 metric_summary=summ_df[metric],
                 show_group_details=False,
@@ -498,7 +501,7 @@ def show_grid_layout(
         with columns.pop(0):
             st.markdown(f"##### {metric}")
             st.dataframe(
-                show_grid_metric(
+                grid_metric_widget(
                     iteration_id=iteration_id,
                     metric_summary=summ_df[metric],
                     show_group_details=show_details,
@@ -510,14 +513,14 @@ def show_grid_layout(
             show_details = not show_details
 
 
-def show_liner_layout(iteration_id: str, metrics: list[Metric], key: int = 0):
+def liner_layout_widget(iteration_id: str, metrics: list[Metric], key: int = 0):
     summ_df, errors, warnings = calculate_summ_df(
         iteration_id=iteration_id, default=False
     )
 
-    show_grid_editor(iteration_id=iteration_id, key=key, default=False)
+    grid_editor_widget(iteration_id=iteration_id, key=key, default=False)
 
-    show_error_and_warnings(errors, warnings)
+    error_and_warning_widget(errors, warnings)
 
     column_config = {
         RangeColumn.LOWER_BOUND: st.column_config.NumberColumn(
@@ -531,7 +534,7 @@ def show_liner_layout(iteration_id: str, metrics: list[Metric], key: int = 0):
     for metric in metrics:
         st.markdown(f"##### {metric}")
         st.dataframe(
-            show_grid_metric(
+            grid_metric_widget(
                 iteration_id=iteration_id,
                 metric_summary=summ_df[metric],
                 show_group_details=True,
@@ -542,7 +545,7 @@ def show_liner_layout(iteration_id: str, metrics: list[Metric], key: int = 0):
         )
 
 
-def show_double_var_iteration_widgets():
+def double_var_iteration_widget():
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
 
@@ -559,11 +562,11 @@ def show_double_var_iteration_widgets():
 
     # Sidebar
     with st.sidebar:
-        sidebar_options(iteration_id=iteration.id)
+        sidebar_widgets(iteration_id=iteration.id)
 
     # Main Page
     ## Navigation
-    show_navigation_buttons()
+    navigation_widgets()
 
     st.title(f"Iteration #{iteration.id}")
     st.write(f"##### Variable: `{iteration.variable.name}`")
@@ -576,7 +579,7 @@ def show_double_var_iteration_widgets():
 
     ## Default View
     st.markdown("## Default View")
-    show_grid_layout(
+    grid_layout_widget(
         iteration_id=iteration.id, metrics=showing_metrics[:1], default=True, key=0
     )
 
@@ -585,15 +588,15 @@ def show_double_var_iteration_widgets():
     st.markdown("## Editable View")
     ## Category Editor
     if iteration.var_type == VariableType.CATEGORICAL:
-        show_category_editor(iteration.id)
+        category_editor_widget(iteration.id)
 
     ## Grids
     if split_view_enabled:
-        show_grid_layout(
+        grid_layout_widget(
             iteration_id=iteration.id, metrics=showing_metrics, default=False, key=1
         )
     else:
-        show_liner_layout(iteration_id=iteration.id, metrics=showing_metrics, key=2)
+        liner_layout_widget(iteration_id=iteration.id, metrics=showing_metrics, key=2)
 
     iter_id = iteration.id
 
@@ -605,7 +608,7 @@ def show_double_var_iteration_widgets():
             st.markdown(
                 f"###### Variable: `{iteration_graph.iterations[iter_id].variable.name}`"
             )
-            show_edited_range(
+            editable_range_widget(
                 iteration_id=iter_id,
                 editable=False,
                 scalars_enabled=iteration_metadata["scalars_enabled"],
@@ -613,3 +616,6 @@ def show_double_var_iteration_widgets():
                 default=False,
             )
             iter_id = iteration_graph.get_parent(iter_id)
+
+
+__all__ = ["double_var_iteration_widget"]

@@ -9,7 +9,7 @@ from classes.iteration_graph import IterationGraph
 from classes.session import Session
 
 
-def streamlit_flow_graph(iteration_graph: IterationGraph) -> StreamlitFlowState:
+def streamlit_flow_graph_widget(iteration_graph: IterationGraph) -> StreamlitFlowState:
     iterations = iteration_graph.iterations
     connections = iteration_graph.connections
     selected_node_id = iteration_graph.selected_node_id
@@ -104,7 +104,7 @@ def streamlit_flow_graph(iteration_graph: IterationGraph) -> StreamlitFlowState:
 
 
 @st.dialog("Confirm Delete")
-def show_delete_confirmation_dialog(node_id: str):
+def delete_confirmation_dialog_widget(node_id: str):
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
 
@@ -123,14 +123,14 @@ def show_delete_confirmation_dialog(node_id: str):
         st.rerun()
 
 
-def show_iteration_graph_widgets():
+def iteration_graph_widget():
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
     options = session.options
 
     st.title("Iteration Graph")
 
-    new_state = streamlit_flow_graph(iteration_graph)
+    new_state = streamlit_flow_graph_widget(iteration_graph)
 
     if new_state.selected_id is not None:
         if st.sidebar.button(
@@ -175,4 +175,7 @@ def show_iteration_graph_widgets():
             use_container_width=True,
             type="secondary",
         ):
-            show_delete_confirmation_dialog(new_state.selected_id)
+            delete_confirmation_dialog_widget(new_state.selected_id)
+
+
+__all__ = ["iteration_graph_widget"]

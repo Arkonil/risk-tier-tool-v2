@@ -1,14 +1,14 @@
 from views.components.variable_selector import (
-    show_variable_selector,
-    show_variable_selector_dialog,
+    variable_selector_widget,
+    variable_selector_dialog_widget,
 )
-from views.components.iteration_selector import show_iteration_selector
-from views.components.load_data_prompt import show_load_data_first_error
+from views.components.iteration_selector import iteration_selector_widget
+from views.components.load_data_prompt import load_data_error_widget
 
 
 __all__ = [
-    "show_variable_selector",
-    "show_variable_selector_dialog",
-    "show_iteration_selector",
-    "show_load_data_first_error",
+    "variable_selector_widget",
+    "variable_selector_dialog_widget",
+    "iteration_selector_widget",
+    "load_data_error_widget",
 ]

@@ -7,7 +7,7 @@ from classes.scalars import Scalar
 from classes.session import Session
 
 
-def annualizing_factor_calculation(scalar: Scalar, data: Data) -> Scalar:
+def annl_factor_calc_widget(scalar: Scalar, data: Data) -> Scalar:
     df = pd.DataFrame({
         "Loss Rate Description": ["Current Rate", "Lifetime Rate"],
         "MOB": [data.current_rate_mob, data.lifetime_rate_mob],
@@ -62,7 +62,7 @@ def annualizing_factor_calculation(scalar: Scalar, data: Data) -> Scalar:
         st.rerun()
 
 
-def risk_scalar_factor_calculation(scalar: Scalar) -> Scalar:
+def risk_sclr_factor_calc_widget(scalar: Scalar) -> Scalar:
     session: Session = st.session_state["session"]
     options = session.options
 
@@ -140,11 +140,11 @@ def risk_scalar_factor_calculation(scalar: Scalar) -> Scalar:
 
 
 def scalar_edit_widget(scalars: Scalar, data: Data) -> Scalar:
-    annualizing_factor_calculation(scalars, data)
-    risk_scalar_factor_calculation(scalars)
+    annl_factor_calc_widget(scalars, data)
+    risk_sclr_factor_calc_widget(scalars)
 
 
-def show_scalar_calculation() -> None:
+def scalar_calculation_widget() -> None:
     st.markdown("## Scalar Calculation")
 
     session = st.session_state["session"]
@@ -164,3 +164,6 @@ def show_scalar_calculation() -> None:
         "the loss rate of :blue-badge[`n`] th MOB.",
         icon=":material/info:",
     )
+
+
+__all__ = ["scalar_calculation_widget"]

@@ -3,7 +3,7 @@ import streamlit as st
 from classes.session import Session
 
 
-def show_navigation_buttons():
+def navigation_widgets():
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
     node_id = iteration_graph.current_node_id
@@ -59,3 +59,6 @@ def show_navigation_buttons():
                 on_click=iteration_graph.select_current_node_id,
                 args=(child_node_id,),
             )
+
+
+__all__ = ["navigation_widgets"]

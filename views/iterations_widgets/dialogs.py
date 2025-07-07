@@ -8,7 +8,7 @@ from classes.session import Session
 
 
 @st.dialog("Set Metrics")
-def show_metric_selector(iteration_id: str | None = None):
+def metric_selector_dialog_widget(iteration_id: str | None = None):
     session: Session = st.session_state["session"]
 
     if iteration_id is None:
@@ -79,7 +79,7 @@ def show_metric_selector(iteration_id: str | None = None):
 
 
 @st.dialog("Set Groups")
-def set_groups(iteration_id: str):
+def set_groups_dialog_widget(iteration_id: str):
     session = st.session_state["session"]
     iteration_graph: IterationGraph = session.iteration_graph
     iteration = iteration_graph.iterations[iteration_id]
@@ -132,3 +132,9 @@ def set_groups(iteration_id: str):
     if st.button("Submit"):
         iteration_graph.add_to_calculation_queue(iteration_id, default=False)
         st.rerun()
+
+
+__all__ = [
+    "metric_selector_dialog_widget",
+    "set_groups_dialog_widget",
+]

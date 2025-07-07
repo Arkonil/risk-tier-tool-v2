@@ -11,7 +11,7 @@ def get_no_data_image():
     return svg
 
 
-def show_load_data_first_error(key: int = 0) -> bool:
+def load_data_error_widget(key: int = 0) -> bool:
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
     data = session.data
@@ -45,3 +45,6 @@ def show_load_data_first_error(key: int = 0) -> bool:
             return True
 
     return False
+
+
+__all__ = ["load_data_error_widget"]

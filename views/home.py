@@ -4,7 +4,7 @@ from classes.session import Session
 from views.data_importer import data_importer_page
 
 
-def show_welcome_page():
+def welcome_page_widgets():
     session: Session = st.session_state["session"]
     st.title("Risk Tier Development Tool")
 
@@ -40,11 +40,11 @@ def show_welcome_page():
             st.switch_page(data_importer_page)
 
 
-def home():
-    show_welcome_page()
+def home_view():
+    welcome_page_widgets()
 
 
-home_page = st.Page(page=home, title="Home", icon=":material/home:", default=True)
+home_page = st.Page(page=home_view, title="Home", icon=":material/home:", default=True)
 
 
 __all__ = ["home_page"]

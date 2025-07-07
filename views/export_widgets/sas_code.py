@@ -1,11 +1,11 @@
 import streamlit as st
 
 from classes.session import Session
-from views.components import show_iteration_selector, show_load_data_first_error
+from views.components import iteration_selector_widget, load_data_error_widget
 
 
-def show_sas_code_download():
-    if show_load_data_first_error(key=0):
+def sas_code_generator_widget():
+    if load_data_error_widget(key=0):
         return
 
     session: Session = st.session_state["session"]
@@ -13,7 +13,7 @@ def show_sas_code_download():
 
     st.markdown("### Download SAS Code")
 
-    iteration_id, is_default = show_iteration_selector(key=0)
+    iteration_id, is_default = iteration_selector_widget(key=0)
 
     use_macros = st.checkbox("Use Macros")
 
@@ -22,4 +22,4 @@ def show_sas_code_download():
     st.code(code, language="sas")
 
 
-__all__ = ["show_sas_code_download"]
+__all__ = ["sas_code_generator_widget"]

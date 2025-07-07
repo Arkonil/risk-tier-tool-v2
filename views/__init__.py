@@ -3,10 +3,10 @@ import streamlit as st
 from views.home import home_page
 from views.summary import summary_page
 from views.data_importer import data_importer_page
-from views.options import options_page
-from views.iterations import iteration_graph_page
+from views.options_widgets import options_page
+from views.iterations_widgets import iteration_graph_page
 from views.charts import charts_page
-from views.export import export_page
+from views.export_widgets import export_page
 
 
 def set_page_navigation():

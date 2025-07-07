@@ -8,7 +8,7 @@ from classes.constants import RTDetCol
 from classes.session import Session
 
 
-def show_color_selector(
+def color_selector_widget(
     type: t.Literal["font", "background"],
     row_indices: t.Iterator[int],
     color: str | None,
@@ -47,7 +47,7 @@ def show_color_selector(
         )
 
 
-def show_risk_tier_details_selector() -> None:
+def risk_tier_details_selector_widget() -> None:
     st.markdown("## Risk Tier Details")
 
     session: Session = st.session_state["session"]
@@ -166,7 +166,7 @@ def show_risk_tier_details_selector() -> None:
         )
 
         # Set Color Button
-        show_color_selector(
+        color_selector_widget(
             type="font",
             row_indices=edited_risk_tier_details[
                 edited_risk_tier_details[RTDetCol.SELECTED]
@@ -179,7 +179,7 @@ def show_risk_tier_details_selector() -> None:
             disabled=not selected,
         )
 
-        show_color_selector(
+        color_selector_widget(
             type="background",
             row_indices=edited_risk_tier_details[
                 edited_risk_tier_details[RTDetCol.SELECTED]
@@ -256,3 +256,6 @@ def show_risk_tier_details_selector() -> None:
 
     if needs_rerun:
         st.rerun()
+
+
+__all__ = ["risk_tier_details_selector_widget"]

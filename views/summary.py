@@ -5,12 +5,12 @@ import streamlit as st
 from classes.constants import Metric, MetricTableColumn
 from classes.session import Session
 from views.home import home_page
-from views.iterations_widgets.dialogs import show_metric_selector
-from views.iterations_widgets.single_var_iteration import show_edited_range
-from views.components import show_variable_selector_dialog, show_iteration_selector
+from views.iterations_widgets.dialogs import metric_selector_dialog_widget
+from views.iterations_widgets.common import editable_range_widget
+from views.components import variable_selector_dialog_widget, iteration_selector_widget
 
 
-def sidebar_options():
+def sidebar_widgets():
     session: Session = st.session_state["session"]
     home_page_state = session.home_page_state
 
@@ -20,7 +20,7 @@ def sidebar_options():
         icon=":material/data_table:",
         help="Select variables for calculations",
         type="primary",
-        on_click=show_variable_selector_dialog,
+        on_click=variable_selector_dialog_widget,
     )
 
     st.button(
@@ -28,7 +28,7 @@ def sidebar_options():
         use_container_width=True,
         icon=":material/functions:",
         help="Set metrics to display in the table",
-        on_click=show_metric_selector,
+        on_click=metric_selector_dialog_widget,
     )
 
     if st.button(
@@ -63,7 +63,7 @@ def sidebar_options():
         st.rerun()
 
 
-def show_iteration_result(
+def iteration_result_widget(
     selected_iteration: t.Literal[0, 1],
     metrics: list[Metric],
     scalars_enabled: bool,
@@ -74,7 +74,7 @@ def show_iteration_result(
 
     selected_iteration_option = home_page_state.selected_iterations[selected_iteration]
 
-    iteration_id, is_default = show_iteration_selector(
+    iteration_id, is_default = iteration_selector_widget(
         selected_iteration_id=selected_iteration_option[0],
         is_default=selected_iteration_option[1],
         key=key,
@@ -87,7 +87,7 @@ def show_iteration_result(
         )
         st.rerun()
 
-    show_edited_range(
+    editable_range_widget(
         iteration_id=iteration_id,
         editable=False,
         scalars_enabled=scalars_enabled,
@@ -97,7 +97,7 @@ def show_iteration_result(
     )
 
 
-def summary():
+def summary_view():
     session: Session = st.session_state["session"]
     home_page_state = session.home_page_state
     iteration_graph = session.iteration_graph
@@ -107,7 +107,7 @@ def summary():
         return
 
     with st.sidebar:
-        sidebar_options()
+        sidebar_widgets()
 
     st.title("Summary")
 
@@ -120,13 +120,13 @@ def summary():
 
     if home_page_state.comparison_mode:
         if home_page_state.comparison_view_mode == "row":
-            show_iteration_result(
+            iteration_result_widget(
                 selected_iteration=0,
                 metrics=showing_metrics,
                 scalars_enabled=home_page_state.scalars_enabled,
                 key=0,
             )
-            show_iteration_result(
+            iteration_result_widget(
                 selected_iteration=1,
                 metrics=showing_metrics,
                 scalars_enabled=home_page_state.scalars_enabled,
@@ -137,7 +137,7 @@ def summary():
             col1, col2 = st.columns(2)
 
             with col1:
-                show_iteration_result(
+                iteration_result_widget(
                     selected_iteration=0,
                     metrics=showing_metrics,
                     scalars_enabled=home_page_state.scalars_enabled,
@@ -145,7 +145,7 @@ def summary():
                 )
 
             with col2:
-                show_iteration_result(
+                iteration_result_widget(
                     selected_iteration=1,
                     metrics=showing_metrics,
                     scalars_enabled=home_page_state.scalars_enabled,
@@ -154,7 +154,7 @@ def summary():
 
         return
 
-    show_iteration_result(
+    iteration_result_widget(
         selected_iteration=1,
         metrics=showing_metrics,
         scalars_enabled=home_page_state.scalars_enabled,
@@ -162,7 +162,7 @@ def summary():
 
 
 summary_page = st.Page(
-    page=summary,
+    page=summary_view,
     title="Summary",
     icon=":material/dashboard_2:",
 )

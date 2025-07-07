@@ -4,10 +4,10 @@ import typing as t
 import streamlit as st
 
 from classes.session import Session
-from views.components import show_variable_selector
+from views.components import variable_selector_widget
 
 
-def filepath_input(default_value=None) -> pathlib.Path:
+def filepath_input_widget(default_value=None) -> pathlib.Path:
     st.markdown("##### File Path:")
     path_text = st.text_input(
         label="#### File Path:", label_visibility="collapsed", value=default_value
@@ -21,7 +21,7 @@ def filepath_input(default_value=None) -> pathlib.Path:
     return path
 
 
-def read_mode_input(default_value) -> t.Literal["CSV", "EXCEL"]:
+def read_mode_input_widget(default_value) -> t.Literal["CSV", "EXCEL"]:
     st.markdown("##### Read Mode:")
     options = ["CSV", "EXCEL"]
 
@@ -33,7 +33,7 @@ def read_mode_input(default_value) -> t.Literal["CSV", "EXCEL"]:
     )
 
 
-def delimiter_input(default_value=None):
+def delimiter_input_widget(default_value=None):
     delimeters = [
         {"name": "comma", "value": ","},
         {"name": "semicolon", "value": ";"},
@@ -62,14 +62,14 @@ def delimiter_input(default_value=None):
     )
 
 
-def sheet_input(default_value):
+def sheet_input_widget(default_value):
     label = "##### Sheet Name or Index:"
     st.markdown(label)
 
     return st.text_input(label=label, value=default_value, label_visibility="collapsed")
 
 
-def header_row_input(default_value):
+def header_row_input_widget(default_value):
     label = "##### Header Row:"
     st.markdown(label)
 
@@ -82,7 +82,7 @@ def header_row_input(default_value):
     )
 
 
-def sample_row_count_input(default_value):
+def sample_row_count_input_widget(default_value):
     label = "##### Sample Row Count:"
     st.markdown(label)
 
@@ -95,7 +95,7 @@ def sample_row_count_input(default_value):
     )
 
 
-def show_data_import_options():
+def data_import_option_widgets():
     session: Session = st.session_state["session"]
     data = session.data
 
@@ -111,9 +111,9 @@ def show_data_import_options():
     col1, col2 = st.columns([0.75, 0.25])
 
     with col1:
-        filepath = filepath_input(data.filepath)
+        filepath = filepath_input_widget(data.filepath)
     with col2:
-        read_mode = read_mode_input(data.read_mode)
+        read_mode = read_mode_input_widget(data.read_mode)
 
     st.write("")
 
@@ -121,13 +121,13 @@ def show_data_import_options():
 
     with col1:
         if read_mode == "CSV":
-            delimiter = delimiter_input(data.delimiter)
+            delimiter = delimiter_input_widget(data.delimiter)
         else:
-            sheet_name = sheet_input(data.sheet_name)
+            sheet_name = sheet_input_widget(data.sheet_name)
     with col2:
-        header_row = header_row_input(data.header_row)
+        header_row = header_row_input_widget(data.header_row)
     with col3:
-        sample_row_count = sample_row_count_input(data.sample_row_count)
+        sample_row_count = sample_row_count_input_widget(data.sample_row_count)
 
     st.write("")
 
@@ -182,7 +182,7 @@ def show_data_import_options():
                 status.update(label="Data Imported", state="complete", expanded=True)
 
 
-def show_sample_data():
+def sample_data_widget():
     session: Session = st.session_state["session"]
     data = session.data
 
@@ -190,14 +190,14 @@ def show_sample_data():
     st.dataframe(data.sample_df, width=2000)
 
 
-def show_variable_selector_():
+def variable_selector_container_widget():
     st.markdown("### Variable Selector")
     with st.container(border=True):
         st.write("")
-        show_variable_selector()
+        variable_selector_widget()
 
 
-def data_importer():
+def data_importer_view():
     session: Session = st.session_state["session"]
     data = session.data
 
@@ -205,22 +205,22 @@ def data_importer():
 
     st.divider()
 
-    show_data_import_options()
+    data_import_option_widgets()
 
     if not data.sample_loaded:
         return
 
     st.divider()
 
-    show_sample_data()
+    sample_data_widget()
 
     st.divider()
 
-    show_variable_selector_()
+    variable_selector_container_widget()
 
 
 data_importer_page = st.Page(
-    page=data_importer,
+    page=data_importer_view,
     title="Data Importer",
     icon=":material/file_upload:",
 )

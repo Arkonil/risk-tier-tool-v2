@@ -10,23 +10,23 @@ from classes.constants import (
     VariableType,
 )
 from classes.session import Session
-from views.iterations_widgets.navigation import show_navigation_buttons
-from views.iterations_widgets.single_var_iteration import show_error_and_warnings
-from views.components import show_variable_selector_dialog
+from views.iterations_widgets.common import error_and_warning_widget
+from views.iterations_widgets.navigation import navigation_widgets
+from views.components import variable_selector_dialog_widget
 
 
-def sidebar_options():
+def sidebar_widgets():
     st.button(
         label="Set Variables",
         use_container_width=True,
         icon=":material/data_table:",
         help="Select variables for calculations",
         type="primary",
-        on_click=show_variable_selector_dialog,
+        on_click=variable_selector_dialog_widget,
     )
 
 
-def show_iteration_creation_page() -> None:
+def iteration_creation_widget() -> None:
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
     options = session.options
@@ -35,9 +35,9 @@ def show_iteration_creation_page() -> None:
     ulr_scalar = session.ulr_scalars
 
     with st.sidebar:
-        sidebar_options()
+        sidebar_widgets()
 
-    show_navigation_buttons()
+    navigation_widgets()
 
     st.markdown("# Create New Iteration")
 
@@ -215,7 +215,7 @@ def show_iteration_creation_page() -> None:
                 errors.append("Scalars for :red-badge[`# Write Off`] are not set.")
 
     if errors:
-        show_error_and_warnings(errors, [])
+        error_and_warning_widget(errors, [])
 
     if iteration_graph.current_iter_create_mode == IterationType.SINGLE:
         button_label = "Create Root Iteration"
@@ -291,3 +291,6 @@ def show_iteration_creation_page() -> None:
 
             iteration_graph.select_current_node_id(iteration.id)
             st.rerun()
+
+
+__all__ = ["iteration_creation_widget"]

@@ -4,7 +4,7 @@ from classes.data import Data
 from classes.session import Session
 
 
-def show_text(column, text: str):
+def metric_text_widget(column, text: str):
     column.html(
         f"""
             <div style="display: flex; justify-content: center; font-size: 1.5em; font-weight: bold;">
@@ -14,11 +14,11 @@ def show_text(column, text: str):
     )
 
 
-def show_unit_wrt_off_selector(data: Data):
+def unit_wrt_off_selector_widget(data: Data):
     col1, col2, col3, col4, col5 = st.columns([4, 1, 5, 1, 5])
 
-    show_text(col1, "# Write Off %")
-    show_text(col2, "=")
+    metric_text_widget(col1, "# Write Off %")
+    metric_text_widget(col2, "=")
     options = [None] + data.sample_df.columns.to_list()
     current_index = data.get_col_pos(data.var_unt_wrt_off)
 
@@ -33,17 +33,17 @@ def show_unit_wrt_off_selector(data: Data):
         format_func=lambda v: "" if v is None else v,
         placeholder="# Write Off Variable",
     )
-    show_text(col4, "/")
-    show_text(col5, "# Accounts")
+    metric_text_widget(col4, "/")
+    metric_text_widget(col5, "# Accounts")
 
     return var_unt_wrt_off
 
 
-def show_dlr_wrt_off_selector(data: Data):
+def dlr_wrt_off_selector_widget(data: Data):
     col1, col2, col3, col4, col5 = st.columns([4, 1, 5, 1, 5])
 
-    show_text(col1, "$ Write Off %")
-    show_text(col2, "=")
+    metric_text_widget(col1, "$ Write Off %")
+    metric_text_widget(col2, "=")
     options = [None] + data.sample_df.columns.to_list()
     current_index = data.get_col_pos(data.var_dlr_wrt_off)
 
@@ -59,7 +59,7 @@ def show_dlr_wrt_off_selector(data: Data):
         placeholder="$ Write Off Variable",
     )
 
-    show_text(col4, "/")
+    metric_text_widget(col4, "/")
 
     options = [None] + data.sample_df.columns.to_list()
     current_index = data.get_col_pos(data.var_avg_bal)
@@ -79,11 +79,11 @@ def show_dlr_wrt_off_selector(data: Data):
     return var_dlr_wrt_off, var_avg_bal
 
 
-def show_mob_selector(data: Data):
+def mob_selector_widget(data: Data):
     col1, col2, col3, _ = st.columns([4, 1, 5, 6])
 
-    show_text(col1, "MOB")
-    show_text(col2, "=")
+    metric_text_widget(col1, "MOB")
+    metric_text_widget(col2, "=")
     mob = col3.number_input(
         label="MOB_var",
         value=data.current_rate_mob,
@@ -98,11 +98,11 @@ def show_mob_selector(data: Data):
     return mob
 
 
-def show_lifetime_rate_mob_selector(data: Data):
+def lifetime_rate_mob_selector_widget(data: Data):
     col1, col2, col3, _ = st.columns([4, 1, 5, 6])
 
-    show_text(col1, "Lifetime MOB")
-    show_text(col2, "=")
+    metric_text_widget(col1, "Lifetime MOB")
+    metric_text_widget(col2, "=")
     lifetime_rate_mob = col3.number_input(
         label="Lifetime MOB",
         value=data.lifetime_rate_mob,
@@ -117,14 +117,14 @@ def show_lifetime_rate_mob_selector(data: Data):
     return lifetime_rate_mob
 
 
-def show_variable_selector():
+def variable_selector_widget():
     session: Session = st.session_state["session"]
     data = session.data
 
-    var_unt_wrt_off = show_unit_wrt_off_selector(data)
-    var_dlr_wrt_off, var_avg_bal = show_dlr_wrt_off_selector(data)
-    mob = show_mob_selector(data)
-    lifetime_rate_mob = show_lifetime_rate_mob_selector(data)
+    var_unt_wrt_off = unit_wrt_off_selector_widget(data)
+    var_dlr_wrt_off, var_avg_bal = dlr_wrt_off_selector_widget(data)
+    mob = mob_selector_widget(data)
+    lifetime_rate_mob = lifetime_rate_mob_selector_widget(data)
 
     needs_rerun = False
     if var_unt_wrt_off != data.var_unt_wrt_off:
@@ -155,9 +155,12 @@ def show_variable_selector():
 
 
 @st.dialog("Set Variables", width="large")
-def show_variable_selector_dialog():
+def variable_selector_dialog_widget():
     with st.container(border=True):
-        show_variable_selector()
+        variable_selector_widget()
 
     if st.button("Submit"):
         st.rerun()
+
+
+__all__ = ["variable_selector_widget", "variable_selector_dialog_widget"]

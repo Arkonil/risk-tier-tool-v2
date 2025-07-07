@@ -1,5 +1,26 @@
-from views.options_widgets.risk_tier_details import show_risk_tier_details_selector
-from views.options_widgets.scalars import show_scalar_calculation
+import streamlit as st
+
+from views.options_widgets.risk_tier_details import risk_tier_details_selector_widget
+from views.options_widgets.scalars import scalar_calculation_widget
 
 
-__all__ = ["show_risk_tier_details_selector", "show_scalar_calculation"]
+def options_view() -> None:
+    st.markdown("# Options")
+
+    st.divider()
+
+    risk_tier_details_selector_widget()
+
+    st.divider()
+
+    scalar_calculation_widget()
+
+
+options_page = st.Page(
+    page=options_view,
+    title="Options",
+    icon=":material/settings:",
+)
+
+
+__all__ = ["options_page"]

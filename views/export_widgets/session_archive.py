@@ -5,7 +5,7 @@ from classes.session import Session
 from classes.constants import README_CONTENT
 
 
-def show_session_archive_download():
+def session_archive_download_widget():
     session: Session = st.session_state["session"]
 
     st.markdown("### Download Session Archive as `.rt.zip` File")
@@ -29,4 +29,4 @@ def show_session_archive_download():
     st.markdown(README_CONTENT)
 
 
-__all__ = ["show_session_archive_download"]
+__all__ = ["session_archive_download_widget"]

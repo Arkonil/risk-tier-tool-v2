@@ -20,3 +20,6 @@ def _add_sesion_state_attr(name: str, obj: t.Any) -> None:
 
 def initialize_session():
     _add_sesion_state_attr("session", Session())
+
+
+__all__ = ["set_page_config", "initialize_session"]

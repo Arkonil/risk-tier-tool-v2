@@ -3,7 +3,7 @@ import streamlit as st
 from classes.session import Session
 
 
-def show_iteration_selector(
+def iteration_selector_widget(
     selected_iteration_id: str = None,
     is_default: bool = None,
     key: int = 0,
@@ -54,4 +54,4 @@ def show_iteration_selector(
     return iteration_id, is_default
 
 
-__all__ = ["show_iteration_selector"]
+__all__ = ["iteration_selector_widget"]

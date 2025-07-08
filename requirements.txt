@@ -57,7 +57,9 @@ pillow==11.2.1
 protobuf==6.31.1
     # via streamlit
 pyarrow==20.0.0
-    # via streamlit
+    # via
+    #   risk-tier-tool (pyproject.toml)
+    #   streamlit
 pydeck==0.9.1
     # via streamlit
 python-dateutil==2.9.0.post0

@@ -20,6 +20,15 @@
       "presentation": {
         "reveal": "always"
       }
+    },
+    {
+      "label": "Sync requirements.txt file",
+      "type": "shell",
+      "command": "uv pip compile pyproject.toml -o requirements.txt",
+      "group": "build",
+      "presentation": {
+        "reveal": "always"
+      }
     }
   ]
 }

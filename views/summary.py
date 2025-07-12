@@ -12,7 +12,7 @@ from views.components import variable_selector_dialog_widget, iteration_selector
 
 def sidebar_widgets():
     session: Session = st.session_state["session"]
-    home_page_state = session.home_page_state
+    summ_state = session.summary_page_state
 
     st.button(
         label="Set Variables",
@@ -32,34 +32,34 @@ def sidebar_widgets():
     )
 
     if st.button(
-        label=f"Change to {'Column' if home_page_state.comparison_view_mode == 'row' else 'Row'} View",
+        label=f"Change to {'Column' if summ_state.comparison_view_mode == 'row' else 'Row'} View",
         use_container_width=True,
-        icon=f":material/{'flex_no_wrap' if home_page_state.comparison_view_mode == 'row' else 'flex_direction'}:",
+        icon=f":material/{'flex_no_wrap' if summ_state.comparison_view_mode == 'row' else 'flex_direction'}:",
     ):
-        if home_page_state.comparison_view_mode == "column":
-            home_page_state.comparison_view_mode = "row"
+        if summ_state.comparison_view_mode == "column":
+            summ_state.comparison_view_mode = "row"
         else:
-            home_page_state.comparison_view_mode = "column"
+            summ_state.comparison_view_mode = "column"
         st.rerun()
 
     scalars_enabled = st.checkbox(
         label="Enable Scalars",
-        value=home_page_state.scalars_enabled,
+        value=summ_state.scalars_enabled,
         help="Use Scalars for Annualized Write Off Rates",
     )
 
-    if scalars_enabled != home_page_state.scalars_enabled:
-        home_page_state.scalars_enabled = scalars_enabled
+    if scalars_enabled != summ_state.scalars_enabled:
+        summ_state.scalars_enabled = scalars_enabled
         st.rerun()
 
     comparison_mode = st.checkbox(
         label="Comparison Mode",
-        value=home_page_state.comparison_mode,
+        value=summ_state.comparison_mode,
         help="Enable comparison mode to select two iterations for comparison",
     )
 
-    if comparison_mode != home_page_state.comparison_mode:
-        home_page_state.comparison_mode = comparison_mode
+    if comparison_mode != summ_state.comparison_mode:
+        summ_state.comparison_mode = comparison_mode
         st.rerun()
 
 
@@ -70,9 +70,9 @@ def iteration_result_widget(
     key: int = 0,
 ):
     session: Session = st.session_state["session"]
-    home_page_state = session.home_page_state
+    summ_state = session.summary_page_state
 
-    selected_iteration_option = home_page_state.selected_iterations[selected_iteration]
+    selected_iteration_option = summ_state.selected_iterations[selected_iteration]
 
     iteration_id, is_default = iteration_selector_widget(
         selected_iteration_id=selected_iteration_option[0],
@@ -81,7 +81,7 @@ def iteration_result_widget(
     )
 
     if (iteration_id, is_default) != selected_iteration_option:
-        home_page_state.selected_iterations[selected_iteration] = (
+        summ_state.selected_iterations[selected_iteration] = (
             iteration_id,
             is_default,
         )
@@ -99,7 +99,7 @@ def iteration_result_widget(
 
 def summary_view():
     session: Session = st.session_state["session"]
-    home_page_state = session.home_page_state
+    summ_state = session.summary_page_state
     iteration_graph = session.iteration_graph
 
     if iteration_graph.is_empty:
@@ -111,25 +111,25 @@ def summary_view():
 
     st.title("Summary")
 
-    metrics = home_page_state.metrics
+    metrics = summ_state.metrics
     showing_metrics = (
         metrics.sort_values(MetricTableColumn.ORDER)
         .loc[metrics[MetricTableColumn.SHOWING], MetricTableColumn.METRIC]
         .to_list()
     )
 
-    if home_page_state.comparison_mode:
-        if home_page_state.comparison_view_mode == "row":
+    if summ_state.comparison_mode:
+        if summ_state.comparison_view_mode == "row":
             iteration_result_widget(
                 selected_iteration=0,
                 metrics=showing_metrics,
-                scalars_enabled=home_page_state.scalars_enabled,
+                scalars_enabled=summ_state.scalars_enabled,
                 key=0,
             )
             iteration_result_widget(
                 selected_iteration=1,
                 metrics=showing_metrics,
-                scalars_enabled=home_page_state.scalars_enabled,
+                scalars_enabled=summ_state.scalars_enabled,
                 key=1,
             )
 
@@ -140,7 +140,7 @@ def summary_view():
                 iteration_result_widget(
                     selected_iteration=0,
                     metrics=showing_metrics,
-                    scalars_enabled=home_page_state.scalars_enabled,
+                    scalars_enabled=summ_state.scalars_enabled,
                     key=0,
                 )
 
@@ -148,7 +148,7 @@ def summary_view():
                 iteration_result_widget(
                     selected_iteration=1,
                     metrics=showing_metrics,
-                    scalars_enabled=home_page_state.scalars_enabled,
+                    scalars_enabled=summ_state.scalars_enabled,
                     key=1,
                 )
 
@@ -157,7 +157,7 @@ def summary_view():
     iteration_result_widget(
         selected_iteration=1,
         metrics=showing_metrics,
-        scalars_enabled=home_page_state.scalars_enabled,
+        scalars_enabled=summ_state.scalars_enabled,
     )
 
 

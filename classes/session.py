@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from classes.data import Data
-from classes.home_page_state import HomePageState
+from classes.summary_page_state import SummaryPageState
 from classes.scalars import Scalar
 from classes.iteration_graph import IterationGraph
 from classes.options import Options
@@ -40,7 +40,7 @@ class Session:
         self.dlr_scalars = Scalar(LossRateTypes.DLR)
         self.ulr_scalars = Scalar(LossRateTypes.ULR)
         self.iteration_graph = IterationGraph()
-        self.home_page_state = HomePageState()
+        self.summary_page_state = SummaryPageState()
         self.options = Options()
 
     def to_rt_zip_buffer(self) -> io.BytesIO:
@@ -48,7 +48,7 @@ class Session:
         dlr_scalars_json = self.dlr_scalars.to_dict()
         ulr_scalars_json = self.ulr_scalars.to_dict()
         iteration_graph_json = self.iteration_graph.to_dict()
-        home_page_state_json = self.home_page_state.to_dict()
+        summary_page_state_json = self.summary_page_state.to_dict()
         options_json = self.options.to_dict()
 
         zip_buffer = io.BytesIO()
@@ -68,8 +68,8 @@ class Session:
                 json.dumps(iteration_graph_json, indent=4, cls=NpEncoder),
             )
             zipf.writestr(
-                "home_page_state.json",
-                json.dumps(home_page_state_json, indent=4, cls=NpEncoder),
+                "summary_page_state.json",
+                json.dumps(summary_page_state_json, indent=4, cls=NpEncoder),
             )
             zipf.writestr(
                 "options.json", json.dumps(options_json, indent=4, cls=NpEncoder)
@@ -163,11 +163,13 @@ class Session:
             else:
                 ulr_scalars = Scalar(LossRateTypes.ULR)
 
-            if "home_page_state.json" in zipf.namelist():
-                home_page_state_json = json.loads(zipf.read("home_page_state.json"))
-                home_page_state = HomePageState.from_dict(home_page_state_json)
+            if "summary_page_state.json" in zipf.namelist():
+                summary_page_state_json = json.loads(
+                    zipf.read("summary_page_state.json")
+                )
+                summary_page_state = SummaryPageState.from_dict(summary_page_state_json)
             else:
-                home_page_state = HomePageState()
+                summary_page_state = SummaryPageState()
 
             if "options.json" in zipf.namelist():
                 options_json = json.loads(zipf.read("options.json"))
@@ -181,5 +183,5 @@ class Session:
             self.dlr_scalars = dlr_scalars
             self.ulr_scalars = ulr_scalars
             self.iteration_graph = iteration_graph
-            self.home_page_state = home_page_state
+            self.summary_page_state = summary_page_state
             self.options = options

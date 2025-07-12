@@ -162,7 +162,7 @@ This zip file contains all the data and options to recreate the workspace.
 - `dlr_scalars.json`: Contains the DLR scalars.
 - `ulr_scalars.json`: Contains the ULR scalars.
 - `iteration_graph.json`: Contains the iteration graph data.
-- `home_page_state.json`: Contains the state of the home page.
+- `summary_page_state.json`: Contains the state of the home page.
 - `options.json`: Contains the options set for the session.
 - `df.parquet`: Contains the main DataFrame in Parquet format.
 - `sample_df.parquet`: Contains a sample of the main DataFrame in Parquet format.

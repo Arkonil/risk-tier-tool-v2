@@ -4,7 +4,7 @@ import pandas as pd
 from classes.constants import DefaultOptions
 
 
-class HomePageState:
+class SummaryPageState:
     def __init__(self):
         self.scalars_enabled = True
         self.metrics = DefaultOptions().default_metrics
@@ -27,7 +27,7 @@ class HomePageState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, t.Any]) -> "HomePageState":
+    def from_dict(cls, data: dict[str, t.Any]) -> "SummaryPageState":
         """Creates a HomePageState object from a dictionary."""
         instance = cls()  # Initialize with default values
 

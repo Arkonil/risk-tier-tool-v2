@@ -12,7 +12,7 @@ def metric_selector_dialog_widget(iteration_id: str | None = None):
     session: Session = st.session_state["session"]
 
     if iteration_id is None:
-        metrics_df = session.home_page_state.metrics
+        metrics_df = session.summary_page_state.metrics
     else:
         iteration_graph = session.iteration_graph
         metrics_df = iteration_graph.iteration_metadata[iteration_id]["metrics"]

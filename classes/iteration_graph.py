@@ -518,8 +518,8 @@ class IterationGraph:
                 raw_variables[f"variable_{i}_"] = substitute_d["VARIABLE_NAME"]
                 result_variables[f"result_{i}_"] = substitute_d["OUTPUT_VARIABLE_NAME"]
 
-                substitute_d["VARIABLE_NAME"] = f"&variable_{i}."
-                substitute_d["OUTPUT_VARIABLE_NAME"] = f"&result_{i}."
+                substitute_d["VARIABLE_NAME"] = f"&variable_{i}_."
+                substitute_d["OUTPUT_VARIABLE_NAME"] = f"&result_{i}_."
 
             for macro, value in raw_variables.items():
                 code += f"%let {macro} = {value};\n"

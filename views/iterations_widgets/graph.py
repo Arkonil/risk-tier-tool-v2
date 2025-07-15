@@ -118,9 +118,16 @@ def delete_confirmation_dialog_widget(node_id: str):
         st.markdown("\n".join([f"* `Iteration #{child}`" for child in children]))
 
     st.write("This action cannot be undone.")
-    if st.button("Delete"):
-        iteration_graph.delete_iteration(node_id)
-        st.rerun()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Delete", type="primary", use_container_width=True):
+            iteration_graph.delete_iteration(node_id)
+            st.rerun()
+    with col2:
+        if st.button("Cancel", type="secondary", use_container_width=True):
+            st.rerun()
 
 
 def iteration_graph_widget():

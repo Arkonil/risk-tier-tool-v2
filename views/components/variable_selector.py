@@ -159,8 +159,11 @@ def variable_selector_dialog_widget():
     with st.container(border=True):
         variable_selector_widget()
 
-    if st.button("Submit"):
-        st.rerun()
+    *_, col = st.columns(6)
+
+    with col:
+        if st.button("Submit", type="primary", use_container_width=True):
+            st.rerun()
 
 
 __all__ = ["variable_selector_widget", "variable_selector_dialog_widget"]

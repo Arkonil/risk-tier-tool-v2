@@ -74,8 +74,11 @@ def metric_selector_dialog_widget(iteration_id: str | None = None):
         metrics_df.loc[index, MetricTableColumn.ORDER] = order
         st.rerun(scope="fragment")
 
-    if st.button("Submit"):
-        st.rerun()
+    *_, col = st.columns(4)
+
+    with col:
+        if st.button("Submit", type="primary", use_container_width=True):
+            st.rerun()
 
 
 @st.dialog("Set Groups")
@@ -129,9 +132,12 @@ def set_groups_dialog_widget(iteration_id: str):
 
         st.rerun(scope="fragment")
 
-    if st.button("Submit"):
-        iteration_graph.add_to_calculation_queue(iteration_id, default=False)
-        st.rerun()
+    *_, col = st.columns(4)
+
+    with col:
+        if st.button("Submit", type="primary", use_container_width=True):
+            iteration_graph.add_to_calculation_queue(iteration_id, default=False)
+            st.rerun()
 
 
 __all__ = [

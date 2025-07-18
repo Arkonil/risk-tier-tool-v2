@@ -58,6 +58,16 @@ def category_editor_widget(iteration_id: str):
     groups = iteration.groups
     groups = pd.DataFrame({RangeColumn.GROUPS: groups})
 
+    if iteration.iter_type == IterationType.SINGLE:
+        groups_labels = {
+            group_index: risk_tier_details.loc[group_index, RTDetCol.RISK_TIER]
+            for group_index in groups.index
+        }
+    else:
+        groups_labels = {
+            group_index: f"Group {group_index + 1}" for group_index in groups.index
+        }
+
     with st.expander("Edit Groups"):
         columns = st.columns(min(5, len(groups)))
 
@@ -72,7 +82,7 @@ def category_editor_widget(iteration_id: str):
             with columns[i % len(columns)]:
                 new_group = set(
                     st.multiselect(
-                        label=risk_tier_details.loc[group_index, RTDetCol.RISK_TIER],
+                        label=groups_labels[group_index],
                         options=sorted(list(group.union(unassigned_categories))),
                         default=sorted(
                             list(group),

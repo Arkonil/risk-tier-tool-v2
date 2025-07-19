@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from classes.data import Data
+from classes.filter_container import FilterContainer
 from classes.summary_page_state import SummaryPageState
 from classes.scalars import Scalar
 from classes.iteration_graph import IterationGraph
@@ -42,6 +43,7 @@ class Session:
         self.iteration_graph = IterationGraph()
         self.summary_page_state = SummaryPageState()
         self.options = Options()
+        self.filter_container = FilterContainer()
 
     def to_rt_zip_buffer(self) -> io.BytesIO:
         data_json = self.data.to_dict()

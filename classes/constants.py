@@ -93,6 +93,22 @@ class IterationMetadata(t.TypedDict):
     loss_rate_type: LossRateTypes
 
 
+class Completion(t.TypedDict):
+    caption: str
+    value: str
+    meta: str
+    name: str
+    score: int
+
+
+class AssetPath(StrEnum):
+    QUERY_REFERENCE = "assets/filter_query_reference.md"
+    RT_ICON = "assets/risk-tier-tool.svg"
+    NO_DATA_ERROR_ICON = "assets/no-data-error.svg"
+    NO_FILTER_ICON = "assets/no-filter.svg"
+    STYLESHEET = "assets/style.css"
+
+
 class DefaultOptions(Singleton):
     def __init__(self):
         self._risk_tier_details = pd.DataFrame(
@@ -146,7 +162,7 @@ class DefaultOptions(Singleton):
             "editable": True,
             "metrics": self.default_metrics,
             "scalars_enabled": True,
-            "split_view_enabled": False,
+            "split_view_enabled": True,
             "loss_rate_type": LossRateTypes.DLR,
         }
 

@@ -1,10 +1,11 @@
 import pathlib
+import re
 import typing as t
 
 import numpy as np
 import pandas as pd
 
-from classes.constants import Metric, VariableType
+from classes.constants import Metric, VariableType, Completion
 
 
 class Data:
@@ -40,6 +41,20 @@ class Data:
         self.var_avg_bal: str | None = None
         self.current_rate_mob: int = 12
         self.lifetime_rate_mob: int = 36
+
+        self._column_name_completions: list[Completion] = []
+
+    @property
+    def column_name_completions(self) -> list[Completion]:
+        return self.sample_df.columns.map(
+            lambda column: Completion(
+                caption=column,
+                value=f"`{column}`" if re.search(r"\s+", column) else column,
+                meta="Column",
+                name=column,
+                score=100,
+            )
+        ).to_list()
 
     def get_col_pos(self, col_name: str | None) -> int:
         if col_name is None or col_name not in self.sample_df.columns:
@@ -169,19 +184,16 @@ class Data:
         self.header_row = header_row
         self.sample_row_count = nrows if nrows is not None else self.sample_row_count
 
-    def load_column(
-        self, column_name: str | None, column_type: VariableType
+    def _load_column_from_cache(
+        self, column_name: str, column_type: VariableType
     ) -> pd.Series:
-        if column_name is None:
-            return pd.Series(index=np.arange(self.df_size))
-
         if self.df is None:
             self.df = pd.DataFrame()
 
         preferred_column_name = f"{column_name} ({column_type.capitalize()})"
 
         if preferred_column_name in self.df.columns:
-            return self.df[preferred_column_name]
+            return self.df[preferred_column_name].copy()
 
         alternative_column_type = (
             VariableType.CATEGORICAL
@@ -199,7 +211,7 @@ class Data:
             self.df[preferred_column_name] = self.df[alternative_column_name].astype(
                 "category"
             )
-            return self.df[preferred_column_name]
+            return self.df[preferred_column_name].copy()
 
         if (
             column_type == VariableType.NUMERICAL
@@ -210,30 +222,92 @@ class Data:
                     self.df[alternative_column_name], errors="raise"
                 )
                 self.df[preferred_column_name] = temp_column
-                return self.df[preferred_column_name]
+                return self.df[preferred_column_name].copy()
             except ValueError:
-                return self.df[alternative_column_name]
+                return self.df[alternative_column_name].copy()
 
-        column = self._read_data(
+        raise IndexError("Column not found")
+
+    def load_columns(
+        self, column_names: list[str], column_types: list[VariableType]
+    ) -> pd.DataFrame:
+        if len(column_names) != len(column_types):
+            raise ValueError("column_names and column_types must have the same length")
+
+        cached_columns = []
+        remaining_columns = []
+
+        for column_name, column_type in zip(column_names, column_types):
+            try:
+                cached_columns.append(
+                    self._load_column_from_cache(column_name, column_type)
+                )
+            except IndexError:
+                remaining_columns.append((column_name, column_type))
+
+        if cached_columns:
+            final_df = pd.concat(cached_columns, axis=1)
+        else:
+            final_df = pd.DataFrame()
+
+        if not remaining_columns:
+            return final_df
+
+        remaining_column_names = list(map(lambda c: c[0], remaining_columns))
+
+        new_columns = self._read_data(
             self.filepath,
             self.read_mode,
             self.delimiter,
             self.sheet_name,
             self.header_row,
-            usecols=[column_name],
-        )[column_name]
+            usecols=remaining_column_names,
+        )
 
-        if column_type == VariableType.NUMERICAL:
-            try:
-                temp_column = pd.to_numeric(column, errors="raise")
-                self.df[preferred_column_name] = temp_column
-                return self.df[preferred_column_name]
-            except ValueError:
-                self.df[alternative_column_name] = column.astype("category")
-                return self.df[alternative_column_name]
+        for column_name, column_type in remaining_columns:
+            preferred_column_name = f"{column_name} ({column_type.capitalize()})"
 
-        self.df[preferred_column_name] = column.astype("category")
-        return self.df[preferred_column_name]
+            alternative_column_type = (
+                VariableType.CATEGORICAL
+                if column_type == VariableType.NUMERICAL
+                else VariableType.NUMERICAL
+            )
+            alternative_column_name = (
+                f"{column_name} ({alternative_column_type.capitalize()})"
+            )
+
+            if column_type == VariableType.NUMERICAL:
+                try:
+                    temp_column = pd.to_numeric(
+                        new_columns[column_name], errors="raise"
+                    )
+                    self.df[preferred_column_name] = temp_column
+                    final_df[preferred_column_name] = self.df[
+                        preferred_column_name
+                    ].copy()
+                except ValueError:
+                    self.df[alternative_column_name] = new_columns[column_name].astype(
+                        "category"
+                    )
+                    final_df[alternative_column_name] = self.df[
+                        alternative_column_name
+                    ].copy()
+            else:
+                self.df[preferred_column_name] = new_columns[column_name].astype(
+                    "category"
+                )
+                final_df[preferred_column_name] = self.df[preferred_column_name].copy()
+
+        return final_df
+
+    def load_column(
+        self, column_name: str | None, column_type: VariableType
+    ) -> pd.Series:
+        if column_name is None:
+            return pd.Series(index=np.arange(self.df_size))
+
+        series = self.load_columns([column_name], [column_type]).iloc[:, 0]
+        return series
 
     def get_summarized_metrics(
         self,

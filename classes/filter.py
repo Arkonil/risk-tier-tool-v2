@@ -76,11 +76,7 @@ class Filter:
             return f"Filter #{self.id}"
 
     def validate_query(self, available_columns: list[str] = None) -> None:
-        # --- 1. Multiline check ---
-        if "\n" in self.query or "\r" in self.query:
-            raise ValueError("Query Expression must be a single line.")
-
-        # --- 2. Preprocess Backticked Identifiers ---
+        # --- 1. Preprocess Backticked Identifiers ---
         # This allows parsing names with spaces or special characters.
         backticked_map: dict[str, str] = {}
 
@@ -92,7 +88,7 @@ class Filter:
 
         processed_expression = re.sub(r"`([^`]+)`", replace_backtick, self.query)
 
-        # --- 3. Parse and Validate Structure & Semantics ---
+        # --- 2. Parse and Validate Structure & Semantics ---
         tree = ast.parse(processed_expression, mode="exec")
 
         if not tree.body or len(tree.body) > 1:
@@ -114,7 +110,7 @@ class Filter:
 
         expr_node = statement.value
 
-        # --- 4. Heuristic Check for Boolean Nature ---
+        # --- 3. Heuristic Check for Boolean Nature ---
         allowed_top_level_nodes = (
             ast.Compare,  # a > b, a == b
             ast.BoolOp,  # a and b, a or b
@@ -148,12 +144,12 @@ class Filter:
 
             raise ValueError(f"Expression does not appear to be boolean; {reason}")
 
-        # --- 5. Extract Column Names if Structurally Valid ---
+        # --- 4. Extract Column Names if Structurally Valid ---
         finder = SmartColumnFinder(backticked_map)
         finder.visit(expr_node)
         self.used_columns = sorted(list(finder.found_columns))
 
-        # --- 6. Optionally Check Against List of Available Columns ---
+        # --- 5. Optionally Check Against List of Available Columns ---
         if available_columns is not None:
             available_set = set(available_columns)
             used_set = set(self.used_columns)
@@ -168,7 +164,7 @@ class Filter:
             return
 
         data_copy = data.copy()
-        mask = data_copy.eval(self.query, inplace=False)
+        mask = data_copy.eval(self.query.replace("\n", ""), inplace=False)
 
         if isinstance(mask, pd.DataFrame) and mask.shape[1] == 1:
             # Converting dataframe with a single column to a series

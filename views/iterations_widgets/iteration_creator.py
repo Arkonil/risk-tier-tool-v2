@@ -33,6 +33,7 @@ def iteration_creation_widget() -> None:
     data = session.data
     dlr_scalar = session.dlr_scalars
     ulr_scalar = session.ulr_scalars
+    fc = session.filter_container
 
     with st.sidebar:
         sidebar_widgets()
@@ -104,6 +105,16 @@ def iteration_creation_widget() -> None:
             loss_rate_type = DefaultOptions().default_iteation_metadata[
                 "loss_rate_type"
             ]
+
+        filter_ids = []
+        if fc.filters:
+            st.markdown("##### Select Filters")
+            filter_ids = st.multiselect(
+                label="Select Filters",
+                options=list(fc.filters.keys()),
+                label_visibility="collapsed",
+                format_func=lambda filter_id: fc.filters[filter_id].pretty_name,
+            )
 
     if iteration_graph.current_iter_create_mode == IterationType.SINGLE:
         previous_node_id = None
@@ -258,6 +269,7 @@ def iteration_creation_widget() -> None:
                 avg_bal=data.load_column(data.var_avg_bal, VariableType.NUMERICAL)
                 if auto_band
                 else None,
+                filters=filter_ids,
             )
 
             iteration_graph.select_current_node_id(iteration.id)
@@ -287,6 +299,7 @@ def iteration_creation_widget() -> None:
                 avg_bal=data.load_column(data.var_avg_bal, VariableType.NUMERICAL)
                 if auto_band
                 else None,
+                filters=filter_ids,
             )
 
             iteration_graph.select_current_node_id(iteration.id)

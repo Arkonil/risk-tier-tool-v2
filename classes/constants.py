@@ -91,6 +91,7 @@ class IterationMetadata(t.TypedDict):
     scalars_enabled: bool
     split_view_enabled: bool
     loss_rate_type: LossRateTypes
+    filters: set[str]
 
 
 class Completion(t.TypedDict):

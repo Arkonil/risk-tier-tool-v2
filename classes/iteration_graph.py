@@ -197,6 +197,7 @@ class IterationGraph:
         dlr_wrt_off: pd.Series = None,
         unt_wrt_off: pd.Series = None,
         avg_bal: pd.Series = None,
+        filters: list[str] = None,
     ) -> NumericalSingleVarIteration | CategoricalSingleVarIteration:
         new_node_id = new_id(current_ids=self.iterations.keys())
 
@@ -221,6 +222,7 @@ class IterationGraph:
         self.iteration_metadata[new_node_id] = {
             **DefaultOptions().default_iteation_metadata,
             "loss_rate_type": loss_rate_type,
+            "filters": set(filters),
         }
 
         if auto_band:
@@ -271,6 +273,7 @@ class IterationGraph:
         dlr_wrt_off: pd.Series = None,
         unt_wrt_off: pd.Series = None,
         avg_bal: pd.Series = None,
+        filters: list[str] = None,
     ) -> NumericalDoubleVarIteration | CategoricalDoubleVarIteration:
         if previous_node_id not in self.iterations:
             raise ValueError(
@@ -304,6 +307,7 @@ class IterationGraph:
         self.iteration_metadata[new_node_id] = {
             **DefaultOptions().default_iteation_metadata,
             "loss_rate_type": loss_rate_type,
+            "filters": set(filters),
         }
         self.connections.setdefault(previous_node_id, []).append(new_node_id)
 

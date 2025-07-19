@@ -22,11 +22,11 @@ def load_data_error_widget(key: int = 0) -> bool:
 
         st.markdown(
             f"""
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 1em; margin: 7.5em 0 1em;">
-                <div style="height: 16em; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">{svg}</div>
-                <div style="display: flex; flex-direction: column; align-items: center; font-size: 2.5em; color: rgb(89, 89, 89);">Data is not Loaded</div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 1em; margin: 10em 0 1em;">
+                <div style="height: 12em; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">{svg}</div>
+                <div style="display: flex; flex-direction: column; align-items: center; font-size: 2em; color: rgb(89, 89, 89);">Data is not Loaded</div>
             </div>
-        """,
+            """,
             unsafe_allow_html=True,
         )
         _, col, _ = st.columns([1, 0.4, 1])

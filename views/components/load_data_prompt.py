@@ -1,11 +1,12 @@
 import streamlit as st
 
+from classes.constants import AssetPath
 from classes.session import Session
 
 
 @st.cache_data(show_spinner=True)
 def get_no_data_image():
-    with open("assets/no-data-error.svg") as svgfile:
+    with open(AssetPath.NO_DATA_ERROR_ICON) as svgfile:
         svg = svgfile.read()
 
     return svg

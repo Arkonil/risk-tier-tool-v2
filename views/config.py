@@ -8,6 +8,14 @@ from classes.session import Session
 
 
 def set_page_config():
+    if st.context.theme.type == "dark":
+        logo_path = AssetPath.RT_LOGO_DARK
+    else:
+        logo_path = AssetPath.RT_LOGO_LIGHT
+
+    with open(logo_path, "r") as fp:
+        st.logo(fp.read(), size="large")
+
     st.set_page_config(
         page_title="Risk Tier Development Tool",
         page_icon=AssetPath.RT_ICON,

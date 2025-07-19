@@ -68,6 +68,13 @@ class Filter:
     def query(self):
         return self._query
 
+    @property
+    def pretty_name(self):
+        if self.name:
+            return f"Filter #{self.id} ({self.name})"
+        else:
+            return f"Filter #{self.id}"
+
     def validate_query(self, available_columns: list[str] = None) -> None:
         # --- 1. Multiline check ---
         if "\n" in self.query or "\r" in self.query:

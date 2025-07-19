@@ -187,7 +187,7 @@ def sample_data_widget():
     data = session.data
 
     st.markdown("### Sample Data")
-    st.dataframe(data.sample_df, width=2000)
+    st.dataframe(data.sample_df, use_container_width=True)
 
 
 def variable_selector_container_widget():

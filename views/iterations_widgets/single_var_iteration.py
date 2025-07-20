@@ -18,8 +18,7 @@ from views.components import variable_selector_dialog_widget
 def sidebar_widgets(iteration_id: str):
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
-
-    iteration_metadata = iteration_graph.iteration_metadata[iteration_id]
+    fc = session.filter_container
 
     st.button(
         label="Set Variables",
@@ -39,14 +38,39 @@ def sidebar_widgets(iteration_id: str):
         args=(iteration_id,),
     )
 
+    # Filter Selector
+    current_filters = iteration_graph.get_metadata(iteration_id, "filters")
+
+    filter_ids = set(
+        st.multiselect(
+            label="Filter",
+            options=list(fc.filters.keys()),
+            default=current_filters,
+            format_func=lambda filter_id: fc.filters[filter_id].pretty_name,
+            label_visibility="collapsed",
+            key=f"filter_selector_{iteration_id}",
+            help="Select filters to apply to the iteration",
+            placeholder="Select Filters",
+        )
+    )
+
+    if filter_ids != current_filters:
+        iteration_graph.set_metadata(iteration_id, "filters", filter_ids)
+        st.rerun()
+
+    # Scalar Toggle
+    current_scalars_enabled = iteration_graph.get_metadata(
+        iteration_id, "scalars_enabled"
+    )
+
     scalars_enabled = st.checkbox(
         label="Enable Scalars",
-        value=iteration_metadata["scalars_enabled"],
+        value=current_scalars_enabled,
         help="Use Scalars for Annualized Write Off Rates",
     )
 
-    if scalars_enabled != iteration_metadata["scalars_enabled"]:
-        iteration_metadata["scalars_enabled"] = scalars_enabled
+    if scalars_enabled != current_scalars_enabled:
+        iteration_graph.set_metadata(iteration_id, "scalars_enabled", scalars_enabled)
         st.rerun()
 
 
@@ -55,9 +79,11 @@ def single_var_iteration_widgets():
     iteration_graph = session.iteration_graph
 
     iteration = iteration_graph.current_iteration
-    iteration_metadata = iteration_graph.iteration_metadata[iteration.id]
 
-    metrics = iteration_metadata["metrics"]
+    metrics = iteration_graph.get_metadata(iteration.id, "metrics")
+    scalars_enabled = iteration_graph.get_metadata(iteration.id, "scalars_enabled")
+    filter_ids = iteration_graph.get_metadata(iteration.id, "filters")
+
     showing_metrics = (
         metrics.sort_values(MetricTableColumn.ORDER)
         .loc[metrics[MetricTableColumn.SHOWING], MetricTableColumn.METRIC]
@@ -87,9 +113,10 @@ def single_var_iteration_widgets():
     editable_range_widget(
         iteration_id=iteration.id,
         editable=True,
-        scalars_enabled=iteration_metadata["scalars_enabled"],
+        scalars_enabled=scalars_enabled,
         metrics=showing_metrics,
         default=True,
+        filter_ids=filter_ids,
         key=0,
     )
 
@@ -102,9 +129,10 @@ def single_var_iteration_widgets():
     editable_range_widget(
         iteration_id=iteration.id,
         editable=True,
-        scalars_enabled=iteration_metadata["scalars_enabled"],
+        scalars_enabled=scalars_enabled,
         metrics=showing_metrics,
         default=False,
+        filter_ids=filter_ids,
         key=1,
     )
 

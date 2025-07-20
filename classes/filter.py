@@ -164,7 +164,7 @@ class Filter:
             return
 
         data_copy = data.copy()
-        mask = data_copy.eval(self.query.replace("\n", ""), inplace=False)
+        mask = data_copy.eval(self.query.replace("\n", " "), inplace=False)
 
         if isinstance(mask, pd.DataFrame) and mask.shape[1] == 1:
             # Converting dataframe with a single column to a series

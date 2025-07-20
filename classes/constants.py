@@ -94,6 +94,16 @@ class IterationMetadata(t.TypedDict):
     filters: set[str]
 
 
+IterationMetadataKeys = t.Literal[
+    "editable",
+    "metrics",
+    "scalars_enabled",
+    "split_view_enabled",
+    "loss_rate_type",
+    "filters",
+]
+
+
 class Completion(t.TypedDict):
     caption: str
     value: str

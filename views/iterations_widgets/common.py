@@ -258,6 +258,12 @@ def editable_range_widget(
         font_color, bg_color = iteration_graph.get_color(rt_label, iteration_id)
         return f"color: {font_color}; background-color: {bg_color};"
 
+    # Replace NaN values with pd.NA for better styling
+    # TODO: Check if this is necessary
+    for col in calculated_df.columns:
+        if pd.api.types.is_numeric_dtype(calculated_df[col]):
+            calculated_df.loc[np.isnan(calculated_df[col]), col] = pd.NA
+
     calculated_df_styled = (
         calculated_df.style.map(
             get_style,

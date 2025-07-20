@@ -1,6 +1,8 @@
 import re
 import typing as t
 
+import pandas as pd
+
 from classes.constants import VariableType
 from classes.data import Data
 from classes.filter import Filter
@@ -93,3 +95,15 @@ class FilterContainer:
         filter_obj = self.filters[filter_id].copy()
         filter_obj.id = new_id(current_ids=self.filters.keys())
         self.filters[filter_obj.id] = filter_obj
+
+    def get_mask(self, filter_ids: t.Iterable[str], index: pd.Index) -> pd.Series:
+        mask = pd.Series(True, index=index, dtype=bool)
+
+        if not self.filters or not filter_ids:
+            return mask
+
+        for filter_id in filter_ids:
+            if filter_id in self.filters:
+                mask &= self.filters[filter_id].mask
+
+        return mask

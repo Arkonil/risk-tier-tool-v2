@@ -14,6 +14,7 @@ class SummaryPageState:
             (None, None),
         ]
         self.comparison_view_mode: t.Literal["column", "row"] = "column"
+        self.filters: set[str] = set()
 
     def to_dict(self) -> dict[str, t.Any]:
         """Serializes the HomePageState object to a dictionary."""

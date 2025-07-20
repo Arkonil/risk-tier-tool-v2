@@ -13,6 +13,7 @@ from views.components import variable_selector_dialog_widget, iteration_selector
 def sidebar_widgets():
     session: Session = st.session_state["session"]
     summ_state = session.summary_page_state
+    fc = session.filter_container
 
     st.button(
         label="Set Variables",
@@ -40,6 +41,25 @@ def sidebar_widgets():
             summ_state.comparison_view_mode = "row"
         else:
             summ_state.comparison_view_mode = "column"
+        st.rerun()
+
+    current_filters = summ_state.filters
+
+    filter_ids = set(
+        st.multiselect(
+            label="Filter",
+            options=list(fc.filters.keys()),
+            default=current_filters,
+            format_func=lambda filter_id: fc.filters[filter_id].pretty_name,
+            label_visibility="collapsed",
+            key="filter_selector_summary",
+            help="Select filters to apply to the iteration",
+            placeholder="Select Filters",
+        )
+    )
+
+    if filter_ids != current_filters:
+        summ_state.filters = filter_ids
         st.rerun()
 
     scalars_enabled = st.checkbox(
@@ -94,6 +114,7 @@ def iteration_result_widget(
         metrics=metrics,
         default=is_default,
         key=key,
+        filter_ids=summ_state.filters,
     )
 
 

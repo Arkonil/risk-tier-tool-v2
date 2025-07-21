@@ -763,6 +763,7 @@ class IterationGraph:
                     "scalars_enabled": metadata["scalars_enabled"],
                     "split_view_enabled": metadata["split_view_enabled"],
                     "loss_rate_type": metadata["loss_rate_type"].value,
+                    "filters": list(metadata["filters"]),
                 }
                 for node_id, metadata in self.iteration_metadata.items()
             },
@@ -787,6 +788,7 @@ class IterationGraph:
                 "scalars_enabled": metadata["scalars_enabled"],
                 "split_view_enabled": metadata["split_view_enabled"],
                 "loss_rate_type": LossRateTypes(metadata["loss_rate_type"]),
+                "filters": set(metadata["filters"]),
             }
             for node_id, metadata in dict_data.get("iteration_metadata", {}).items()
         }

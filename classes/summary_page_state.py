@@ -25,6 +25,7 @@ class SummaryPageState:
             "comparison_mode": self.comparison_mode,
             "selected_iterations": self.selected_iterations,
             "comparison_view_mode": self.comparison_view_mode,
+            "filters": list(self.filters),
         }
 
     @classmethod
@@ -43,5 +44,7 @@ class SummaryPageState:
 
         if "metrics" in data and data["metrics"] is not None:
             instance.metrics = pd.DataFrame.from_dict(data["metrics"], orient="tight")
+
+        instance.filters = set(data.get("filters", []))
 
         return instance

@@ -193,5 +193,14 @@ class Filter:
         new_filter.mask = self.mask.copy() if self.mask is not None else None
         return new_filter
 
+    def to_dict(self) -> dict[str, str | list[str]]:
+        """Serializes the Filter object to a dictionary."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "query": self.query,
+            "used_columns": self.used_columns,
+        }
+
 
 __all__ = ["Filter"]

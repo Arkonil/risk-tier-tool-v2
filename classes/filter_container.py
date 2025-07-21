@@ -107,3 +107,28 @@ class FilterContainer:
                 mask &= self.filters[filter_id].mask
 
         return mask
+
+    def to_dict(self) -> dict[str, t.Any]:
+        """Serializes the FilterContainer object to a dictionary."""
+        return {
+            "filters": {
+                filter_id: filter_obj.to_dict()
+                for filter_id, filter_obj in self.filters.items()
+            },
+        }
+
+    @classmethod
+    def from_dict(cls, dict_data: dict[str, t.Any], data: Data) -> "FilterContainer":
+        """Creates a FilterContainer object from a dictionary."""
+        instance = cls()
+
+        if "filters" in dict_data:
+            for filter_id, filter_data in dict_data["filters"].items():
+                instance.create_filter(
+                    filter_id=filter_id,
+                    name=filter_data["name"],
+                    query=filter_data["query"],
+                    data=data,
+                )
+
+        return instance

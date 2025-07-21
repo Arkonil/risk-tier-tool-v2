@@ -46,15 +46,21 @@ class Data:
 
     @property
     def column_name_completions(self) -> list[Completion]:
-        return self.sample_df.columns.map(
-            lambda column: Completion(
-                caption=column,
-                value=f"`{column}`" if re.search(r"\s+", column) else column,
-                meta="Column",
-                name=column,
-                score=100,
-            )
-        ).to_list()
+        if self.sample_df is None:
+            return []
+
+        if not self._column_name_completions:
+            self._column_name_completions = self.sample_df.columns.map(
+                lambda column: Completion(
+                    caption=column,
+                    value=f"`{column}`" if re.search(r"\s+", column) else column,
+                    meta="Column",
+                    name=column,
+                    score=100,
+                )
+            ).to_list()
+
+        return self._column_name_completions
 
     def get_col_pos(self, col_name: str | None) -> int:
         if col_name is None or col_name not in self.sample_df.columns:
@@ -431,6 +437,7 @@ class Data:
             "var_avg_bal": self.var_avg_bal,
             "current_rate_mob": self.current_rate_mob,
             "lifetime_rate_mob": self.lifetime_rate_mob,
+            "column_name_completions": self.column_name_completions,
         }
 
     @classmethod

@@ -169,11 +169,13 @@ def editable_range_widget(
     scalars_enabled: bool,
     metrics: list[Metric],
     default: bool,
+    filter_ids: set[str],
     key: int = 0,
 ):
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
     data = session.data
+    fc = session.filter_container
 
     iteration = iteration_graph.iterations[iteration_id]
 
@@ -211,6 +213,7 @@ def editable_range_widget(
 
     summ_df = data.get_summarized_metrics(
         new_risk_tiers.rename(RangeColumn.RISK_TIER),
+        data_filter=fc.get_mask(filter_ids, index=data.df.index),
         metrics=metrics,
     )
     calculated_df = pd.merge(
@@ -254,6 +257,12 @@ def editable_range_widget(
     def get_style(rt_label: str) -> str:
         font_color, bg_color = iteration_graph.get_color(rt_label, iteration_id)
         return f"color: {font_color}; background-color: {bg_color};"
+
+    # Replace NaN values with pd.NA for better styling
+    # TODO: Check if this is necessary
+    for col in calculated_df.columns:
+        if pd.api.types.is_numeric_dtype(calculated_df[col]):
+            calculated_df.loc[np.isnan(calculated_df[col]), col] = pd.NA
 
     calculated_df_styled = (
         calculated_df.style.map(

@@ -28,9 +28,9 @@ from views.components import variable_selector_dialog_widget
 def sidebar_widgets(iteration_id: str):
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
+    fc = session.filter_container
 
     iteration = iteration_graph.iterations[iteration_id]
-    iteration_metadata = iteration_graph.iteration_metadata[iteration_id]
 
     st.button(
         label="Set Variables",
@@ -72,34 +72,69 @@ def sidebar_widgets(iteration_id: str):
         on_click=add_new_group,
     )
 
+    # Filter Selection
+    current_filters = iteration_graph.get_metadata(iteration_id, "filters")
+
+    filter_ids = set(
+        st.multiselect(
+            label="Filter",
+            options=list(fc.filters.keys()),
+            default=current_filters,
+            format_func=lambda filter_id: fc.filters[filter_id].pretty_name,
+            label_visibility="collapsed",
+            key=f"filter_selector_{iteration_id}",
+            help="Select filters to apply to the iteration",
+            placeholder="Select Filters",
+        )
+    )
+
+    if filter_ids != current_filters:
+        iteration_graph.set_metadata(iteration_id, "filters", filter_ids)
+        st.rerun()
+
+    # Scalar Toggle
+    current_scalars_enabled = iteration_graph.get_metadata(
+        iteration_id, "scalars_enabled"
+    )
+
     scalars_enabled = st.checkbox(
         label="Enable Scalars",
-        value=iteration_metadata["scalars_enabled"],
+        value=current_scalars_enabled,
         help="Use Scalars for Annualized Write Off Rates",
     )
 
-    if scalars_enabled != iteration_metadata["scalars_enabled"]:
-        iteration_metadata["scalars_enabled"] = scalars_enabled
+    if scalars_enabled != current_scalars_enabled:
+        iteration_graph.set_metadata(iteration_id, "scalars_enabled", scalars_enabled)
         st.rerun()
+
+    # Split View Toggle
+    current_split_view_enabled = iteration_graph.get_metadata(
+        iteration_id, "split_view_enabled"
+    )
 
     split_view_enabled = st.checkbox(
         label="Split into columns",
-        value=iteration_metadata["split_view_enabled"],
+        value=current_split_view_enabled,
         help="Split the grid view into columns for each metric",
     )
 
-    if split_view_enabled != iteration_metadata["split_view_enabled"]:
-        iteration_metadata["split_view_enabled"] = split_view_enabled
+    if split_view_enabled != current_split_view_enabled:
+        iteration_graph.set_metadata(
+            iteration_id, "split_view_enabled", split_view_enabled
+        )
         st.rerun()
+
+    # Editable Toggle
+    current_editable = iteration_graph.get_metadata(iteration_id, "editable")
 
     editable = st.checkbox(
         label="Editable",
-        value=iteration_metadata["editable"],
+        value=current_editable,
         help="Editable",
     )
 
-    if editable != iteration_metadata["editable"]:
-        iteration_metadata["editable"] = editable
+    if editable != current_editable:
+        iteration_graph.set_metadata(iteration_id, "editable", editable)
         st.rerun()
 
 
@@ -108,7 +143,6 @@ def grid_editor_widget(iteration_id: str, key: int, default: bool = False):
     iteration_graph = session.iteration_graph
 
     iteration = iteration_graph.iterations[iteration_id]
-    iteration_metadata = iteration_graph.iteration_metadata[iteration.id]
 
     if default:
         st.markdown("##### Default Grid")
@@ -156,12 +190,14 @@ def grid_editor_widget(iteration_id: str, key: int, default: bool = False):
         ),
     }
 
+    current_editable_toggle = iteration_graph.get_metadata(iteration_id, "editable")
+
     for column in grid_columns:
         column_config[column] = st.column_config.SelectboxColumn(
             label=column,
             options=risk_tier_details[RTDetCol.RISK_TIER],
             required=True,
-            disabled=(not iteration_metadata["editable"]) or default,
+            disabled=(not current_editable_toggle) or default,
         )
 
     idx = pd.IndexSlice
@@ -250,11 +286,11 @@ def calculate_summ_df(iteration_id: str, default: bool = False):
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
     data = session.data
+    fc = session.filter_container
 
     iteration = iteration_graph.iterations[iteration_id]
-    iteration_metadata = iteration_graph.iteration_metadata[iteration_id]
 
-    metrics_df = iteration_metadata["metrics"]
+    metrics_df = iteration_graph.get_metadata(iteration.id, "metrics")
     showing_metrics = metrics_df.sort_values(MetricTableColumn.ORDER).loc[
         metrics_df[MetricTableColumn.SHOWING], MetricTableColumn.METRIC
     ]
@@ -274,6 +310,10 @@ def calculate_summ_df(iteration_id: str, default: bool = False):
         groupby_variable_2=prev_iteration_results["risk_tier_column"].rename(
             GridColumn.PREV_RISK_TIER
         ),
+        data_filter=fc.get_mask(
+            iteration_graph.get_metadata(iteration.id, "filters"),
+            index=data.df.index,
+        ),
         metrics=showing_metrics.to_list(),
     )
 
@@ -290,9 +330,8 @@ def grid_metric_widget(
     iteration_graph = session.iteration_graph
 
     iteration = iteration_graph.iterations[iteration_id]
-    iteration_metadata = iteration_graph.iteration_metadata[iteration_id]
 
-    scalars_enabled = iteration_metadata["scalars_enabled"]
+    scalars_enabled = iteration_graph.get_metadata(iteration_id, "scalars_enabled")
     metric_name = metric_summary.name
     risk_tier_details, _ = get_risk_tier_details(iteration.id, recheck=False)
 
@@ -397,6 +436,10 @@ def grid_metric_widget(
     metric_summary_grid = metric_summary_grid.drop(
         columns=[RangeColumn.GROUPS], errors="ignore"
     )
+
+    # Replace NaN values with pd.NA for better styling
+    # TODO: Check if this is necessary
+    metric_summary_grid[np.isnan(metric_summary_grid)] = pd.NA
 
     idx = pd.IndexSlice
     metric_summary_grid_styled = metric_summary_grid.style
@@ -550,10 +593,13 @@ def double_var_iteration_widget():
     iteration_graph = session.iteration_graph
 
     iteration = iteration_graph.current_iteration
-    iteration_metadata = iteration_graph.iteration_metadata[iteration.id]
 
-    split_view_enabled = iteration_metadata["split_view_enabled"]
-    metrics = iteration_metadata["metrics"]
+    split_view_enabled = iteration_graph.get_metadata(
+        iteration.id, "split_view_enabled"
+    )
+    metrics = iteration_graph.get_metadata(iteration.id, "metrics")
+    scalars_enabled = iteration_graph.get_metadata(iteration.id, "scalars_enabled")
+
     showing_metrics = (
         metrics.sort_values(MetricTableColumn.ORDER)
         .loc[metrics[MetricTableColumn.SHOWING], MetricTableColumn.METRIC]
@@ -611,9 +657,10 @@ def double_var_iteration_widget():
             editable_range_widget(
                 iteration_id=iter_id,
                 editable=False,
-                scalars_enabled=iteration_metadata["scalars_enabled"],
+                scalars_enabled=scalars_enabled,
                 metrics=showing_metrics,
                 default=False,
+                filter_ids=iteration_graph.get_metadata(iteration.id, "filters"),
             )
             iter_id = iteration_graph.get_parent(iter_id)
 

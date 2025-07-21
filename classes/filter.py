@@ -68,12 +68,15 @@ class Filter:
     def query(self):
         return self._query
 
-    def validate_query(self, available_columns: list[str] = None) -> None:
-        # --- 1. Multiline check ---
-        if "\n" in self.query or "\r" in self.query:
-            raise ValueError("Query Expression must be a single line.")
+    @property
+    def pretty_name(self):
+        if self.name:
+            return f"Filter #{self.id} ({self.name})"
+        else:
+            return f"Filter #{self.id}"
 
-        # --- 2. Preprocess Backticked Identifiers ---
+    def validate_query(self, available_columns: list[str] = None) -> None:
+        # --- 1. Preprocess Backticked Identifiers ---
         # This allows parsing names with spaces or special characters.
         backticked_map: dict[str, str] = {}
 
@@ -85,7 +88,7 @@ class Filter:
 
         processed_expression = re.sub(r"`([^`]+)`", replace_backtick, self.query)
 
-        # --- 3. Parse and Validate Structure & Semantics ---
+        # --- 2. Parse and Validate Structure & Semantics ---
         tree = ast.parse(processed_expression, mode="exec")
 
         if not tree.body or len(tree.body) > 1:
@@ -107,7 +110,7 @@ class Filter:
 
         expr_node = statement.value
 
-        # --- 4. Heuristic Check for Boolean Nature ---
+        # --- 3. Heuristic Check for Boolean Nature ---
         allowed_top_level_nodes = (
             ast.Compare,  # a > b, a == b
             ast.BoolOp,  # a and b, a or b
@@ -141,12 +144,12 @@ class Filter:
 
             raise ValueError(f"Expression does not appear to be boolean; {reason}")
 
-        # --- 5. Extract Column Names if Structurally Valid ---
+        # --- 4. Extract Column Names if Structurally Valid ---
         finder = SmartColumnFinder(backticked_map)
         finder.visit(expr_node)
         self.used_columns = sorted(list(finder.found_columns))
 
-        # --- 6. Optionally Check Against List of Available Columns ---
+        # --- 5. Optionally Check Against List of Available Columns ---
         if available_columns is not None:
             available_set = set(available_columns)
             used_set = set(self.used_columns)
@@ -161,7 +164,7 @@ class Filter:
             return
 
         data_copy = data.copy()
-        mask = data_copy.eval(self.query, inplace=False)
+        mask = data_copy.eval(self.query.replace("\n", " "), inplace=False)
 
         if isinstance(mask, pd.DataFrame) and mask.shape[1] == 1:
             # Converting dataframe with a single column to a series
@@ -189,6 +192,15 @@ class Filter:
         new_filter.used_columns = self.used_columns.copy()
         new_filter.mask = self.mask.copy() if self.mask is not None else None
         return new_filter
+
+    def to_dict(self) -> dict[str, str | list[str]]:
+        """Serializes the Filter object to a dictionary."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "query": self.query,
+            "used_columns": self.used_columns,
+        }
 
 
 __all__ = ["Filter"]

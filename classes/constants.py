@@ -91,6 +91,17 @@ class IterationMetadata(t.TypedDict):
     scalars_enabled: bool
     split_view_enabled: bool
     loss_rate_type: LossRateTypes
+    filters: set[str]
+
+
+IterationMetadataKeys = t.Literal[
+    "editable",
+    "metrics",
+    "scalars_enabled",
+    "split_view_enabled",
+    "loss_rate_type",
+    "filters",
+]
 
 
 class Completion(t.TypedDict):

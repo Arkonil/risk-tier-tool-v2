@@ -68,6 +68,11 @@ def create_auto_numeric_bands(
         index=risk_tier_details.index,
     )
 
+    if len(mtc) == 0:
+        groups[RangeColumn.LOWER_BOUND] = -np.inf
+        groups[RangeColumn.UPPER_BOUND] = np.inf
+        return groups
+
     # negating a small positive number as intervals are left open & right closed
     delta = 1
 

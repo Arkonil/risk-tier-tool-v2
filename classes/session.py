@@ -52,6 +52,7 @@ class Session:
         iteration_graph_json = self.iteration_graph.to_dict()
         summary_page_state_json = self.summary_page_state.to_dict()
         options_json = self.options.to_dict()
+        fc_json = self.filter_container.to_dict()
 
         zip_buffer = io.BytesIO()
 
@@ -75,6 +76,9 @@ class Session:
             )
             zipf.writestr(
                 "options.json", json.dumps(options_json, indent=4, cls=NpEncoder)
+            )
+            zipf.writestr(
+                "filter_container.json", json.dumps(fc_json, indent=4, cls=NpEncoder)
             )
             zipf.writestr("README.md", README_CONTENT.strip())
 
@@ -106,6 +110,7 @@ class Session:
                 and "data.json" in zipf.namelist()
             )
             graph_exists = "iteration_graph.json" in zipf.namelist()
+            filter_exists = "filter_container.json" in zipf.namelist()
 
             if data_exists:
                 # Read df from Parquet if it exists
@@ -130,16 +135,11 @@ class Session:
             else:
                 data = Data()
 
-            if graph_exists:
+            if data_exists and graph_exists:
                 iteration_graph_json = json.loads(zipf.read("iteration_graph.json"))
                 iteration_graph = IterationGraph.from_dict(iteration_graph_json, data)
             else:
                 iteration_graph = IterationGraph()
-
-            if not data_exists and not iteration_graph.is_empty:
-                raise ValueError(
-                    "Data is required to be present in the zip file when importing iteration graph."
-                )
 
             if data_exists and graph_exists:
                 variables = list(
@@ -152,6 +152,14 @@ class Session:
                     raise ValueError(
                         "The variables in the iteration graph do not match the columns in the data."
                     )
+
+            if data_exists and filter_exists:
+                filter_container_json = json.loads(zipf.read("filter_container.json"))
+                filter_container = FilterContainer.from_dict(
+                    filter_container_json, data
+                )
+            else:
+                filter_container = FilterContainer()
 
             if "dlr_scalars.json" in zipf.namelist():
                 dlr_scalars_json = json.loads(zipf.read("dlr_scalars.json"))
@@ -187,3 +195,4 @@ class Session:
             self.iteration_graph = iteration_graph
             self.summary_page_state = summary_page_state
             self.options = options
+            self.filter_container = filter_container

@@ -59,7 +59,7 @@ def filter_list():
             col1, col2 = st.columns([6, 1], vertical_alignment="center", gap="medium")
 
             with col1:
-                st.markdown(f"### Filter #{filter_id} - {filter_obj.name}".rstrip(" -"))
+                st.subheader(filter_obj.pretty_name)
                 st.code(filter_obj.query, language="python")
 
             with col2:

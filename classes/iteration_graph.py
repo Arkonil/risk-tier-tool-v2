@@ -15,8 +15,10 @@ from classes.constants import (
     RTDetCol,
     RangeColumn,
     VariableType,
+    IterationMetadataKeys,
 )
 from classes.data import Data
+from classes.filter import Filter
 from classes.iteration import (
     CategoricalDoubleVarIteration,
     CategoricalSingleVarIteration,
@@ -177,6 +179,47 @@ class IterationGraph:
 
         return font_color.iloc[0], bg_color.iloc[0]
 
+    def get_metadata(self, node_id: str, key: IterationMetadataKeys):
+        if node_id not in self.iteration_metadata:
+            raise ValueError(f"Node ID {node_id} does not exist in iteration metadata.")
+
+        metadata = self.iteration_metadata[node_id]
+        if key not in metadata:
+            raise KeyError(f"Key '{key}' not found in metadata for node ID {node_id}.")
+
+        root_id = self.get_root_iter_id(node_id)
+        if key in ("loss_rate_type", "filters"):
+            return self.iteration_metadata[root_id][key]
+
+        return metadata[key]
+
+    def set_metadata(self, node_id: str, key: IterationMetadataKeys, value: t.Any):
+        if node_id not in self.iteration_metadata:
+            raise ValueError(f"Node ID {node_id} does not exist in iteration metadata.")
+
+        metadata = self.iteration_metadata[node_id]
+        if key not in metadata:
+            raise KeyError(f"Key '{key}' not found in metadata for node ID {node_id}.")
+
+        # Update filters for all nodes in the subtree
+        if key == "filters":
+            # If filters are being set, we need to ensure they are valid Filter objects
+            if not isinstance(value, set) or not all(isinstance(f, str) for f in value):
+                raise ValueError("Filters must be a set of str objects.")
+
+            root_id = self.get_root_iter_id(node_id)
+            descendants = self.get_descendants(root_id)
+            for descendant in [root_id] + descendants:
+                self.iteration_metadata[descendant]["filters"] = value
+
+                # If the metadata is related to filters, we need to mark the node for recalculation
+                self.add_to_calculation_queue(descendant, default=True)
+                self.add_to_calculation_queue(descendant, default=False)
+
+            return
+
+        metadata[key] = value
+
     def is_root(self, node_id: str) -> bool:
         return self.get_parent(node_id) is None
 
@@ -190,6 +233,7 @@ class IterationGraph:
         variable_dtype: VariableType,
         risk_tier_details: pd.DataFrame,
         loss_rate_type: LossRateTypes,
+        filter_objs: set[Filter],
         auto_band: bool,
         mob: int = None,
         dlr_scalar: Scalar = None,
@@ -221,12 +265,17 @@ class IterationGraph:
         self.iteration_metadata[new_node_id] = {
             **DefaultOptions().default_iteation_metadata,
             "loss_rate_type": loss_rate_type,
+            "filters": {filter_obj.id for filter_obj in filter_objs},
         }
 
         if auto_band:
+            mask = pd.Series(True, index=variable.index)
+            for filter_obj in filter_objs:
+                mask &= filter_obj.mask
+
             groups = create_auto_bands(
                 variable=variable,
-                mask=pd.Series(True, index=variable.index),
+                mask=mask,
                 risk_tier_details=risk_tier_details,
                 dlr_scalar=dlr_scalar,
                 ulr_scalar=ulr_scalar,
@@ -263,6 +312,7 @@ class IterationGraph:
         variable: pd.Series,
         variable_dtype: VariableType,
         previous_node_id: str,
+        filter_objs: set[Filter],
         auto_band: bool,
         mob: int = None,
         upgrade_downgrade_limit: int = None,
@@ -304,10 +354,15 @@ class IterationGraph:
         self.iteration_metadata[new_node_id] = {
             **DefaultOptions().default_iteation_metadata,
             "loss_rate_type": loss_rate_type,
+            "filters": {filter_obj.id for filter_obj in filter_objs},
         }
         self.connections.setdefault(previous_node_id, []).append(new_node_id)
 
         if auto_band:
+            mask = pd.Series(True, index=variable.index)
+            for filter_obj in filter_objs:
+                mask &= filter_obj.mask
+
             previous_iter_output = self.get_risk_tiers(previous_node_id, default=False)
 
             if not previous_iter_output["errors"]:
@@ -322,7 +377,7 @@ class IterationGraph:
                 for rt in unique_tiers:
                     groups = create_auto_bands(
                         variable=variable,
-                        mask=previous_risk_tiers == rt,
+                        mask=(previous_risk_tiers == rt) & mask,
                         risk_tier_details=risk_tier_details.iloc[
                             max(0, rt - upgrade_downgrade_limit) : rt
                             + upgrade_downgrade_limit
@@ -708,6 +763,7 @@ class IterationGraph:
                     "scalars_enabled": metadata["scalars_enabled"],
                     "split_view_enabled": metadata["split_view_enabled"],
                     "loss_rate_type": metadata["loss_rate_type"].value,
+                    "filters": list(metadata["filters"]),
                 }
                 for node_id, metadata in self.iteration_metadata.items()
             },
@@ -732,6 +788,7 @@ class IterationGraph:
                 "scalars_enabled": metadata["scalars_enabled"],
                 "split_view_enabled": metadata["split_view_enabled"],
                 "loss_rate_type": LossRateTypes(metadata["loss_rate_type"]),
+                "filters": set(metadata["filters"]),
             }
             for node_id, metadata in dict_data.get("iteration_metadata", {}).items()
         }

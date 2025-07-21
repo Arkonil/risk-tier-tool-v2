@@ -15,7 +15,7 @@ def metric_selector_dialog_widget(iteration_id: str | None = None):
         metrics_df = session.summary_page_state.metrics
     else:
         iteration_graph = session.iteration_graph
-        metrics_df = iteration_graph.iteration_metadata[iteration_id]["metrics"]
+        metrics_df = iteration_graph.get_metadata(iteration_id, "metrics")
 
     st.write("Select Metrics:")
 

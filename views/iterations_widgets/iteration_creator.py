@@ -33,6 +33,7 @@ def iteration_creation_widget() -> None:
     data = session.data
     dlr_scalar = session.dlr_scalars
     ulr_scalar = session.ulr_scalars
+    fc = session.filter_container
 
     with st.sidebar:
         sidebar_widgets()
@@ -105,15 +106,32 @@ def iteration_creation_widget() -> None:
                 "loss_rate_type"
             ]
 
+        filter_ids = []
+        if fc.filters:
+            st.markdown("##### Select Filters")
+            filter_ids = st.multiselect(
+                label="Select Filters",
+                options=list(fc.filters.keys()),
+                label_visibility="collapsed",
+                format_func=lambda filter_id: fc.filters[filter_id].pretty_name,
+                disabled=iteration_graph.current_iter_create_mode
+                == IterationType.DOUBLE,
+                default=iteration_graph.get_metadata(
+                    iteration_graph.current_iter_create_parent_id, "filters"
+                )
+                if iteration_graph.current_iter_create_parent_id
+                else None,
+            )
+
     if iteration_graph.current_iter_create_mode == IterationType.SINGLE:
         previous_node_id = None
         rt_details = options.risk_tier_details.copy()
     else:
         previous_node_id = iteration_graph.current_iter_create_parent_id
         rt_details = iteration_graph.get_risk_tier_details(previous_node_id).copy()
-        loss_rate_type = iteration_graph.iteration_metadata[previous_node_id][
-            "loss_rate_type"
-        ]
+        loss_rate_type = iteration_graph.get_metadata(
+            previous_node_id, "loss_rate_type"
+        )
 
     # Column Modification
     rt_details[RTDetCol.LOWER_RATE] = (rt_details[RTDetCol.LOWER_RATE] * 100).map(
@@ -241,6 +259,7 @@ def iteration_creation_widget() -> None:
                 variable_dtype=variable_dtype,
                 risk_tier_details=risk_tier_details,
                 loss_rate_type=loss_rate_type,
+                filter_objs={fc.filters[filter_id] for filter_id in filter_ids},
                 auto_band=auto_band,
                 mob=data.current_rate_mob if auto_band else None,
                 dlr_scalar=dlr_scalar if auto_band and use_scalars else None,
@@ -269,6 +288,7 @@ def iteration_creation_widget() -> None:
                 variable=variable,
                 variable_dtype=variable_dtype,
                 previous_node_id=previous_node_id,
+                filter_objs={fc.filters[filter_id] for filter_id in filter_ids},
                 auto_band=auto_band,
                 mob=data.current_rate_mob if auto_band else None,
                 upgrade_downgrade_limit=upgrade_downgrade_limit if auto_band else None,

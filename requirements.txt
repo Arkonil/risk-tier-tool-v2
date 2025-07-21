@@ -80,11 +80,14 @@ six==1.17.0
     # via python-dateutil
 smmap==5.0.2
     # via gitdb
-streamlit==1.45.1
+streamlit==1.46.0
     # via
     #   risk-tier-tool (pyproject.toml)
+    #   streamlit-code-editor
     #   streamlit-flow-component
     #   streamlit-sortables
+streamlit-code-editor==0.1.22
+    # via risk-tier-tool (pyproject.toml)
 streamlit-flow-component==1.6.1
     # via risk-tier-tool (pyproject.toml)
 streamlit-sortables==0.3.1

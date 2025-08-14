@@ -113,13 +113,13 @@ class Completion(t.TypedDict):
 
 
 class AssetPath(StrEnum):
-    QUERY_REFERENCE = "assets/filter_query_reference.md"
-    RT_ICON = "assets/rt-icon.svg"
-    RT_LOGO_LIGHT = "assets/rt-logo-light.svg"
-    RT_LOGO_DARK = "assets/rt-logo-dark.svg"
-    NO_DATA_ERROR_ICON = "assets/no-data-error.svg"
-    NO_FILTER_ICON = "assets/no-filter.svg"
-    STYLESHEET = "assets/style.css"
+    QUERY_REFERENCE = "app/assets/filter_query_reference.md"
+    RT_ICON = "app/assets/rt-icon.svg"
+    RT_LOGO_LIGHT = "app/assets/rt-logo-light.svg"
+    RT_LOGO_DARK = "app/assets/rt-logo-dark.svg"
+    NO_DATA_ERROR_ICON = "app/assets/no-data-error.svg"
+    NO_FILTER_ICON = "app/assets/no-filter.svg"
+    STYLESHEET = "app/assets/style.css"
 
 
 class DefaultOptions(Singleton):

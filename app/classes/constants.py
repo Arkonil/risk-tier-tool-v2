@@ -13,8 +13,8 @@ class RTDetCol(StrEnum):
     SELECTED = "Selected"
     ORIG_INDEX = "Original Index"
     RISK_TIER = "Risk Tier"
-    LOWER_RATE = "Lower Loss Rate"
-    UPPER_RATE = "Upper Loss Rate"
+    LOWER_RATE = "Lower Bad Rate"
+    UPPER_RATE = "Upper Bad Rate"
     BG_COLOR = "Background Color"
     FONT_COLOR = "Font Color"
     MAF_ULR = "Maturity Adjustment Factor (ULR)"
@@ -22,8 +22,8 @@ class RTDetCol(StrEnum):
 
 
 class LossRateTypes(StrEnum):
-    DLR = "$ Loss Rate"
-    ULR = "# Loss Rate"
+    DLR = "$ Bad Rate"
+    ULR = "# Bad Rate"
 
 
 class ScalarTableColumn(StrEnum):
@@ -53,13 +53,13 @@ class IterationType(StrEnum, metaclass=StrEnumMeta):
 
 class Metric(StrEnum):
     VOLUME: str = "Volume"
-    ANNL_WO_BAL_PCT: str = "$ Annualized Write off %"
-    ANNL_WO_COUNT_PCT: str = "# Annualized Write off %"
+    ANNL_WO_BAL_PCT: str = "$ Annualized Bad Rate %"
+    ANNL_WO_COUNT_PCT: str = "# Annualized Bad Rate %"
     AVG_BAL: str = "$ Average Balance"
-    WO_COUNT: str = "# Write off Count"
-    WO_COUNT_PCT: str = "# Write off %"
-    WO_BAL: str = "$ Write off Balance"
-    WO_BAL_PCT: str = "$ Write off %"
+    WO_COUNT: str = "# Bad Count"
+    WO_COUNT_PCT: str = "# Bad Rate %"
+    WO_BAL: str = "$ Bad Balance"
+    WO_BAL_PCT: str = "$ Bad Rate %"
 
 
 class MetricTableColumn(StrEnum):

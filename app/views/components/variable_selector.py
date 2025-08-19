@@ -17,7 +17,7 @@ def metric_text_widget(column, text: str):
 def unit_wrt_off_selector_widget(data: Data):
     col1, col2, col3, col4, col5 = st.columns([4, 1, 5, 1, 5])
 
-    metric_text_widget(col1, "# Write Off %")
+    metric_text_widget(col1, "# Bad Rate %")
     metric_text_widget(col2, "=")
     options = [None] + data.sample_df.columns.to_list()
     current_index = data.get_col_pos(data.var_unt_wrt_off)
@@ -31,7 +31,7 @@ def unit_wrt_off_selector_widget(data: Data):
         label_visibility="collapsed",
         index=current_index,
         format_func=lambda v: "" if v is None else v,
-        placeholder="# Write Off Variable",
+        placeholder="# Bad Rate Variable",
     )
     metric_text_widget(col4, "/")
     metric_text_widget(col5, "# Accounts")
@@ -42,7 +42,7 @@ def unit_wrt_off_selector_widget(data: Data):
 def dlr_wrt_off_selector_widget(data: Data):
     col1, col2, col3, col4, col5 = st.columns([4, 1, 5, 1, 5])
 
-    metric_text_widget(col1, "$ Write Off %")
+    metric_text_widget(col1, "$ Bad Rate %")
     metric_text_widget(col2, "=")
     options = [None] + data.sample_df.columns.to_list()
     current_index = data.get_col_pos(data.var_dlr_wrt_off)
@@ -56,7 +56,7 @@ def dlr_wrt_off_selector_widget(data: Data):
         label_visibility="collapsed",
         index=current_index,
         format_func=lambda v: "" if v is None else v,
-        placeholder="$ Write Off Variable",
+        placeholder="$ Bad Rate Variable",
     )
 
     metric_text_widget(col4, "/")

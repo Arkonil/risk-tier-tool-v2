@@ -50,12 +50,16 @@ def create_auto_numeric_bands(
         )
 
         # hv_imp_lr = High Value of the variable implies Low risk
-        hv_imp_hr = (
-            np.nan_to_num(
-                np.heaviside(mtc[DataColumns.RATIO].diff(), np.nan) * 2 - 1
-            ).sum()
-            >= 0
-        )
+        x = np.nan_to_num(mtc.index)  # variable
+        w = np.nan_to_num(mtc[DataColumns.RATIO])  # weights
+        w /= np.sum(w)  # normalize weights
+
+        m1 = np.sum(x * w)  # 1st raw moment
+        m2 = np.sum(x * x * w)  # 2nd raw moment
+        m3 = np.sum(x * x * x * w)  # 3rd raw moment
+
+        u3 = m3 - 3 * m2 * m1 + 2 * m1 * m1 * m1  # 3rd central moment
+        hv_imp_hr = u3 < 0  # Negatiavely skewed <=> High value implies high risk
 
         if hv_imp_hr:
             break

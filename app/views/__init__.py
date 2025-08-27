@@ -8,6 +8,7 @@ from views.iterations_widgets import iteration_graph_page
 from views.charts import charts_page
 from views.export_widgets import export_page
 from views.filter_widgets import filter_page
+from views.metric_widgets import metric_page
 
 
 def set_page_navigation():
@@ -16,6 +17,7 @@ def set_page_navigation():
         "Tools": [
             data_importer_page,
             filter_page,
+            metric_page,
             options_page,
             iteration_graph_page,
         ],

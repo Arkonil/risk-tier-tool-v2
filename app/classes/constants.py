@@ -119,6 +119,7 @@ class AssetPath(StrEnum):
     RT_LOGO_DARK = "app/assets/rt-logo-dark.svg"
     NO_DATA_ERROR_ICON = "app/assets/no-data-error.svg"
     NO_FILTER_ICON = "app/assets/no-filter.svg"
+    NO_METRIC_ICON = "app/assets/no-metric.svg"
     STYLESHEET = "app/assets/style.css"
 
 

@@ -1,4 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="rgb(89, 89, 89)">
-  <path
-    d="M791-55 55-791l57-57 736 736-57 57ZM633-440l-80-80h167v80h-87ZM433-640l-80-80h487v80H433Zm-33 400v-80h160v80H400ZM240-440v-80h166v80H240ZM120-640v-80h86v80h-86Z" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 0 960 960" fill="rgb(89, 89, 89)">
+  <title>No Segments (right-aligned)</title>
+  <defs>
+    <mask id="cut-line">
+      <rect id="bg" x="0" y="0" width="100%" height="100%" fill="white" />
+      <rect width="70" height="750" x="310" y="400" transform="rotate(-40 40 360)" fill="black" />
+    </mask>
+  </defs>
+
+  <!-- RIGHT-ALIGNED SEGMENT LINES -->
+  <!-- Top long line -->
+  <path d="M 120 400 v -70 h 720 v 70 Z" mask="url(#cut-line)" />
+  <!-- Middle medium line -->
+  <path d="M 360 560 v -70 h 480 v 70 Z" mask="url(#cut-line)" />
+  <!-- Bottom short line -->
+  <path d="M 360 720 v -70 h 480 v 70 Z" mask="url(#cut-line)" />
+
+  <!-- DIAGONAL SOLID OVERLAY -->
+  <rect width="70" height="750" x="240" y="400" transform="rotate(-40 40 360)" />
 </svg>

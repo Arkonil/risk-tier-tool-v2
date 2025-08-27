@@ -8,6 +8,7 @@ import pandas as pd
 
 from classes.data import Data
 from classes.filter_container import FilterContainer
+from classes.metric_container import MetricContainer
 from classes.summary_page_state import SummaryPageState
 from classes.scalars import Scalar
 from classes.iteration_graph import IterationGraph
@@ -44,6 +45,7 @@ class Session:
         self.summary_page_state = SummaryPageState()
         self.options = Options()
         self.filter_container = FilterContainer()
+        self.metric_container = MetricContainer()
 
     def to_rt_zip_buffer(self) -> io.BytesIO:
         data_json = self.data.to_dict()
@@ -53,6 +55,7 @@ class Session:
         summary_page_state_json = self.summary_page_state.to_dict()
         options_json = self.options.to_dict()
         fc_json = self.filter_container.to_dict()
+        mc_json = self.metric_container.to_dict()
 
         zip_buffer = io.BytesIO()
 
@@ -79,6 +82,9 @@ class Session:
             )
             zipf.writestr(
                 "filter_container.json", json.dumps(fc_json, indent=4, cls=NpEncoder)
+            )
+            zipf.writestr(
+                "metric_container.json", json.dumps(mc_json, indent=4, cls=NpEncoder)
             )
             zipf.writestr("README.md", README_CONTENT.strip())
 
@@ -111,6 +117,7 @@ class Session:
             )
             graph_exists = "iteration_graph.json" in zipf.namelist()
             filter_exists = "filter_container.json" in zipf.namelist()
+            metric_exists = "metric_container.json" in zipf.namelist()
 
             if data_exists:
                 # Read df from Parquet if it exists
@@ -161,6 +168,12 @@ class Session:
             else:
                 filter_container = FilterContainer()
 
+            if data_exists and metric_exists:
+                metric_container_json = json.loads(zipf.read("metric_container.json"))
+                metric_container = MetricContainer.from_dict(metric_container_json)
+            else:
+                metric_container = MetricContainer()
+
             if "dlr_scalars.json" in zipf.namelist():
                 dlr_scalars_json = json.loads(zipf.read("dlr_scalars.json"))
                 dlr_scalars = Scalar.from_dict(dlr_scalars_json)
@@ -196,3 +209,4 @@ class Session:
             self.summary_page_state = summary_page_state
             self.options = options
             self.filter_container = filter_container
+            self.metric_container = metric_container

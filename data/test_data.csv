@@ -1,4 +1,4 @@
-﻿app_scr,bur_scr,crd_lmt,wo_flag,wo_bal,status,cat1,cat2,cat3,cat4,cat5
+﻿app_scr,bur_scr,avg bal,wo flag,wo bal,status,cat1,cat2,cat3,cat4,cat5
 570,665,80083,0.810126582,64877.36709,D,cat1_E,cat2_G,cat3_G,cat4_C,cat5_J
 562,636,30000,0.860627477,25818.82431,D,cat1_B,cat2_C,cat3_A,cat4_C,cat5_C
 576,651,49110,0.763790427,37509.74788,D,cat1_B,cat2_D,cat3_F,cat4_C,cat5_D

@@ -122,26 +122,42 @@ def variable_selector_widget():
     data = session.data
 
     var_unt_wrt_off = unit_wrt_off_selector_widget(data)
+    unt_error_container = st.container()
     var_dlr_wrt_off, var_avg_bal = dlr_wrt_off_selector_widget(data)
+    dlr_error_container = st.container()
     mob = mob_selector_widget(data)
+    mob_error_container = st.container()
     lifetime_rate_mob = lifetime_rate_mob_selector_widget(data)
 
+    # TODO: Check if the logic works as intended
     needs_rerun = False
     if var_unt_wrt_off != data.var_unt_wrt_off:
-        data.var_unt_wrt_off = var_unt_wrt_off
-        needs_rerun = True
+        try:
+            data.var_unt_wrt_off = var_unt_wrt_off
+            needs_rerun = True
+        except ValueError as e:
+            unt_error_container.error(f"Error: {e}")
 
     if var_dlr_wrt_off != data.var_dlr_wrt_off:
-        data.var_dlr_wrt_off = var_dlr_wrt_off
-        needs_rerun = True
+        try:
+            data.var_dlr_wrt_off = var_dlr_wrt_off
+            needs_rerun = True
+        except ValueError as e:
+            dlr_error_container.error(f"Error: {e}")
 
     if var_avg_bal != data.var_avg_bal:
-        data.var_avg_bal = var_avg_bal
-        needs_rerun = True
+        try:
+            data.var_avg_bal = var_avg_bal
+            needs_rerun = True
+        except ValueError as e:
+            dlr_error_container.error(f"Error: {e}")
 
     if mob != data.current_rate_mob:
-        data.current_rate_mob = mob
-        needs_rerun = True
+        try:
+            data.current_rate_mob = mob
+            needs_rerun = True
+        except ValueError as e:
+            mob_error_container.error(f"Error: {e}")
 
     if lifetime_rate_mob != data.lifetime_rate_mob:
         data.lifetime_rate_mob = lifetime_rate_mob

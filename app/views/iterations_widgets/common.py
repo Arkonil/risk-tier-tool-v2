@@ -3,9 +3,9 @@ import pandas as pd
 import streamlit as st
 
 from classes.constants import (
+    DefaultMetrics,
     IterationType,
     LossRateTypes,
-    Metric,
     RTDetCol,
     RangeColumn,
     VariableType,
@@ -167,7 +167,7 @@ def editable_range_widget(
     iteration_id: str,
     editable: bool,
     scalars_enabled: bool,
-    metrics: list[Metric],
+    metric_names: list[str],
     default: bool,
     filter_ids: set[str],
     key: int = 0,
@@ -176,6 +176,8 @@ def editable_range_widget(
     iteration_graph = session.iteration_graph
     data = session.data
     fc = session.filter_container
+    all_metrics = session.get_all_metrics()
+    metric_names = [m for m in metric_names if m in all_metrics]
 
     iteration = iteration_graph.iterations[iteration_id]
 
@@ -214,49 +216,34 @@ def editable_range_widget(
     summ_df = data.get_summarized_metrics(
         new_risk_tiers.rename(RangeColumn.RISK_TIER),
         data_filter=fc.get_mask(filter_ids, index=data.df.index),
-        metrics=metrics,
+        metrics=[all_metrics[metric_name] for metric_name in metric_names],
     )
+
     calculated_df = pd.merge(
         groups, summ_df, how="left", left_index=True, right_index=True
     )
 
-    if scalars_enabled and (
-        Metric.ANNL_WO_COUNT_PCT in metrics or Metric.ANNL_WO_BAL_PCT in metrics
-    ):
+    if scalars_enabled and DefaultMetrics.UNT_BAD_RATE in metric_names:
         ulr_scalar = session.ulr_scalars
-        dlr_scalar = session.dlr_scalars
 
         calculated_df[RangeColumn.RISK_SCALAR_FACTOR_ULR] = (
             ulr_scalar.get_risk_scalar_factor(calculated_df[RTDetCol.MAF_ULR])
         )
+
+        calculated_df[DefaultMetrics.UNT_BAD_RATE] *= calculated_df[
+            RangeColumn.RISK_SCALAR_FACTOR_ULR
+        ]
+
+    if scalars_enabled and DefaultMetrics.DLR_BAD_RATE in metric_names:
+        dlr_scalar = session.dlr_scalars
+
         calculated_df[RangeColumn.RISK_SCALAR_FACTOR_DLR] = (
             dlr_scalar.get_risk_scalar_factor(calculated_df[RTDetCol.MAF_DLR])
         )
 
-        if Metric.ANNL_WO_COUNT_PCT in calculated_df.columns:
-            calculated_df[Metric.ANNL_WO_COUNT_PCT] = (
-                calculated_df[Metric.ANNL_WO_COUNT_PCT]
-                * calculated_df[RangeColumn.RISK_SCALAR_FACTOR_ULR]
-            )
-
-        if Metric.ANNL_WO_BAL_PCT in calculated_df.columns:
-            calculated_df[Metric.ANNL_WO_BAL_PCT] = (
-                calculated_df[Metric.ANNL_WO_BAL_PCT]
-                * calculated_df[RangeColumn.RISK_SCALAR_FACTOR_DLR]
-            )
-
-    int_cols = {Metric.VOLUME, Metric.WO_COUNT} & set(calculated_df.columns)
-    dec_cols = {Metric.WO_BAL, Metric.AVG_BAL} & set(calculated_df.columns)
-    perc_cols = {
-        Metric.WO_BAL_PCT,
-        Metric.WO_COUNT_PCT,
-        Metric.ANNL_WO_COUNT_PCT,
-        Metric.ANNL_WO_BAL_PCT,
-    } & set(calculated_df.columns)
-
-    def get_style(rt_label: str) -> str:
-        font_color, bg_color = iteration_graph.get_color(rt_label, iteration_id)
-        return f"color: {font_color}; background-color: {bg_color};"
+        calculated_df[DefaultMetrics.DLR_BAD_RATE] *= calculated_df[
+            RangeColumn.RISK_SCALAR_FACTOR_DLR
+        ]
 
     # Replace NaN values with pd.NA for better styling
     # TODO: Check if this is necessary
@@ -264,15 +251,16 @@ def editable_range_widget(
         if pd.api.types.is_numeric_dtype(calculated_df[col]):
             calculated_df.loc[np.isnan(calculated_df[col]), col] = pd.NA
 
-    calculated_df_styled = (
-        calculated_df.style.map(
-            get_style,
-            subset=[RTDetCol.RISK_TIER],
-        )
-        .format(precision=0, thousands=",", subset=list(int_cols))
-        .format(precision=2, thousands=",", subset=list(dec_cols))
-        .format("{:.2f} %", subset=list(perc_cols))
-    )
+    def get_style(rt_label: str) -> str:
+        font_color, bg_color = iteration_graph.get_color(rt_label, iteration_id)
+        return f"color: {font_color}; background-color: {bg_color};"
+
+    calculated_df_styled = calculated_df.style.map(
+        get_style,
+        subset=[RTDetCol.RISK_TIER],
+    ).format({
+        metric_name: all_metrics[metric_name].format for metric_name in metric_names
+    })
 
     disabled = not editable
     column_config = {
@@ -288,30 +276,12 @@ def editable_range_widget(
         RangeColumn.UPPER_BOUND: st.column_config.NumberColumn(
             label=RangeColumn.UPPER_BOUND, disabled=disabled, format="compact"
         ),
-        Metric.VOLUME: st.column_config.NumberColumn(
-            label=Metric.VOLUME, disabled=True
-        ),
-        Metric.WO_BAL: st.column_config.NumberColumn(
-            label=Metric.WO_BAL, disabled=True
-        ),
-        Metric.WO_BAL_PCT: st.column_config.NumberColumn(
-            label=Metric.WO_BAL_PCT, disabled=True
-        ),
-        Metric.WO_COUNT: st.column_config.NumberColumn(
-            label=Metric.WO_COUNT, disabled=True
-        ),
-        Metric.WO_COUNT_PCT: st.column_config.NumberColumn(
-            label=Metric.WO_COUNT_PCT, disabled=True
-        ),
-        Metric.AVG_BAL: st.column_config.NumberColumn(
-            label=Metric.AVG_BAL, disabled=True
-        ),
-        Metric.ANNL_WO_COUNT_PCT: st.column_config.NumberColumn(
-            label=Metric.ANNL_WO_COUNT_PCT, disabled=True
-        ),
-        Metric.ANNL_WO_BAL_PCT: st.column_config.NumberColumn(
-            label=Metric.ANNL_WO_BAL_PCT, disabled=True
-        ),
+    } | {
+        metric_name: st.column_config.NumberColumn(
+            label=metric_name,
+            disabled=True,
+        )
+        for metric_name in metric_names
     }
 
     columns = [RTDetCol.RISK_TIER]
@@ -321,7 +291,7 @@ def editable_range_widget(
         else:
             columns += [RangeColumn.CATEGORIES]
 
-    columns += metrics
+    columns += metric_names
 
     edited_df = st.data_editor(
         calculated_df_styled,

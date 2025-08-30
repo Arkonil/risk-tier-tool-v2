@@ -2,7 +2,6 @@ import typing as t
 
 import streamlit as st
 
-from classes.constants import Metric, MetricTableColumn
 from classes.session import Session
 from views.home import home_page
 from views.iterations_widgets.dialogs import metric_selector_dialog_widget
@@ -85,7 +84,7 @@ def sidebar_widgets():
 
 def iteration_result_widget(
     selected_iteration: t.Literal[0, 1],
-    metrics: list[Metric],
+    metric_names: list[str],
     scalars_enabled: bool,
     key: int = 0,
 ):
@@ -111,7 +110,7 @@ def iteration_result_widget(
         iteration_id=iteration_id,
         editable=False,
         scalars_enabled=scalars_enabled,
-        metrics=metrics,
+        metric_names=metric_names,
         default=is_default,
         key=key,
         filter_ids=summ_state.filters,
@@ -122,6 +121,7 @@ def summary_view():
     session: Session = st.session_state["session"]
     summ_state = session.summary_page_state
     iteration_graph = session.iteration_graph
+    all_metrics = session.get_all_metrics()
 
     if iteration_graph.is_empty:
         st.switch_page(home_page)
@@ -132,24 +132,22 @@ def summary_view():
 
     st.title("Summary")
 
-    metrics = summ_state.metrics
-    showing_metrics = (
-        metrics.sort_values(MetricTableColumn.ORDER)
-        .loc[metrics[MetricTableColumn.SHOWING], MetricTableColumn.METRIC]
-        .to_list()
-    )
+    metric_names = summ_state.metrics
+    metric_names = [
+        metric_name for metric_name in metric_names if metric_name in all_metrics
+    ]
 
     if summ_state.comparison_mode:
         if summ_state.comparison_view_mode == "row":
             iteration_result_widget(
                 selected_iteration=0,
-                metrics=showing_metrics,
+                metric_names=metric_names,
                 scalars_enabled=summ_state.scalars_enabled,
                 key=0,
             )
             iteration_result_widget(
                 selected_iteration=1,
-                metrics=showing_metrics,
+                metric_names=metric_names,
                 scalars_enabled=summ_state.scalars_enabled,
                 key=1,
             )
@@ -160,7 +158,7 @@ def summary_view():
             with col1:
                 iteration_result_widget(
                     selected_iteration=0,
-                    metrics=showing_metrics,
+                    metric_names=metric_names,
                     scalars_enabled=summ_state.scalars_enabled,
                     key=0,
                 )
@@ -168,7 +166,7 @@ def summary_view():
             with col2:
                 iteration_result_widget(
                     selected_iteration=1,
-                    metrics=showing_metrics,
+                    metric_names=metric_names,
                     scalars_enabled=summ_state.scalars_enabled,
                     key=1,
                 )
@@ -177,7 +175,7 @@ def summary_view():
 
     iteration_result_widget(
         selected_iteration=1,
-        metrics=showing_metrics,
+        metric_names=metric_names,
         scalars_enabled=summ_state.scalars_enabled,
     )
 

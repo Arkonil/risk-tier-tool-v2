@@ -8,6 +8,7 @@ import pandas as pd
 
 from classes.data import Data
 from classes.filter_container import FilterContainer
+from classes.metric import Metric
 from classes.metric_container import MetricContainer
 from classes.summary_page_state import SummaryPageState
 from classes.scalars import Scalar
@@ -46,6 +47,19 @@ class Session:
         self.options = Options()
         self.filter_container = FilterContainer()
         self.metric_container = MetricContainer()
+
+    def get_all_metrics(self) -> dict[str, Metric]:
+        mc = self.metric_container
+        data = self.data
+
+        default_metrics = [data.volume, data.dollar_bad_rate, data.unit_bad_rate]
+        while None in default_metrics:
+            default_metrics.remove(None)
+
+        all_metrics: dict[str, Metric] = {
+            m.name: m for m in default_metrics
+        } | mc.metrics
+        return all_metrics
 
     def to_rt_zip_buffer(self) -> io.BytesIO:
         data_json = self.data.to_dict()

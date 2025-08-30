@@ -142,10 +142,30 @@ class QueryValidator(ast.NodeVisitor):
 
 
 class Metric:
-    def __init__(self, id_: str, name: str, query_string: str):
-        self.id = id_
+    def __init__(
+        self,
+        name: str,
+        query: str,
+        use_thousand_sep: bool = True,
+        is_percentage: bool = False,
+        decimal_places: int = 2,
+    ):
+        """
+        Initializes a Metric object.
+
+        Args:
+            name: A human-readable name for the metric.
+            query_string: A string representing the calculation logic for the metric.
+            use_thousand_sep: Whether to format numbers with a thousand separator.
+            is_percentage: Whether the metric represents a percentage value.
+            decimal_places: Number of decimal places to format the metric value.
+        """
+
         self.name = name
-        self._query = query_string
+        self._query = query
+        self.use_thousand_sep = use_thousand_sep
+        self.is_percentage = is_percentage
+        self.decimal_places = decimal_places
         self.used_columns: list[str] = []
 
     @property
@@ -153,8 +173,8 @@ class Metric:
         return self._query
 
     @property
-    def pretty_name(self):
-        return self.name
+    def format(self) -> str:
+        return f"{{:{',' if self.use_thousand_sep else ''}.{self.decimal_places}f}}{'%' if self.is_percentage else ''}"
 
     def validate_query(self, data: pd.DataFrame) -> None:
         # --- 1. Preprocess Backticked Identifiers ---
@@ -231,29 +251,42 @@ class Metric:
                 f"The result of the metric query must be a scalar value.\nResult:\n{result}"
             )
 
+        if self.is_percentage:
+            result *= 100
+
         return result
 
     def copy(self) -> "Metric":
-        new_metric = Metric(self.id, self.name, self.query)
+        new_metric = Metric(
+            self.name,
+            self.query,
+            self.use_thousand_sep,
+            self.is_percentage,
+            self.decimal_places,
+        )
         new_metric.used_columns = self.used_columns.copy()
         return new_metric
 
     def to_dict(self) -> dict[str, str | list[str]]:
         """Serializes the Metric object to a dictionary."""
         return {
-            "id": self.id,
             "name": self.name,
             "query": self.query,
             "used_columns": self.used_columns,
+            "use_thousand_sep": self.use_thousand_sep,
+            "is_percentage": self.is_percentage,
+            "decimal_places": self.decimal_places,
         }
 
     @classmethod
     def from_dict(cls, dict_data: dict[str, t.Any]) -> "Metric":
         """Creates a Metric object from a dictionary."""
         instance = cls(
-            id_=dict_data["id"],
             name=dict_data["name"],
-            query_string=dict_data["query"],
+            query=dict_data["query"],
+            use_thousand_sep=dict_data.get("use_thousand_sep", True),
+            is_percentage=dict_data.get("is_percentage", False),
+            decimal_places=dict_data.get("decimal_places", 2),
         )
 
         if "used_columns" in dict_data:

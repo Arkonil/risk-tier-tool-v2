@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 from streamlit_sortables import sort_items
 
-from classes.constants import MetricTableColumn, VariableType, RangeColumn
+from classes.constants import VariableType, RangeColumn
 from classes.iteration_graph import IterationGraph
 from classes.session import Session
 
@@ -11,67 +11,42 @@ from classes.session import Session
 def metric_selector_dialog_widget(iteration_id: str | None = None):
     session: Session = st.session_state["session"]
 
+    all_metrics = session.get_all_metrics()
+    all_metric_names = list(all_metrics.keys())
+
     if iteration_id is None:
-        metrics_df = session.summary_page_state.metrics
+        current_metric_names = session.summary_page_state.metrics
     else:
         iteration_graph = session.iteration_graph
-        metrics_df = iteration_graph.get_metadata(iteration_id, "metrics")
+        current_metric_names = iteration_graph.get_metadata(iteration_id, "metrics")
+
+    current_metric_names = [m for m in current_metric_names if m in all_metrics]
 
     st.write("Select Metrics:")
 
-    all_metrics = metrics_df[MetricTableColumn.METRIC].to_list()
-    showing_metrics = metrics_df.loc[
-        metrics_df[MetricTableColumn.SHOWING], MetricTableColumn.METRIC
-    ].to_list()
-
-    selected_metrics = st.multiselect(
+    selected_metric_names = st.multiselect(
         label="Metrics",
-        options=all_metrics,
-        default=showing_metrics,
+        options=all_metric_names,
+        default=current_metric_names,
         label_visibility="collapsed",
     )
 
-    if set(selected_metrics) != set(showing_metrics):
-        metrics_df.loc[
-            metrics_df[MetricTableColumn.METRIC].isin(selected_metrics),
-            MetricTableColumn.SHOWING,
-        ] = True
-        metrics_df.loc[
-            ~metrics_df[MetricTableColumn.METRIC].isin(selected_metrics),
-            MetricTableColumn.SHOWING,
-        ] = False
+    if set(selected_metric_names) != set(current_metric_names):
+        if iteration_id is None:
+            session.summary_page_state.metrics = selected_metric_names
+        else:
+            iteration_graph.set_metadata(iteration_id, "metrics", selected_metric_names)
         st.rerun(scope="fragment")
 
     st.write("Reorder Metrics:")
 
-    sorted_metrics = sort_items(
-        metrics_df.sort_values(MetricTableColumn.ORDER)
-        .loc[metrics_df[MetricTableColumn.SHOWING], MetricTableColumn.METRIC]
-        .to_list(),
-    )
+    sorted_metric_names = sort_items(items=selected_metric_names)
 
-    sorted_metrics = pd.DataFrame({
-        MetricTableColumn.METRIC: sorted_metrics,
-        "new_order": range(len(sorted_metrics)),
-    })
-
-    temp = (
-        pd.merge(
-            metrics_df,
-            sorted_metrics,
-            how="left",
-            left_on=MetricTableColumn.METRIC,
-            right_on=MetricTableColumn.METRIC,
-            suffixes=("", "_y"),
-        )
-        .dropna()
-        .sort_values("new_order")
-    )
-
-    if not temp[MetricTableColumn.ORDER].is_monotonic_increasing:
-        index = temp.index
-        order = temp[MetricTableColumn.ORDER].sort_values().to_list()
-        metrics_df.loc[index, MetricTableColumn.ORDER] = order
+    if sorted_metric_names != selected_metric_names:
+        if iteration_id is None:
+            session.summary_page_state.metrics = sorted_metric_names
+        else:
+            iteration_graph.set_metadata(iteration_id, "metrics", sorted_metric_names)
         st.rerun(scope="fragment")
 
     *_, col = st.columns(4)

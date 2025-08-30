@@ -1,6 +1,7 @@
 import streamlit as st
 from code_editor import code_editor
 
+from classes.constants import AssetPath
 from classes.session import Session
 from classes.metric import QueryValidator
 
@@ -64,7 +65,7 @@ def query_editor_widget(code: str):
         replace_completer=True,
         keybindings="vscode",
         props={
-            "minLines": 16,
+            "minLines": 13,
             "fontSize": 16,
             "enableSnippets": False,
             "debounceChangePeriod": 1,
@@ -86,12 +87,18 @@ def metric_editor():
 
     st.markdown("# Metric Editor")
 
-    if mc.current_metric_edit_id is not None:
-        code = mc.metrics[mc.current_metric_edit_id].query
-        name = mc.metrics[mc.current_metric_edit_id].name
+    if mc.current_metric_edit_name is not None:
+        code = mc.metrics[mc.current_metric_edit_name].query
+        name = mc.metrics[mc.current_metric_edit_name].name
+        use_thousand_sep = mc.metrics[mc.current_metric_edit_name].use_thousand_sep
+        is_percentage = mc.metrics[mc.current_metric_edit_name].is_percentage
+        decimal_places = mc.metrics[mc.current_metric_edit_name].decimal_places
     else:
         code = ""
         name = ""
+        use_thousand_sep = True
+        is_percentage = False
+        decimal_places = 2
 
     code_editor_container, controller_container = st.columns([2.5, 1])
     error_container = st.container()
@@ -123,9 +130,11 @@ def metric_editor():
     if verify_button and (query["text"] or code):
         try:
             new_metric = mc.validate_metric(
-                metric_id=mc.current_metric_edit_id,
                 name=name,
                 query=query["text"] or code,
+                use_thousand_sep=use_thousand_sep,
+                is_percentage=is_percentage,
+                decimal_places=decimal_places,
                 data=data,
             )
 
@@ -137,6 +146,52 @@ def metric_editor():
             error_container.error(msg)
 
     with controller_container:
+        use_thousand_sep = st.checkbox(
+            "Use Thousand Separator",
+            value=use_thousand_sep,
+            help="Format numbers with a comma as a thousand separator (e.g., 1,000).",
+        )
+
+        is_percentage = st.checkbox(
+            "Is Percentage",
+            value=is_percentage,
+            help="Format the metric as a percentage (e.g., 50%).",
+        )
+
+        decimal_places = st.number_input(
+            "Decimal Places",
+            min_value=0,
+            value=decimal_places,
+            help="Number of decimal places to display for the metric.",
+        )
+
+        with st.container(border=True):
+            st.markdown("##### Format Preview:")
+
+            with st.container(horizontal=True, vertical_alignment="center"):
+                original_value = st.text_input(
+                    "Original Value",
+                    value=1234.567,
+                    label_visibility="collapsed",
+                )
+
+                try:
+                    original_value = float(original_value)
+                except ValueError:
+                    original_value = 1234.567
+
+                st.image(AssetPath.ARROW_RIGHT)
+
+                formatter = f"{{:{',' if use_thousand_sep else ''}.{decimal_places}f}}{'%' if is_percentage else ''}"
+                st.text_input(
+                    "Transformed Value",
+                    value=formatter.format(
+                        original_value * 100 if is_percentage else original_value
+                    ),
+                    disabled=True,
+                    label_visibility="collapsed",
+                )
+
         save_button = st.button(
             "Save",
             type="primary",
@@ -147,9 +202,11 @@ def metric_editor():
 
     if save_button:
         mc.create_metric(
-            metric_id=mc.current_metric_edit_id,
             name=name,
             query=query["text"] or code,
+            use_thousand_sep=use_thousand_sep,
+            is_percentage=is_percentage,
+            decimal_places=decimal_places,
             data=data,
         )
         mc.set_mode("view")

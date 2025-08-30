@@ -1,22 +1,9 @@
-import re
 import typing as t
 
+from classes.constants import DefaultMetrics
 from classes.data import Data
 from classes.metric import Metric
-from classes.utils import integer_generator
-
-
-__generator = integer_generator()
-
-
-def new_id(current_ids: t.Iterable[str] = None) -> str:
-    if current_ids is None:
-        current_ids = []
-
-    while True:
-        new_id = str(next(__generator))
-        if new_id not in current_ids:
-            return new_id
+from classes.utils import create_duplicate_name
 
 
 class MetricContainer:
@@ -25,45 +12,57 @@ class MetricContainer:
         self._verified_metrics: dict[str, Metric] = {}
 
         self._current_metric_view_mode: t.Literal["view", "edit"] = "view"
-        self._current_metric_edit_id: str | None = None
+        self._current_metric_edit_name: str | None = None
 
     @property
     def mode(self) -> t.Literal["view", "edit"]:
         return self._current_metric_view_mode
 
     @property
-    def current_metric_edit_id(self) -> str | None:
-        return self._current_metric_edit_id
+    def current_metric_edit_name(self) -> str | None:
+        return self._current_metric_edit_name
 
-    def set_mode(self, mode: t.Literal["view", "edit"], metric_id: str = None) -> None:
+    def set_mode(
+        self, mode: t.Literal["view", "edit"], metric_name: str = None
+    ) -> None:
         self._current_metric_view_mode = mode
-        self._current_metric_edit_id = metric_id
+        self._current_metric_edit_name = metric_name
 
         if mode == "view":
             self._verified_metrics = {}
 
     def validate_metric(
         self,
-        metric_id: str,
         name: str,
         query: str,
+        use_thousand_sep: bool,
+        is_percentage: bool,
+        decimal_places: int,
         data: Data,
     ) -> Metric:
         if name.strip() == "":
             raise ValueError("Metric name cannot be empty.")
 
-        if name in [m.name for m in self.metrics.values() if m.id != metric_id]:
+        if name in DefaultMetrics:
+            raise ValueError(f"Metric name '{name}' is reserved.")
+
+        if name != self._current_metric_edit_name and name in self.metrics:
             raise ValueError(f"Metric name '{name}' already exists.")
 
         if query in self._verified_metrics:
             new_metric = self._verified_metrics[query]
-            new_metric.id = metric_id
             new_metric.name = name
             self._verified_metrics[query] = new_metric
 
             return new_metric
 
-        new_metric = Metric(id_=metric_id, name=name, query_string=query)
+        new_metric = Metric(
+            name=name,
+            query=query,
+            use_thousand_sep=use_thousand_sep,
+            is_percentage=is_percentage,
+            decimal_places=decimal_places,
+        )
 
         # Validating query string
         new_metric.validate_query(data=data.sample_df)
@@ -71,40 +70,45 @@ class MetricContainer:
         return new_metric
 
     def create_metric(
-        self, metric_id: str | None, name: str, query: str, data: Data
+        self,
+        name: str,
+        query: str,
+        use_thousand_sep: bool,
+        is_percentage: bool,
+        decimal_places: int,
+        data: Data,
     ) -> None:
-        if metric_id is None:
-            metric_id = new_id(current_ids=self.metrics.keys())
+        new_metric = self.validate_metric(
+            name,
+            query,
+            use_thousand_sep,
+            is_percentage,
+            decimal_places,
+            data,
+        )
 
-        new_metric = self.validate_metric(metric_id, name, query, data)
+        self.metrics[name] = new_metric
 
-        self.metrics[metric_id] = new_metric
+    def remove_metric(self, metric_name: str) -> None:
+        if metric_name in self.metrics:
+            del self.metrics[metric_name]
 
-    def remove_metric(self, metric_id: str) -> None:
-        if metric_id in self.metrics:
-            del self.metrics[metric_id]
+    def duplicate_metric(self, metric_name: str) -> None:
+        metric_obj = self.metrics[metric_name].copy()
 
-    def duplicate_metric(self, metric_id: str) -> None:
-        metric_obj = self.metrics[metric_id].copy()
-        metric_obj.id = new_id(current_ids=self.metrics.keys())
+        existing_names = set(self.metrics.keys())
+        metric_obj.name = create_duplicate_name(metric_obj.name, existing_names)
 
-        if match := re.match(r"^(.*) - copy\((\d+)\)?$", metric_obj.name):
-            metric_obj.name = f"{match.group(1)} - copy({int(match.group(2)) + 1})"
-        elif metric_obj.name.endswith(" - copy"):
-            metric_obj.name = f"{metric_obj.name}(2)"
-        else:
-            metric_obj.name = f"{metric_obj.name} - copy"
-
-        self.metrics[metric_obj.id] = metric_obj
+        self.metrics[metric_obj.name] = metric_obj
 
     def to_dict(self) -> dict[str, t.Any]:
         return {
             "metrics": {
-                metric_id: metric_obj.to_dict()
-                for metric_id, metric_obj in self.metrics.items()
+                metric_name: metric_obj.to_dict()
+                for metric_name, metric_obj in self.metrics.items()
             },
             "current_metric_view_mode": self._current_metric_view_mode,
-            "current_metric_edit_id": self._current_metric_edit_id,
+            "current_metric_edit_name": self._current_metric_edit_name,
         }
 
     @classmethod
@@ -112,14 +116,14 @@ class MetricContainer:
         instance = cls()
 
         if "metrics" in data:
-            for metric_id, metric_data in data["metrics"].items():
+            for metric_name, metric_data in data["metrics"].items():
                 metric_obj = Metric.from_dict(metric_data)
-                instance.metrics[metric_id] = metric_obj
+                instance.metrics[metric_name] = metric_obj
 
         if "current_metric_view_mode" in data:
             instance._current_metric_view_mode = data["current_metric_view_mode"]
 
-        if "current_metric_edit_id" in data:
-            instance._current_metric_edit_id = data["current_metric_edit_id"]
+        if "current_metric_edit_name" in data:
+            instance._current_metric_edit_name = data["current_metric_edit_name"]
 
         return instance

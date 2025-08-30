@@ -51,21 +51,10 @@ class IterationType(StrEnum, metaclass=StrEnumMeta):
     DOUBLE = "double"
 
 
-class Metric(StrEnum):
-    VOLUME: str = "Volume"
-    ANNL_WO_BAL_PCT: str = "$ Annualized Bad Rate %"
-    ANNL_WO_COUNT_PCT: str = "# Annualized Bad Rate %"
-    AVG_BAL: str = "$ Average Balance"
-    WO_COUNT: str = "# Bad Count"
-    WO_COUNT_PCT: str = "# Bad Rate %"
-    WO_BAL: str = "$ Bad Balance"
-    WO_BAL_PCT: str = "$ Bad Rate %"
-
-
-class MetricTableColumn(StrEnum):
-    METRIC = "Metric"
-    ORDER = "Order"
-    SHOWING = "Showing"
+class DefaultMetrics(StrEnum, metaclass=StrEnumMeta):
+    VOLUME = "Volume"
+    UNT_BAD_RATE = "Annl. # Bad Rate"
+    DLR_BAD_RATE = "Annl. $ Bad Rate"
 
 
 class RangeColumn(StrEnum):
@@ -87,7 +76,7 @@ class GridColumn(StrEnum):
 
 class IterationMetadata(t.TypedDict):
     editable: bool
-    metrics: pd.DataFrame
+    metrics: list[str]
     scalars_enabled: bool
     split_view_enabled: bool
     loss_rate_type: LossRateTypes
@@ -121,6 +110,7 @@ class AssetPath(StrEnum):
     NO_FILTER_ICON = "app/assets/no-filter.svg"
     NO_METRIC_ICON = "app/assets/no-metric.svg"
     STYLESHEET = "app/assets/style.css"
+    ARROW_RIGHT = "app/assets/arrow-right.svg"
 
 
 class DefaultOptions(Singleton):
@@ -151,12 +141,11 @@ class DefaultOptions(Singleton):
         self._risk_tier_details.columns = self._risk_tier_details.columns.map(str)
 
         self._max_iteration_depth = 10
-        self._default_metrics = pd.DataFrame({
-            MetricTableColumn.METRIC: list(map(lambda m: m.value, list(Metric))),
-            MetricTableColumn.ORDER: [i for i, _ in enumerate(Metric)],
-            MetricTableColumn.SHOWING: [i < 3 for i, _ in enumerate(Metric)],
-        })
-        self._default_metrics.columns = self._default_metrics.columns.map(str)
+        self._default_metrics = [
+            DefaultMetrics.VOLUME,
+            DefaultMetrics.UNT_BAD_RATE,
+            DefaultMetrics.DLR_BAD_RATE,
+        ]
 
     @property
     def risk_tier_details(self) -> pd.DataFrame:

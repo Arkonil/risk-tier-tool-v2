@@ -5,7 +5,8 @@ import typing as t
 import numpy as np
 import pandas as pd
 
-from classes.constants import Metric, VariableType, Completion
+from classes.constants import VariableType, Completion, DefaultMetrics
+from classes.metric import Metric
 
 
 class Data:
@@ -36,11 +37,15 @@ class Data:
         self.df: pd.DataFrame | None = None
         self.df_size: int | None = None
 
-        self.var_unt_wrt_off: str | None = None
-        self.var_dlr_wrt_off: str | None = None
-        self.var_avg_bal: str | None = None
-        self.current_rate_mob: int = 12
+        self._var_unt_wrt_off: str | None = None
+        self._var_dlr_wrt_off: str | None = None
+        self._var_avg_bal: str | None = None
+        self._current_rate_mob: int = 12
         self.lifetime_rate_mob: int = 36
+
+        self.__unit_bad_rate_metric_cache: dict[tuple[str, int], Metric] = {}
+        self.__dollar_bad_rate_metric_cache: dict[tuple[str, str, int], Metric] = {}
+        self.__volume_metric_cache: Metric | None = None
 
         self._column_name_completions: list[Completion] = []
 
@@ -61,6 +66,150 @@ class Data:
             ).to_list()
 
         return self._column_name_completions
+
+    @property
+    def var_unt_wrt_off(self) -> str:
+        return self._var_unt_wrt_off
+
+    @var_unt_wrt_off.setter
+    def var_unt_wrt_off(self, value: str | None):
+        if value is None:
+            self._var_unt_wrt_off = None
+            return
+
+        if value not in self.sample_df.columns:
+            raise ValueError(f"Column '{value}' not found in data.")
+
+        if not pd.api.types.is_numeric_dtype(self.sample_df[value]):
+            raise ValueError(
+                f"Unit bad rate variable must be numerical. '{value}' is of type {self.sample_df[value].dtype}."
+            )
+
+        self._var_unt_wrt_off = value
+
+    @property
+    def var_dlr_wrt_off(self) -> str:
+        return self._var_dlr_wrt_off
+
+    @var_dlr_wrt_off.setter
+    def var_dlr_wrt_off(self, value: str | None):
+        if value is None:
+            self._var_dlr_wrt_off = None
+            return
+
+        if value not in self.sample_df.columns:
+            raise ValueError(f"Column '{value}' not found in data.")
+
+        if not pd.api.types.is_numeric_dtype(self.sample_df[value]):
+            raise ValueError(
+                f"Dollar bad rate variable must be numerical. '{value}' is of type {self.sample_df[value].dtype}."
+            )
+
+        self._var_dlr_wrt_off = value
+
+    @property
+    def var_avg_bal(self) -> str:
+        return self._var_avg_bal
+
+    @var_avg_bal.setter
+    def var_avg_bal(self, value: str | None):
+        if value is None:
+            self._var_avg_bal = None
+            return
+
+        if value not in self.sample_df.columns:
+            raise ValueError(f"Column '{value}' not found in data.")
+
+        if not pd.api.types.is_numeric_dtype(self.sample_df[value]):
+            raise ValueError(
+                f"Average balance variable must be numerical. '{value}' is of type {self.sample_df[value].dtype}."
+            )
+
+        self._var_avg_bal = value
+
+    @property
+    def current_rate_mob(self) -> int:
+        return self._current_rate_mob
+
+    @current_rate_mob.setter
+    def current_rate_mob(self, value: int):
+        if not isinstance(value, int) or value <= 0:
+            raise ValueError("Current rate MOB must be a positive integer.")
+        self._current_rate_mob = value
+
+    @property
+    def unit_bad_rate(self) -> Metric | None:
+        if self.var_unt_wrt_off is None:
+            return None
+
+        if (
+            self.var_unt_wrt_off,
+            self.current_rate_mob,
+        ) in self.__unit_bad_rate_metric_cache:
+            return self.__unit_bad_rate_metric_cache[
+                (self.var_unt_wrt_off, self.current_rate_mob)
+            ]
+
+        metric = Metric(
+            name=DefaultMetrics.UNT_BAD_RATE,
+            query=f"(sum({self.var_unt_wrt_off}) / count({self.var_unt_wrt_off})) * (12 / {self.current_rate_mob})",
+            use_thousand_sep=False,
+            is_percentage=True,
+            decimal_places=2,
+        )
+        metric.validate_query(self.sample_df)
+        self.__unit_bad_rate_metric_cache[
+            (self.var_unt_wrt_off, self.current_rate_mob)
+        ] = metric
+        return metric
+
+    @property
+    def dollar_bad_rate(self) -> Metric | None:
+        if self.var_dlr_wrt_off is None or self.var_avg_bal is None:
+            return None
+
+        if (
+            self.var_dlr_wrt_off,
+            self.var_avg_bal,
+            self.current_rate_mob,
+        ) in self.__dollar_bad_rate_metric_cache:
+            return self.__dollar_bad_rate_metric_cache[
+                (self.var_dlr_wrt_off, self.var_avg_bal, self.current_rate_mob)
+            ]
+
+        metric = Metric(
+            name=DefaultMetrics.DLR_BAD_RATE,
+            query=f"(sum({self.var_dlr_wrt_off}) / sum({self.var_avg_bal})) * (12 / {self.current_rate_mob})",
+            use_thousand_sep=False,
+            is_percentage=True,
+            decimal_places=2,
+        )
+        metric.validate_query(self.sample_df)
+        self.__dollar_bad_rate_metric_cache[
+            (self.var_dlr_wrt_off, self.var_avg_bal, self.current_rate_mob)
+        ] = metric
+        return metric
+
+    @property
+    def volume(self) -> Metric | None:
+        if self.__volume_metric_cache is not None:
+            return self.__volume_metric_cache
+
+        if self.df is None:
+            return None
+
+        first_column = self.sample_df.columns[0]
+
+        metric = Metric(
+            name=DefaultMetrics.VOLUME,
+            query=f"count({first_column})",
+            use_thousand_sep=True,
+            is_percentage=False,
+            decimal_places=0,
+        )
+        metric.validate_query(self.sample_df)
+        self.__volume_metric_cache = metric
+        return metric
 
     def get_col_pos(self, col_name: str | None) -> int:
         if col_name is None or col_name not in self.sample_df.columns:
@@ -333,6 +482,9 @@ class Data:
         - pd.DataFrame: A DataFrame containing the summarized metrics.
         """
 
+        if metrics is None:
+            raise ValueError("At least one metric must be provided.")
+
         # Creating a filter if not provided
         if data_filter is None:
             data_filter = pd.Series([True] * self.df_size, index=self.df.index)
@@ -347,79 +499,33 @@ class Data:
             base_df[groupby_variable_2.name] = groupby_variable_2
             groupby_variables.append(groupby_variable_2.name)
 
-        if metrics is None:
-            metrics = []
-
-        metric_dependency_map = {
-            Metric.VOLUME: [],
-            Metric.WO_COUNT: [],
-            Metric.WO_BAL: [],
-            Metric.AVG_BAL: [],
-            Metric.WO_COUNT_PCT: [Metric.VOLUME, Metric.WO_COUNT],
-            Metric.WO_BAL_PCT: [Metric.AVG_BAL, Metric.WO_BAL],
-            Metric.ANNL_WO_COUNT_PCT: [Metric.WO_COUNT_PCT],
-            Metric.ANNL_WO_BAL_PCT: [Metric.WO_BAL_PCT],
-        }
-
-        required_metrics = set()
-
-        def add_metric_and_dependencies(metric):
-            if metric in required_metrics:
-                return
-
-            required_metrics.add(metric)
-            dependencies = metric_dependency_map.get(metric, [])
-            for dep in dependencies:
-                add_metric_and_dependencies(dep)
-
+        # Loading all required columns for the metrics
+        used_columns = set()
         for metric in metrics:
-            add_metric_and_dependencies(metric)
+            used_columns.update(metric.used_columns)
 
-        if Metric.VOLUME in required_metrics:
-            base_df[Metric.VOLUME] = 1
+        columns_to_load = list(set(used_columns) - set(base_df.columns))
 
-        if Metric.WO_COUNT in required_metrics:
-            base_df[Metric.WO_COUNT] = self.load_column(
-                self.var_unt_wrt_off, VariableType.NUMERICAL
-            )
+        pattern = re.compile(r"(.+) \((Numerical|Categorical)\)")
+        loaded_data = self.load_columns(
+            columns_to_load, [VariableType.NUMERICAL] * len(columns_to_load)
+        ).rename(columns=lambda s: pattern.match(s).group(1))
 
-        if Metric.WO_BAL in required_metrics:
-            base_df[Metric.WO_BAL] = self.load_column(
-                self.var_dlr_wrt_off, VariableType.NUMERICAL
-            )
-
-        if Metric.AVG_BAL in required_metrics:
-            base_df[Metric.AVG_BAL] = self.load_column(
-                self.var_avg_bal, VariableType.NUMERICAL
-            )
+        base_df = pd.concat([base_df, loaded_data], axis=1)
 
         # Applying the filter to the base DataFrame
         filtered_df = base_df[data_filter].copy()
 
         # Grouping the DataFrame by the specified variables and aggregating the metrics
-        grouped_df = filtered_df.groupby(groupby_variables, observed=False).sum(
-            numeric_only=True
-        )
+        groupby_obj = filtered_df.groupby(groupby_variables, observed=False)
+        metric_results = []
 
-        if Metric.WO_COUNT_PCT in required_metrics:
-            grouped_df[Metric.WO_COUNT_PCT] = (
-                100 * grouped_df[Metric.WO_COUNT] / grouped_df[Metric.VOLUME]
-            )
+        for metric in metrics:
+            result = groupby_obj.apply(metric.calculate, include_groups=False)
+            result.name = metric.name
+            metric_results.append(result)
 
-        if Metric.WO_BAL_PCT in required_metrics:
-            grouped_df[Metric.WO_BAL_PCT] = (
-                100 * grouped_df[Metric.WO_BAL] / grouped_df[Metric.AVG_BAL]
-            )
-
-        if Metric.ANNL_WO_COUNT_PCT in required_metrics:
-            grouped_df[Metric.ANNL_WO_COUNT_PCT] = grouped_df[Metric.WO_COUNT_PCT] / (
-                self.current_rate_mob / 12
-            )
-
-        if Metric.ANNL_WO_BAL_PCT in required_metrics:
-            grouped_df[Metric.ANNL_WO_BAL_PCT] = grouped_df[Metric.WO_BAL_PCT] / (
-                self.current_rate_mob / 12
-            )
+        grouped_df = pd.concat(metric_results, axis=1)
 
         return grouped_df
 
@@ -452,10 +558,11 @@ class Data:
         data.header_row = dict_data["header_row"]
         data.sample_row_count = dict_data["sample_row_count"]
         data.df_size = dict_data["df_size"]
-        data.var_unt_wrt_off = dict_data["var_unt_wrt_off"]
-        data.var_dlr_wrt_off = dict_data["var_dlr_wrt_off"]
-        data.var_avg_bal = dict_data["var_avg_bal"]
-        data.current_rate_mob = dict_data["current_rate_mob"]
+        data._var_unt_wrt_off = dict_data["var_unt_wrt_off"]
+        data._var_dlr_wrt_off = dict_data["var_dlr_wrt_off"]
+        data._var_avg_bal = dict_data["var_avg_bal"]
+        data._current_rate_mob = dict_data["current_rate_mob"]
         data.lifetime_rate_mob = dict_data["lifetime_rate_mob"]
+        data._column_name_completions = dict_data.get("column_name_completions", [])
 
         return data

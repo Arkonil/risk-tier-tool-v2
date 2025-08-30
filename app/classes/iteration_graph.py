@@ -213,6 +213,7 @@ class IterationGraph:
                 self.iteration_metadata[descendant]["filters"] = value
 
                 # If the metadata is related to filters, we need to mark the node for recalculation
+                # TODO: Check. Why is recalculation needed?
                 self.add_to_calculation_queue(descendant, default=True)
                 self.add_to_calculation_queue(descendant, default=False)
 
@@ -759,7 +760,7 @@ class IterationGraph:
             "iteration_metadata": {
                 node_id: {
                     "editable": metadata["editable"],
-                    "metrics": metadata["metrics"].to_dict(orient="tight"),
+                    "metrics": metadata["metrics"],
                     "scalars_enabled": metadata["scalars_enabled"],
                     "split_view_enabled": metadata["split_view_enabled"],
                     "loss_rate_type": metadata["loss_rate_type"].value,
@@ -784,7 +785,7 @@ class IterationGraph:
         graph.iteration_metadata = {
             node_id: {
                 "editable": metadata["editable"],
-                "metrics": pd.DataFrame.from_dict(metadata["metrics"], orient="tight"),
+                "metrics": metadata["metrics"],
                 "scalars_enabled": metadata["scalars_enabled"],
                 "split_view_enabled": metadata["split_view_enabled"],
                 "loss_rate_type": LossRateTypes(metadata["loss_rate_type"]),

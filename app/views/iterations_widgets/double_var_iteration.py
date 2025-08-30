@@ -4,12 +4,12 @@ import streamlit as st
 
 from classes.constants import (
     GridColumn,
-    Metric,
-    MetricTableColumn,
     RTDetCol,
     RangeColumn,
     VariableType,
+    DefaultMetrics,
 )
+from classes.metric import Metric
 from classes.session import Session
 from views.iterations_widgets.common import (
     error_and_warning_widget,
@@ -287,13 +287,15 @@ def calculate_summ_df(iteration_id: str, default: bool = False):
     iteration_graph = session.iteration_graph
     data = session.data
     fc = session.filter_container
+    all_metrics = session.get_all_metrics()
 
     iteration = iteration_graph.iterations[iteration_id]
 
-    metrics_df = iteration_graph.get_metadata(iteration.id, "metrics")
-    showing_metrics = metrics_df.sort_values(MetricTableColumn.ORDER).loc[
-        metrics_df[MetricTableColumn.SHOWING], MetricTableColumn.METRIC
+    metric_names = iteration_graph.get_metadata(iteration.id, "metrics")
+    metric_names = [
+        metric_name for metric_name in metric_names if metric_name in all_metrics
     ]
+    metrics = [all_metrics[metric_name] for metric_name in metric_names]
 
     prev_iteration_results = iteration_graph.get_risk_tiers(
         iteration_graph.get_parent(iteration.id), default=False
@@ -314,7 +316,7 @@ def calculate_summ_df(iteration_id: str, default: bool = False):
             iteration_graph.get_metadata(iteration.id, "filters"),
             index=data.df.index,
         ),
-        metrics=showing_metrics.to_list(),
+        metrics=metrics,
     )
 
     return summ_df, errors, warnings
@@ -323,6 +325,7 @@ def calculate_summ_df(iteration_id: str, default: bool = False):
 def grid_metric_widget(
     iteration_id: str,
     metric_summary: pd.Series,
+    metric_format: str,
     show_group_details: bool,
     default: bool = False,
 ):
@@ -363,59 +366,33 @@ def grid_metric_widget(
     grid_index.rename_axis(index=GridColumn.GROUP_INDEX, inplace=True)
 
     if scalars_enabled and (
-        metric_name in (Metric.ANNL_WO_COUNT_PCT, Metric.ANNL_WO_BAL_PCT)
+        metric_name in (DefaultMetrics.UNT_BAD_RATE, DefaultMetrics.DLR_BAD_RATE)
     ):
-        ulr_scalar = session.ulr_scalars
-        dlr_scalar = session.dlr_scalars
+        if metric_name == DefaultMetrics.UNT_BAD_RATE:
+            scalar = session.ulr_scalars
+            maf = risk_tier_details[RTDetCol.MAF_ULR]
+            rsf_name = RangeColumn.RISK_SCALAR_FACTOR_ULR
+        else:
+            scalar = session.dlr_scalars
+            maf = risk_tier_details[RTDetCol.MAF_DLR]
+            rsf_name = RangeColumn.RISK_SCALAR_FACTOR_DLR
 
-        metric_summary = (
-            pd.merge(
-                left=metric_summary,
-                right=iteration_risk_tier_grid.stack()
-                .rename_axis(index=[GridColumn.GROUP_INDEX, GridColumn.PREV_RISK_TIER])
-                .rename(GridColumn.CURR_RISK_TIER),
-                how="left",
-                left_index=True,
-                right_index=True,
-            )
-            .merge(
-                right=ulr_scalar.get_risk_scalar_factor(
-                    maf=risk_tier_details[RTDetCol.MAF_ULR]
-                ).rename(RangeColumn.RISK_SCALAR_FACTOR_ULR),
-                how="left",
-                left_on=GridColumn.CURR_RISK_TIER,
-                right_index=True,
-            )
-            .merge(
-                right=dlr_scalar.get_risk_scalar_factor(
-                    maf=risk_tier_details[RTDetCol.MAF_DLR]
-                ).rename(RangeColumn.RISK_SCALAR_FACTOR_DLR),
-                how="left",
-                left_on=GridColumn.CURR_RISK_TIER,
-                right_index=True,
-            )
+        metric_summary = pd.merge(
+            left=metric_summary,
+            right=iteration_risk_tier_grid.stack()
+            .rename_axis(index=[GridColumn.GROUP_INDEX, GridColumn.PREV_RISK_TIER])
+            .rename(GridColumn.CURR_RISK_TIER),
+            how="left",
+            left_index=True,
+            right_index=True,
+        ).merge(
+            right=scalar.get_risk_scalar_factor(maf=maf).rename(rsf_name),
+            how="left",
+            left_on=GridColumn.CURR_RISK_TIER,
+            right_index=True,
         )
 
-        if metric_name == Metric.ANNL_WO_COUNT_PCT:
-            metric_summary[Metric.ANNL_WO_COUNT_PCT] = (
-                metric_summary[Metric.ANNL_WO_COUNT_PCT]
-                * metric_summary[RangeColumn.RISK_SCALAR_FACTOR_ULR]
-            )
-
-        if metric_name == Metric.ANNL_WO_BAL_PCT:
-            metric_summary[Metric.ANNL_WO_BAL_PCT] = (
-                metric_summary[Metric.ANNL_WO_BAL_PCT]
-                * metric_summary[RangeColumn.RISK_SCALAR_FACTOR_DLR]
-            )
-
-        metric_summary = metric_summary.drop(
-            columns=[
-                RangeColumn.RISK_SCALAR_FACTOR_ULR,
-                RangeColumn.RISK_SCALAR_FACTOR_DLR,
-                GridColumn.CURR_RISK_TIER,
-            ],
-            errors="ignore",
-        )
+        metric_summary[metric_name] *= metric_summary[rsf_name]
 
         metric_summary = metric_summary[metric_name]
 
@@ -463,25 +440,7 @@ def grid_metric_widget(
                     "background-color": bg_color,
                 },
                 subset=idx[row_index, col_label],
-            )
-
-    if metric_name in (Metric.VOLUME, Metric.WO_COUNT):
-        metric_summary_grid_styled = metric_summary_grid_styled.format(
-            precision=0, thousands=",", subset=risk_tier_details[RTDetCol.RISK_TIER]
-        )
-    elif metric_name in (Metric.AVG_BAL, Metric.WO_BAL):
-        metric_summary_grid_styled = metric_summary_grid_styled.format(
-            precision=2, thousands=",", subset=risk_tier_details[RTDetCol.RISK_TIER]
-        )
-    elif metric_name in (
-        Metric.WO_COUNT_PCT,
-        Metric.WO_BAL_PCT,
-        Metric.ANNL_WO_COUNT_PCT,
-        Metric.ANNL_WO_BAL_PCT,
-    ):
-        metric_summary_grid_styled = metric_summary_grid_styled.format(
-            lambda v: f"{v:.2f} %", subset=risk_tier_details[RTDetCol.RISK_TIER]
-        )
+            ).format(metric_format, subset=idx[row_index, col_label])
 
     return metric_summary_grid_styled
 
@@ -520,11 +479,12 @@ def grid_layout_widget(
 
     with col2:
         metric = metrics[0]
-        st.markdown(f"##### {metric}")
+        st.markdown(f"##### {metric.name}")
         st.dataframe(
             grid_metric_widget(
                 iteration_id=iteration_id,
-                metric_summary=summ_df[metric],
+                metric_summary=summ_df[metric.name],
+                metric_format=metric.format,
                 show_group_details=False,
                 default=default,
             ),
@@ -542,11 +502,12 @@ def grid_layout_widget(
 
     for metric in metrics[1:]:
         with columns.pop(0):
-            st.markdown(f"##### {metric}")
+            st.markdown(f"##### {metric.name}")
             st.dataframe(
                 grid_metric_widget(
                     iteration_id=iteration_id,
-                    metric_summary=summ_df[metric],
+                    metric_summary=summ_df[metric.name],
+                    metric_format=metric.format,
                     show_group_details=show_details,
                     default=default,
                 ),
@@ -575,11 +536,12 @@ def liner_layout_widget(iteration_id: str, metrics: list[Metric], key: int = 0):
     }
 
     for metric in metrics:
-        st.markdown(f"##### {metric}")
+        st.markdown(f"##### {metric.name}")
         st.dataframe(
             grid_metric_widget(
                 iteration_id=iteration_id,
-                metric_summary=summ_df[metric],
+                metric_summary=summ_df[metric.name],
+                metric_format=metric.format,
                 show_group_details=True,
                 default=False,
             ),
@@ -591,20 +553,19 @@ def liner_layout_widget(iteration_id: str, metrics: list[Metric], key: int = 0):
 def double_var_iteration_widget():
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
+    all_metrics = session.get_all_metrics()
 
     iteration = iteration_graph.current_iteration
 
     split_view_enabled = iteration_graph.get_metadata(
         iteration.id, "split_view_enabled"
     )
-    metrics = iteration_graph.get_metadata(iteration.id, "metrics")
+    metric_names = iteration_graph.get_metadata(iteration.id, "metrics")
+    metric_names = [
+        metric_name for metric_name in metric_names if metric_name in all_metrics
+    ]
+    metrics = [all_metrics[metric_name] for metric_name in metric_names]
     scalars_enabled = iteration_graph.get_metadata(iteration.id, "scalars_enabled")
-
-    showing_metrics = (
-        metrics.sort_values(MetricTableColumn.ORDER)
-        .loc[metrics[MetricTableColumn.SHOWING], MetricTableColumn.METRIC]
-        .to_list()
-    )
 
     # Sidebar
     with st.sidebar:
@@ -626,7 +587,7 @@ def double_var_iteration_widget():
     ## Default View
     st.markdown("## Default View")
     grid_layout_widget(
-        iteration_id=iteration.id, metrics=showing_metrics[:1], default=True, key=0
+        iteration_id=iteration.id, metrics=metrics[:1], default=True, key=0
     )
 
     st.divider()
@@ -639,10 +600,10 @@ def double_var_iteration_widget():
     ## Grids
     if split_view_enabled:
         grid_layout_widget(
-            iteration_id=iteration.id, metrics=showing_metrics, default=False, key=1
+            iteration_id=iteration.id, metrics=metrics, default=False, key=1
         )
     else:
-        liner_layout_widget(iteration_id=iteration.id, metrics=showing_metrics, key=2)
+        liner_layout_widget(iteration_id=iteration.id, metrics=metrics, key=2)
 
     iter_id = iteration.id
 
@@ -658,7 +619,7 @@ def double_var_iteration_widget():
                 iteration_id=iter_id,
                 editable=False,
                 scalars_enabled=scalars_enabled,
-                metrics=showing_metrics,
+                metric_names=metric_names,
                 default=False,
                 filter_ids=iteration_graph.get_metadata(iteration.id, "filters"),
             )

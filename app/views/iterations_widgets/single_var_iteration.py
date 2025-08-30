@@ -1,9 +1,6 @@
 import streamlit as st
 
-from classes.constants import (
-    MetricTableColumn,
-    VariableType,
-)
+from classes.constants import VariableType
 from classes.session import Session
 from views.iterations_widgets.common import (
     category_editor_widget,
@@ -77,18 +74,16 @@ def sidebar_widgets(iteration_id: str):
 def single_var_iteration_widgets():
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
+    all_metrics = session.get_all_metrics()
 
     iteration = iteration_graph.current_iteration
 
-    metrics = iteration_graph.get_metadata(iteration.id, "metrics")
+    metric_names = iteration_graph.get_metadata(iteration.id, "metrics")
+    metric_names = [
+        metric_name for metric_name in metric_names if metric_name in all_metrics
+    ]
     scalars_enabled = iteration_graph.get_metadata(iteration.id, "scalars_enabled")
     filter_ids = iteration_graph.get_metadata(iteration.id, "filters")
-
-    showing_metrics = (
-        metrics.sort_values(MetricTableColumn.ORDER)
-        .loc[metrics[MetricTableColumn.SHOWING], MetricTableColumn.METRIC]
-        .to_list()
-    )
 
     # Sidebar
     with st.sidebar:
@@ -114,7 +109,7 @@ def single_var_iteration_widgets():
         iteration_id=iteration.id,
         editable=True,
         scalars_enabled=scalars_enabled,
-        metrics=showing_metrics,
+        metric_names=metric_names,
         default=True,
         filter_ids=filter_ids,
         key=0,
@@ -130,7 +125,7 @@ def single_var_iteration_widgets():
         iteration_id=iteration.id,
         editable=True,
         scalars_enabled=scalars_enabled,
-        metrics=showing_metrics,
+        metric_names=metric_names,
         default=False,
         filter_ids=filter_ids,
         key=1,

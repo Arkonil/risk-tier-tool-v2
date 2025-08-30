@@ -71,6 +71,7 @@ class QueryValidator(ast.NodeVisitor):
             return  # Ignore unmapped placeholders
 
         self.found_columns.add(original_name)
+        self.placeholder_map[identifier] = original_name
 
     def visit_Name(self, node: ast.Name):
         self._resolve_and_add_name(node.id)
@@ -162,15 +163,17 @@ class Metric:
         """
 
         self.name = name
-        self._query = query
+        self.original_query = query
         self.use_thousand_sep = use_thousand_sep
         self.is_percentage = is_percentage
         self.decimal_places = decimal_places
         self.used_columns: list[str] = []
+        self.processed_query: str = ""
+        self.placeholder_map: dict[str, str] = {}
 
     @property
     def query(self):
-        return self._query
+        return self.original_query
 
     @property
     def format(self) -> str:
@@ -189,6 +192,10 @@ class Metric:
 
         processed_expression = re.sub(r"`([^`]+)`", replace_backtick, self.query)
 
+        print("Raw Query:", self.query)
+        print("Processed Query:", processed_expression)
+        print("Backticked Map:", backticked_map)
+
         # --- 2. Parse and Validate Structure & Semantics ---
         expr_node = ast.parse(processed_expression, mode="eval").body
 
@@ -205,6 +212,8 @@ class Metric:
 
         # --- 4. Extract Column Names and Functions if Structurally Valid ---
         self.used_columns = sorted(list(validator.found_columns))
+        self.placeholder_map = validator.placeholder_map
+        self.processed_query = processed_expression
 
         # --- 5. Check Against List of Available Columns ---
         available_columns = data.columns.to_list()
@@ -227,8 +236,8 @@ class Metric:
         scope = {}
 
         # Add columns to scope
-        for col in self.used_columns:
-            scope[col] = data[col]
+        for processed_col, original_col in self.placeholder_map.items():
+            scope[processed_col] = data[original_col]
 
         # Add numpy functions to scope
         scope["sum"] = np.sum
@@ -241,10 +250,7 @@ class Metric:
         scope["count"] = lambda series: series.size
         scope["count_distinct"] = lambda series: series.nunique()
 
-        try:
-            result = eval(self.query, {"__builtins__": {}}, scope)
-        except Exception as e:
-            raise RuntimeError(f"An error occurred during query evaluation: {e}")
+        result = eval(self.processed_query, {"__builtins__": {}}, scope)
 
         if not np.isscalar(result):
             raise ValueError(
@@ -271,11 +277,13 @@ class Metric:
         """Serializes the Metric object to a dictionary."""
         return {
             "name": self.name,
-            "query": self.query,
-            "used_columns": self.used_columns,
+            "original_query": self.original_query,
             "use_thousand_sep": self.use_thousand_sep,
             "is_percentage": self.is_percentage,
             "decimal_places": self.decimal_places,
+            "used_columns": self.used_columns,
+            "placeholder_map": self.placeholder_map,
+            "processed_query": self.processed_query,
         }
 
     @classmethod
@@ -283,14 +291,15 @@ class Metric:
         """Creates a Metric object from a dictionary."""
         instance = cls(
             name=dict_data["name"],
-            query=dict_data["query"],
+            query=dict_data["original_query"],
             use_thousand_sep=dict_data.get("use_thousand_sep", True),
             is_percentage=dict_data.get("is_percentage", False),
             decimal_places=dict_data.get("decimal_places", 2),
         )
 
-        if "used_columns" in dict_data:
-            instance.used_columns = dict_data["used_columns"]
+        instance.used_columns = dict_data["used_columns"]
+        instance.placeholder_map = dict_data["placeholder_map"]
+        instance.processed_query = dict_data["processed_query"]
 
         return instance
 

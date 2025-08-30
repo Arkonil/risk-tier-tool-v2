@@ -25,7 +25,7 @@ def filter_view():
 filter_page = st.Page(
     page=filter_view,
     title="Filters (Experimental)",
-    icon=":material/segment:",
+    icon=":material/filter_alt:",
 )
 
 __all__ = [

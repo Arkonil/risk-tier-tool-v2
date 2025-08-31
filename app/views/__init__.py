@@ -1,7 +1,7 @@
 import streamlit as st
 
 from views.home import home_page
-from views.summary import summary_page
+from views.summary_widgets import summary_page
 from views.data_importer import data_importer_page
 from views.options_widgets import options_page
 from views.iterations_widgets import iteration_graph_page

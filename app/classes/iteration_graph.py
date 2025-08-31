@@ -316,7 +316,8 @@ class IterationGraph:
         filter_objs: set[Filter],
         auto_band: bool,
         mob: int = None,
-        upgrade_downgrade_limit: int = None,
+        upgrade_limit: int = None,
+        downgrade_limit: int = None,
         dlr_scalar: Scalar = None,
         ulr_scalar: Scalar = None,
         dlr_wrt_off: pd.Series = None,
@@ -380,9 +381,7 @@ class IterationGraph:
                         variable=variable,
                         mask=(previous_risk_tiers == rt) & mask,
                         risk_tier_details=risk_tier_details.iloc[
-                            max(0, rt - upgrade_downgrade_limit) : rt
-                            + upgrade_downgrade_limit
-                            + 1
+                            max(0, rt - upgrade_limit) : rt + downgrade_limit + 1
                         ].copy(),
                         dlr_scalar=dlr_scalar,
                         ulr_scalar=ulr_scalar,

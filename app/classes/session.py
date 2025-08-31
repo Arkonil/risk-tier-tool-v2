@@ -14,7 +14,7 @@ from classes.summary_page_state import SummaryPageState
 from classes.scalars import Scalar
 from classes.iteration_graph import IterationGraph
 from classes.options import Options
-from classes.constants import LossRateTypes, README_CONTENT, VariableType
+from classes.constants import LossRateTypes, VariableType, AssetPath
 
 
 class NpEncoder(json.JSONEncoder):
@@ -100,7 +100,8 @@ class Session:
             zipf.writestr(
                 "metric_container.json", json.dumps(mc_json, indent=4, cls=NpEncoder)
             )
-            zipf.writestr("README.md", README_CONTENT.strip())
+            with open(AssetPath.SESSION_EXPORT_DOC, "r") as f:
+                zipf.writestr("README.md", f.read())
 
             # Convert DataFrame to Parquet and write to zip
             if self.data.df is not None and not self.data.df.empty:

@@ -183,10 +183,10 @@ def grid_editor_widget(iteration_id: str, key: int, default: bool = False):
 
     column_config = {
         RangeColumn.LOWER_BOUND: st.column_config.NumberColumn(
-            label=RangeColumn.LOWER_BOUND, disabled=default, format="plain"
+            label=RangeColumn.LOWER_BOUND, disabled=default, format="compact"
         ),
         RangeColumn.UPPER_BOUND: st.column_config.NumberColumn(
-            label=RangeColumn.UPPER_BOUND, disabled=default, format="plain"
+            label=RangeColumn.UPPER_BOUND, disabled=default, format="compact"
         ),
     }
 
@@ -470,10 +470,10 @@ def grid_layout_widget(
 
     column_config = {
         RangeColumn.LOWER_BOUND: st.column_config.NumberColumn(
-            label=RangeColumn.LOWER_BOUND, disabled=False, format="plain"
+            label=RangeColumn.LOWER_BOUND, disabled=False, format="compact"
         ),
         RangeColumn.UPPER_BOUND: st.column_config.NumberColumn(
-            label=RangeColumn.UPPER_BOUND, disabled=False, format="plain"
+            label=RangeColumn.UPPER_BOUND, disabled=False, format="compact"
         ),
     }
 
@@ -528,10 +528,10 @@ def liner_layout_widget(iteration_id: str, metrics: list[Metric], key: int = 0):
 
     column_config = {
         RangeColumn.LOWER_BOUND: st.column_config.NumberColumn(
-            label=RangeColumn.LOWER_BOUND, disabled=False, format="plain"
+            label=RangeColumn.LOWER_BOUND, disabled=False, format="compact"
         ),
         RangeColumn.UPPER_BOUND: st.column_config.NumberColumn(
-            label=RangeColumn.UPPER_BOUND, disabled=False, format="plain"
+            label=RangeColumn.UPPER_BOUND, disabled=False, format="compact"
         ),
     }
 

@@ -325,7 +325,6 @@ def editable_range_widget(
                 needs_rerun = True
 
         if needs_rerun:
-            print(f"needs rerun: {needs_rerun}")
             st.rerun()
 
     if editable:

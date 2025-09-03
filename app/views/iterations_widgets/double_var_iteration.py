@@ -414,10 +414,6 @@ def grid_metric_widget(
         columns=[RangeColumn.GROUPS], errors="ignore"
     )
 
-    # Replace NaN values with pd.NA for better styling
-    # TODO: Check if this is necessary
-    metric_summary_grid[np.isnan(metric_summary_grid)] = pd.NA
-
     idx = pd.IndexSlice
     metric_summary_grid_styled = metric_summary_grid.style
 

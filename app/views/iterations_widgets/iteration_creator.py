@@ -89,6 +89,7 @@ def iteration_creation_widget() -> None:
                 )
 
             if iteration_graph.current_iter_create_mode == IterationType.DOUBLE:
+                auto_rank_ordering = st.checkbox("Auto Rank Ordering", value=True)
                 upgrade_cont, downgrade_cont = st.columns(2)
 
                 upgrade_cont.markdown(
@@ -327,6 +328,7 @@ def iteration_creation_widget() -> None:
                 avg_bal=data.load_column(data.var_avg_bal, VariableType.NUMERICAL)
                 if auto_band
                 else None,
+                auto_rank_ordering=auto_rank_ordering if auto_band else None,
             )
 
             iteration_graph.select_current_node_id(iteration.id)

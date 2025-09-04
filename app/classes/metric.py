@@ -6,6 +6,109 @@ import numpy as np
 import pandas as pd
 
 
+def _prepare_element_wise_args(
+    *args: t.Union[pd.Series, int, float],
+) -> tuple[list[t.Union[pd.Series, int, float]], bool]:
+    """
+    Helper to validate and prepare arguments for element-wise operations.
+
+    Returns a tuple containing:
+    - A list of prepared arguments (all as pd.Series if any series was present).
+    - A boolean indicating if the result should be a pd.Series.
+    """
+    if not args:
+        raise ValueError("At least one argument is required.")
+
+    is_series_op = any(isinstance(arg, pd.Series) for arg in args)
+
+    if is_series_op:
+        series_list = [s for s in args if isinstance(s, pd.Series)]
+
+        # Validate that all series have the same length
+        if len(series_list) > 1:
+            first_series_len = len(series_list[0])
+            if not all(len(s) == first_series_len for s in series_list[1:]):
+                raise ValueError("All series arguments must have the same length.")
+
+        # Find the length from the first available series
+        series_len = len(series_list[0])
+
+        # Convert all arguments to Series of the same length
+        prepared_args = [
+            arg if isinstance(arg, pd.Series) else pd.Series([arg] * series_len)
+            for arg in args
+        ]
+        return prepared_args, True
+    else:
+        return args, False
+
+
+def element_wise_sum(
+    *args: t.Union[pd.Series, int, float],
+) -> t.Union[pd.Series, int, float]:
+    prepared_args, is_series_op = _prepare_element_wise_args(*args)
+
+    if is_series_op:
+        return pd.concat(prepared_args, axis=1).sum(axis=1)
+    else:
+        return np.sum(prepared_args)
+
+
+def element_wise_mean(
+    *args: t.Union[pd.Series, int, float],
+) -> t.Union[pd.Series, int, float]:
+    prepared_args, is_series_op = _prepare_element_wise_args(*args)
+
+    if is_series_op:
+        return pd.concat(prepared_args, axis=1).mean(axis=1)
+    else:
+        return np.mean(prepared_args)
+
+
+def element_wise_median(
+    *args: t.Union[pd.Series, int, float],
+) -> t.Union[pd.Series, int, float]:
+    prepared_args, is_series_op = _prepare_element_wise_args(*args)
+
+    if is_series_op:
+        return pd.concat(prepared_args, axis=1).median(axis=1)
+    else:
+        return np.median(prepared_args)
+
+
+def element_wise_min(
+    *args: t.Union[pd.Series, int, float],
+) -> t.Union[pd.Series, int, float]:
+    prepared_args, is_series_op = _prepare_element_wise_args(*args)
+
+    if is_series_op:
+        return pd.concat(prepared_args, axis=1).min(axis=1)
+    else:
+        return np.min(prepared_args)
+
+
+def element_wise_max(
+    *args: t.Union[pd.Series, int, float],
+) -> t.Union[pd.Series, int, float]:
+    prepared_args, is_series_op = _prepare_element_wise_args(*args)
+
+    if is_series_op:
+        return pd.concat(prepared_args, axis=1).max(axis=1)
+    else:
+        return np.max(prepared_args)
+
+
+def element_wise_std(
+    *args: t.Union[pd.Series, int, float],
+) -> t.Union[pd.Series, int, float]:
+    prepared_args, is_series_op = _prepare_element_wise_args(*args)
+
+    if is_series_op:
+        return pd.concat(prepared_args, axis=1).std(axis=1)
+    else:
+        return np.std(prepared_args)
+
+
 class QueryValidator(ast.NodeVisitor):
     allowed_functions = {
         "sum",
@@ -14,9 +117,6 @@ class QueryValidator(ast.NodeVisitor):
         "min",
         "max",
         "std",
-        "var",
-        "count",
-        "count_distinct",
     }
 
     allowed_series_methods = {
@@ -113,13 +213,22 @@ class QueryValidator(ast.NodeVisitor):
         self.visit(node.right)
 
     def is_result_scalar(self, expr_node: ast.AST) -> bool:
+        if isinstance(expr_node, ast.Name):
+            return False
+
         if isinstance(expr_node, ast.Constant):
             return True
 
+        if isinstance(expr_node, ast.BinOp):
+            return all([
+                isinstance(expr_node.op, self.allowed_operators),
+                self.is_result_scalar(expr_node.left),
+                self.is_result_scalar(expr_node.right),
+            ])
+
         if isinstance(expr_node, ast.Call):
             if isinstance(expr_node.func, ast.Name):
-                func_name = expr_node.func.id
-                return func_name in self.allowed_functions
+                return all(self.is_result_scalar(arg) for arg in expr_node.args)
             elif isinstance(expr_node.func, ast.Attribute):
                 func_name = expr_node.func.attr
 
@@ -134,12 +243,7 @@ class QueryValidator(ast.NodeVisitor):
 
                 return func_name in self.allowed_series_methods
 
-        if isinstance(expr_node, ast.BinOp):
-            return all([
-                isinstance(expr_node.op, self.allowed_operators),
-                self.is_result_scalar(expr_node.left),
-                self.is_result_scalar(expr_node.right),
-            ])
+        return False
 
 
 class Metric:
@@ -236,15 +340,12 @@ class Metric:
             scope[processed_col] = data[original_col]
 
         # Add numpy functions to scope
-        scope["sum"] = np.sum
-        scope["mean"] = np.mean
-        scope["median"] = np.median
-        scope["min"] = np.min
-        scope["max"] = np.max
-        scope["std"] = np.std
-        scope["var"] = np.var
-        scope["count"] = lambda series: series.size
-        scope["count_distinct"] = lambda series: series.nunique()
+        scope["sum"] = element_wise_sum
+        scope["mean"] = element_wise_mean
+        scope["median"] = element_wise_median
+        scope["min"] = element_wise_min
+        scope["max"] = element_wise_max
+        scope["std"] = element_wise_std
 
         result = eval(self.processed_query, {"__builtins__": {}}, scope)
 

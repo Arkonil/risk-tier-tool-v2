@@ -10,7 +10,7 @@
 567,622,30000,0.830540442,24916.21325,D,cat1_E,cat2_I,cat3_G,cat4_K,cat5_K
 598,658,234451,0.539159176,126406.408,D,cat1_A,cat2_G,cat3_I,cat4_B,cat5_E
 709,675,176784,0,0,A,cat1_I,cat2_A,cat3_C,cat4_A,cat5_D
-697,687,38621,0,0,A,cat1_E,cat2_D,cat3_F,cat4_G,cat5_L
+697,,38621,0,0,A,cat1_E,cat2_D,cat3_F,cat4_G,cat5_L
 620,609,170142,0.297410863,50602.07902,D,,cat2_I,cat3_I,cat4_C,cat5_E
 735,678,87378,0,0,A,cat1_G,cat2_B,cat3_H,cat4_D,cat5_E
 737,662,48547,0,0,A,cat1_C,cat2_F,cat3_B,cat4_E,cat5_G
@@ -22,7 +22,7 @@
 535,601,184695,0.955560795,176487.301,D,cat1_D,cat2_C,cat3_G,cat4_L,cat5_F
 607,638,82602,0.435626716,35983.63799,D,cat1_D,cat2_D,cat3_D,cat4_E,cat5_A
 687,691,30000,0,0,A,,cat2_C,cat3_G,cat4_C,cat5_C
-697,697,63838,0,0,A,cat1_A,cat2_B,cat3_B,cat4_I,cat5_A
+697,,63838,0,0,A,cat1_A,cat2_B,cat3_B,cat4_I,cat5_A
 614,664,228474,0.358380806,81880.69625,D,cat1_G,cat2_D,cat3_D,cat4_I,cat5_G
 704,687,113706,0,0,A,cat1_L,cat2_C,cat3_D,cat4_H,cat5_C
 624,627,149748,0.260283233,38976.89364,D,cat1_C,cat2_A,cat3_F,cat4_A,cat5_I
@@ -30,11 +30,11 @@
 707,715,127467,0,0,A,cat1_J,cat2_M,cat3_A,cat4_H,cat5_C
 578,631,51056,0.746712378,38124.14717,D,cat1_D,cat2_F,cat3_C,cat4_A,cat5_E
 648,686,149874,0,0,A,cat1_E,cat2_J,cat3_G,cat4_D,cat5_J
-736,662,30000,0,0,A,cat1_G,cat2_D,cat3_C,cat4_G,cat5_C
+736,,30000,0,0,A,cat1_G,cat2_D,cat3_C,cat4_G,cat5_C
 676,686,63745,0,0,A,cat1_A,cat2_M,cat3_F,cat4_K,cat5_F
 618,673,30000,0.317076864,9512.305928,D,cat1_J,cat2_B,cat3_D,cat4_K,cat5_H
 744,677,103388,0,0,A,cat1_C,cat2_B,cat3_C,cat4_K,cat5_F
-606,624,58430,0.447019542,26119.35184,D,cat1_D,cat2_J,cat3_C,cat4_B,cat5_C
+,624,58430,0.447019542,26119.35184,D,cat1_D,cat2_J,cat3_C,cat4_B,cat5_C
 570,617,30000,0.810126582,24303.79747,D,cat1_A,cat2_H,cat3_B,cat4_B,cat5_A
 681,653,76706,0,0,A,cat1_F,cat2_B,cat3_B,cat4_G,cat5_B
 679,671,188050,0,0,A,cat1_A,cat2_M,cat3_A,cat4_B,cat5_H
@@ -48,7 +48,7 @@
 616,602,128344,0.337418745,43305.67147,D,cat1_G,cat2_B,cat3_D,cat4_H,cat5_D
 748,618,106898,0,0,A,cat1_D,cat2_D,cat3_J,cat4_D,cat5_C
 620,645,144817,0.297410863,43070.14892,D,cat1_D,cat2_C,cat3_I,cat4_E,cat5_B
-700,671,58657,0,0,A,cat1_H,cat2_K,cat3_A,cat4_F,cat5_F
+,671,58657,0,0,A,cat1_H,cat2_K,cat3_A,cat4_F,cat5_F
 572,608,186647,0.79550169,148478.0039,D,cat1_B,cat2_E,cat3_J,cat4_B,cat5_F
 588,649,237792,0.65000388,154565.7228,D,cat1_E,cat2_G,cat3_C,cat4_F,cat5_D
 617,645,149857,0.327166588,49028.20339,D,cat1_C,cat2_G,cat3_H,cat4_B,cat5_C
@@ -69,7 +69,7 @@
 720,683,177161,0,0,A,cat1_B,cat2_J,cat3_A,cat4_B,cat5_B
 675,685,221776,0,0,A,cat1_A,cat2_A,cat3_H,cat4_F,cat5_H
 608,647,30000,0.424301457,12729.04371,D,,cat2_F,cat3_D,cat4_H,cat5_G
-767,621,30000,0,0,A,cat1_I,cat2_G,cat3_N,cat4_H,cat5_E
+,621,30000,0,0,A,cat1_I,cat2_G,cat3_N,cat4_H,cat5_E
 550,684,189751,0.914903222,173603.8014,D,cat1_C,cat2_E,cat3_B,cat4_A,cat5_B
 673,617,187836,0,0,A,cat1_C,cat2_F,cat3_B,cat4_E,cat5_M
 606,607,84193,0.447019542,37635.9163,D,cat1_E,cat2_F,cat3_C,cat4_E,cat5_F

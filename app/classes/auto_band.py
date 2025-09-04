@@ -20,59 +20,85 @@ class DataColumns(StrEnum):
     AVG_BAL = "Avg Balance"
 
 
+def does_high_value_implies_high_risk(
+    variable: pd.Series,
+    numerators: pd.Series,
+    denominators: pd.Series,
+) -> bool:
+    if len(variable) != len(numerators) or len(variable) != len(denominators):
+        raise ValueError(
+            f"Variable (length={len(variable)}),"
+            f" Numerators (length={len(numerators)}),"
+            f" and Denominators (length={len(denominators)}) must be the same length"
+        )
+
+    data = pd.DataFrame({
+        DataColumns.VARIABLE: variable,
+        DataColumns.NUMERATOR: numerators,
+        DataColumns.DENOMINATOR: denominators,
+    })
+
+    mtc = (
+        data.groupby(DataColumns.VARIABLE, observed=False)[
+            [DataColumns.NUMERATOR, DataColumns.DENOMINATOR]
+        ]
+        .sum()
+        .sort_index()
+    )
+
+    mtc[DataColumns.RATIO] = mtc[DataColumns.NUMERATOR] / mtc[DataColumns.DENOMINATOR]
+
+    # hv_imp_lr = High Value of the variable implies Low risk
+    x = np.nan_to_num(mtc.index)  # variable
+    w = np.nan_to_num(mtc[DataColumns.RATIO])  # weights
+    w /= np.sum(w)  # normalize weights
+
+    m1 = np.sum(x * w)  # 1st raw moment
+    m2 = np.sum(x * x * w)  # 2nd raw moment
+    m3 = np.sum(x * x * x * w)  # 3rd raw moment
+
+    u3 = m3 - 3 * m2 * m1 + 2 * m1 * m1 * m1  # 3rd central moment
+    hv_imp_hr = u3 < 0  # Negatiavely skewed <=> High value implies high risk
+
+    return hv_imp_hr
+
+
 def create_auto_numeric_bands(
     variable: pd.Series,
     risk_tier_details: pd.DataFrame,
     loss_rate_type: LossRateTypes,
     numerators: pd.Series,
     denominators: pd.Series,
+    hv_imp_hr: bool,
 ) -> pd.DataFrame:
-    transformed_variable = False
+    transformed_variable = not hv_imp_hr
+    if transformed_variable:
+        variable = -variable
 
-    while True:
-        data = pd.DataFrame({
-            DataColumns.VARIABLE: variable,
-            DataColumns.NUMERATOR: numerators,
-            DataColumns.DENOMINATOR: denominators,
-        })
+    data = pd.DataFrame({
+        DataColumns.VARIABLE: variable,
+        DataColumns.NUMERATOR: numerators,
+        DataColumns.DENOMINATOR: denominators,
+    })
 
-        # Check Monotonicity
-        mtc = (
-            data.groupby(DataColumns.VARIABLE, observed=False)[
-                [DataColumns.NUMERATOR, DataColumns.DENOMINATOR]
-            ]
-            .sum()
-            .sort_index()
-        )
+    grouped_data = (
+        data.groupby(DataColumns.VARIABLE, observed=False)[
+            [DataColumns.NUMERATOR, DataColumns.DENOMINATOR]
+        ]
+        .sum()
+        .sort_index()
+    )
 
-        mtc[DataColumns.RATIO] = (
-            mtc[DataColumns.NUMERATOR] / mtc[DataColumns.DENOMINATOR]
-        )
-
-        # hv_imp_lr = High Value of the variable implies Low risk
-        x = np.nan_to_num(mtc.index)  # variable
-        w = np.nan_to_num(mtc[DataColumns.RATIO])  # weights
-        w /= np.sum(w)  # normalize weights
-
-        m1 = np.sum(x * w)  # 1st raw moment
-        m2 = np.sum(x * x * w)  # 2nd raw moment
-        m3 = np.sum(x * x * x * w)  # 3rd raw moment
-
-        u3 = m3 - 3 * m2 * m1 + 2 * m1 * m1 * m1  # 3rd central moment
-        hv_imp_hr = u3 < 0  # Negatiavely skewed <=> High value implies high risk
-
-        if hv_imp_hr:
-            break
-
-        variable = variable * -1
-        transformed_variable = True
+    grouped_data[DataColumns.RATIO] = (
+        grouped_data[DataColumns.NUMERATOR] / grouped_data[DataColumns.DENOMINATOR]
+    )
 
     groups = pd.DataFrame(
         columns=[RangeColumn.LOWER_BOUND, RangeColumn.UPPER_BOUND],
         index=risk_tier_details.index,
     )
 
-    if len(mtc) == 0:
+    if len(grouped_data) == 0:
         groups[RangeColumn.LOWER_BOUND] = -np.inf
         groups[RangeColumn.UPPER_BOUND] = np.inf
         return groups
@@ -80,7 +106,7 @@ def create_auto_numeric_bands(
     # negating a small positive number as intervals are left open & right closed
     delta = 1
 
-    current_lower_bound = mtc.index[0] - delta
+    current_lower_bound = grouped_data.index[0] - delta
     last_value = current_lower_bound
 
     if loss_rate_type == LossRateTypes.DLR:
@@ -92,8 +118,8 @@ def create_auto_numeric_bands(
         upper_rate = risk_tier_row[RTDetCol.UPPER_RATE]
         rsf = risk_tier_row[rsf_column]
 
-        mtc_mask = pd.Series(pd.NA, index=mtc.index, dtype="boolean")
-        mtc_temp = mtc.copy()
+        mtc_mask = pd.Series(pd.NA, index=grouped_data.index, dtype="boolean")
+        mtc_temp = grouped_data.copy()
 
         for _ in range(100):
             # Forward Pass
@@ -130,13 +156,13 @@ def create_auto_numeric_bands(
 
         mtc_mask = mtc_mask.fillna(False)
 
-        if len(mtc[mtc_mask]) > 0:
-            last_value = mtc[mtc_mask].index[-1]
+        if len(grouped_data[mtc_mask]) > 0:
+            last_value = grouped_data[mtc_mask].index[-1]
 
         groups.loc[index, RangeColumn.LOWER_BOUND] = current_lower_bound
         groups.loc[index, RangeColumn.UPPER_BOUND] = last_value
 
-        mtc = mtc[~mtc_mask]
+        grouped_data = grouped_data[~mtc_mask]
         current_lower_bound = last_value
 
     groups.loc[groups.index[-1], RangeColumn.UPPER_BOUND] = variable.max()
@@ -212,6 +238,7 @@ def create_auto_bands(
     dlr_wrt_off: pd.Series = None,
     unt_wrt_off: pd.Series = None,
     avg_bal: pd.Series = None,
+    hv_imp_hr: bool = None,
 ):
     if mob is None:
         mob = 12
@@ -323,6 +350,13 @@ def create_auto_bands(
             loss_rate_type=loss_rate_type,
             numerators=numerators,
             denominators=denominators,
+            hv_imp_hr=hv_imp_hr
+            if hv_imp_hr is not None
+            else does_high_value_implies_high_risk(
+                variable=variable_filtered,
+                numerators=numerators,
+                denominators=denominators,
+            ),
         )
     else:
         groups = create_auto_categorical_bands(

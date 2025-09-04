@@ -192,10 +192,6 @@ class Metric:
 
         processed_expression = re.sub(r"`([^`]+)`", replace_backtick, self.query)
 
-        print("Raw Query:", self.query)
-        print("Processed Query:", processed_expression)
-        print("Backticked Map:", backticked_map)
-
         # --- 2. Parse and Validate Structure & Semantics ---
         expr_node = ast.parse(processed_expression, mode="eval").body
 

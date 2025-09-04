@@ -2,7 +2,7 @@ import io
 import streamlit as st
 
 from classes.session import Session
-from classes.constants import README_CONTENT
+from classes.constants import AssetPath
 
 
 def session_archive_download_widget():
@@ -26,7 +26,8 @@ def session_archive_download_widget():
         icon=":material/file_download:",
     )
 
-    st.markdown(README_CONTENT)
+    with open(AssetPath.SESSION_EXPORT_DOC, "r") as f:
+        st.markdown(f.read())
 
 
 __all__ = ["session_archive_download_widget"]

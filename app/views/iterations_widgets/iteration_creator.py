@@ -89,14 +89,34 @@ def iteration_creation_widget() -> None:
                 )
 
             if iteration_graph.current_iter_create_mode == IterationType.DOUBLE:
-                st.markdown("##### Upgrade/Downgrade Limit")
-                upgrade_downgrade_limit = st.number_input(
-                    label="Upgrade Downgrade Limit",
+                auto_rank_ordering = st.checkbox("Auto Rank Ordering", value=True)
+                upgrade_cont, downgrade_cont = st.columns(2)
+
+                upgrade_cont.markdown(
+                    "##### Upgrade Limit",
+                    help="Upgrade Current RT to a one with lower risk. Example RT2 -> RT1.",
+                )
+                upgrade_limit = upgrade_cont.number_input(
+                    label="Upgrade Limit",
                     min_value=0,
                     step=1,
                     format="%d",
                     label_visibility="collapsed",
-                    key="upgrade_downgrade_limit",
+                    key="upgrade_limit",
+                    value=0,
+                )
+
+                downgrade_cont.markdown(
+                    "##### Downgrade Limit",
+                    help="Downgrade Current RT to a one with lower risk. Example RT2 -> RT4.",
+                )
+                downgrade_limit = downgrade_cont.number_input(
+                    label="Downgrade Limit",
+                    min_value=0,
+                    step=1,
+                    format="%d",
+                    label_visibility="collapsed",
+                    key="downgrade_limit",
                     value=1,
                 )
 
@@ -291,7 +311,8 @@ def iteration_creation_widget() -> None:
                 filter_objs={fc.filters[filter_id] for filter_id in filter_ids},
                 auto_band=auto_band,
                 mob=data.current_rate_mob if auto_band else None,
-                upgrade_downgrade_limit=upgrade_downgrade_limit if auto_band else None,
+                upgrade_limit=upgrade_limit if auto_band else None,
+                downgrade_limit=downgrade_limit if auto_band else None,
                 dlr_scalar=dlr_scalar if auto_band and use_scalars else None,
                 ulr_scalar=ulr_scalar if auto_band and use_scalars else None,
                 dlr_wrt_off=data.load_column(
@@ -307,6 +328,7 @@ def iteration_creation_widget() -> None:
                 avg_bal=data.load_column(data.var_avg_bal, VariableType.NUMERICAL)
                 if auto_band
                 else None,
+                auto_rank_ordering=auto_rank_ordering if auto_band else None,
             )
 
             iteration_graph.select_current_node_id(iteration.id)

@@ -647,7 +647,7 @@ class CategoricalIteration(IterationBase):
     @t.override
     @staticmethod
     def _create_initial_groups(variable, initial_group_count):
-        unique_values = list(sorted(list(variable.unique())))
+        unique_values = variable.cat.categories.tolist()
         groups = [set() for _ in range(initial_group_count)]
 
         while unique_values:

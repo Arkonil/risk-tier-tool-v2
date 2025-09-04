@@ -5,7 +5,7 @@ import typing as t
 
 import pandas as pd
 
-from classes.auto_band import create_auto_bands
+from classes.auto_band import create_auto_bands, does_high_value_implies_high_risk
 from classes.constants import (
     TAB,
     DefaultOptions,
@@ -316,12 +316,14 @@ class IterationGraph:
         filter_objs: set[Filter],
         auto_band: bool,
         mob: int = None,
-        upgrade_downgrade_limit: int = None,
+        upgrade_limit: int = None,
+        downgrade_limit: int = None,
         dlr_scalar: Scalar = None,
         ulr_scalar: Scalar = None,
         dlr_wrt_off: pd.Series = None,
         unt_wrt_off: pd.Series = None,
         avg_bal: pd.Series = None,
+        auto_rank_ordering: bool = None,
     ) -> NumericalDoubleVarIteration | CategoricalDoubleVarIteration:
         if previous_node_id not in self.iterations:
             raise ValueError(
@@ -375,14 +377,25 @@ class IterationGraph:
                 )
                 rt_groups: dict[int, pd.Series] = {}
 
+                hv_imp_hr = None
+
+                if variable_dtype == VariableType.NUMERICAL:
+                    hv_imp_hr = does_high_value_implies_high_risk(
+                        variable=variable,
+                        numerators=dlr_wrt_off
+                        if loss_rate_type == LossRateTypes.DLR
+                        else unt_wrt_off,
+                        denominators=avg_bal
+                        if loss_rate_type == LossRateTypes.DLR
+                        else pd.Series(1, index=variable.index),
+                    )
+
                 for rt in unique_tiers:
                     groups = create_auto_bands(
                         variable=variable,
                         mask=(previous_risk_tiers == rt) & mask,
                         risk_tier_details=risk_tier_details.iloc[
-                            max(0, rt - upgrade_downgrade_limit) : rt
-                            + upgrade_downgrade_limit
-                            + 1
+                            max(0, rt - upgrade_limit) : rt + downgrade_limit + 1
                         ].copy(),
                         dlr_scalar=dlr_scalar,
                         ulr_scalar=ulr_scalar,
@@ -391,6 +404,7 @@ class IterationGraph:
                         dlr_wrt_off=dlr_wrt_off,
                         unt_wrt_off=unt_wrt_off,
                         avg_bal=avg_bal,
+                        hv_imp_hr=hv_imp_hr,
                     )
 
                     if variable_dtype == VariableType.NUMERICAL:
@@ -443,8 +457,43 @@ class IterationGraph:
                             else:
                                 risk_tier_grid.loc[i, j] = j
 
+                    if auto_rank_ordering:
+                        risk_tier_grid = risk_tier_grid.cummax(axis=1)
+
+                        if hv_imp_hr:
+                            risk_tier_grid = risk_tier_grid.cummax(axis=0)
+                        else:
+                            risk_tier_grid = (
+                                risk_tier_grid.iloc[::-1].cummax(axis=0).iloc[::-1]
+                            )
+
+                        i = 1
+                        while i < risk_tier_grid.shape[0]:
+                            if not risk_tier_grid.iloc[i].equals(
+                                risk_tier_grid.iloc[i - 1]
+                            ):
+                                i += 1
+                                continue
+
+                            risk_tier_grid = pd.concat(
+                                [risk_tier_grid.iloc[:i], risk_tier_grid.iloc[i + 1 :]],
+                                axis=0,
+                            )
+
+                            groups.iloc[i - 1] = (
+                                groups.iloc[i - 1][0],
+                                groups.iloc[i][1],
+                            )
+                            groups = pd.concat(
+                                [groups.iloc[:i], groups.iloc[i + 1 :]],
+                                axis=0,
+                            )
+
                     iteration.set_default_groups(groups)
                     iteration.set_default_risk_tier_grid(risk_tier_grid)
+                else:
+                    # TODO: Add Algorithm for categorical double var optimization
+                    pass
 
         self._recalculation_required.add((new_node_id, "default"))
         self._recalculation_required.add((new_node_id, "edited"))

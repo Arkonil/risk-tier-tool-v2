@@ -152,7 +152,7 @@ class Data:
 
         metric = Metric(
             name=DefaultMetrics.UNT_BAD_RATE,
-            query=f"(sum(`{self.var_unt_wrt_off}`) / count(`{self.var_unt_wrt_off}`)) * (12 / {self.current_rate_mob})",
+            query=f"(`{self.var_unt_wrt_off}`.sum() / `{self.var_unt_wrt_off}`.count()) * (12 / {self.current_rate_mob})",
             use_thousand_sep=False,
             is_percentage=True,
             decimal_places=2,
@@ -179,7 +179,7 @@ class Data:
 
         metric = Metric(
             name=DefaultMetrics.DLR_BAD_RATE,
-            query=f"(sum(`{self.var_dlr_wrt_off}`) / sum(`{self.var_avg_bal}`)) * (12 / {self.current_rate_mob})",
+            query=f"(`{self.var_dlr_wrt_off}`.sum() / `{self.var_avg_bal}`.sum()) * (12 / {self.current_rate_mob})",
             use_thousand_sep=False,
             is_percentage=True,
             decimal_places=2,
@@ -202,7 +202,7 @@ class Data:
 
         metric = Metric(
             name=DefaultMetrics.VOLUME,
-            query=f"count(`{first_column}`)",
+            query=f"`{first_column}`.count()",
             use_thousand_sep=True,
             is_percentage=False,
             decimal_places=0,

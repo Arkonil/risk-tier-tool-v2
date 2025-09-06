@@ -284,19 +284,13 @@ def iteration_creation_widget() -> None:
                 mob=data.current_rate_mob if auto_band else None,
                 dlr_scalar=dlr_scalar if auto_band and use_scalars else None,
                 ulr_scalar=ulr_scalar if auto_band and use_scalars else None,
-                dlr_wrt_off=data.load_column(
-                    data.var_dlr_wrt_off, VariableType.NUMERICAL
-                )
+                dlr_wrt_off=data.load_column(data.var_dlr_wrt_off)
                 if auto_band
                 else None,
-                unt_wrt_off=data.load_column(
-                    data.var_unt_wrt_off, VariableType.NUMERICAL
-                )
+                unt_wrt_off=data.load_column(data.var_unt_wrt_off)
                 if auto_band
                 else None,
-                avg_bal=data.load_column(data.var_avg_bal, VariableType.NUMERICAL)
-                if auto_band
-                else None,
+                avg_bal=data.load_column(data.var_avg_bal) if auto_band else None,
             )
 
             iteration_graph.select_current_node_id(iteration.id)
@@ -315,19 +309,13 @@ def iteration_creation_widget() -> None:
                 downgrade_limit=downgrade_limit if auto_band else None,
                 dlr_scalar=dlr_scalar if auto_band and use_scalars else None,
                 ulr_scalar=ulr_scalar if auto_band and use_scalars else None,
-                dlr_wrt_off=data.load_column(
-                    data.var_dlr_wrt_off, VariableType.NUMERICAL
-                )
+                dlr_wrt_off=data.load_column(data.var_dlr_wrt_off)
                 if auto_band
                 else None,
-                unt_wrt_off=data.load_column(
-                    data.var_unt_wrt_off, VariableType.NUMERICAL
-                )
+                unt_wrt_off=data.load_column(data.var_unt_wrt_off)
                 if auto_band
                 else None,
-                avg_bal=data.load_column(data.var_avg_bal, VariableType.NUMERICAL)
-                if auto_band
-                else None,
+                avg_bal=data.load_column(data.var_avg_bal) if auto_band else None,
                 auto_rank_ordering=auto_rank_ordering if auto_band else None,
             )
 

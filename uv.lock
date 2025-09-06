@@ -537,6 +537,7 @@ dependencies = [
     { name = "pandas" },
     { name = "pyarrow" },
     { name = "streamlit" },
+    { name = "streamlit-antd-components" },
     { name = "streamlit-code-editor" },
     { name = "streamlit-flow-component" },
     { name = "streamlit-sortables" },
@@ -555,6 +556,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "pyarrow", specifier = ">=20.0.0" },
     { name = "streamlit", specifier = "==1.48.1" },
+    { name = "streamlit-antd-components", specifier = ">=0.3.2" },
     { name = "streamlit-code-editor", specifier = ">=0.1.22" },
     { name = "streamlit-flow-component", specifier = ">=1.6.1" },
     { name = "streamlit-sortables", specifier = ">=0.3.1" },
@@ -683,6 +685,17 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e2/1b/eb83cf2a11961338d23deed0530e3ccc1db7b4ab497b0b4d94886205d0c0/streamlit-1.48.1.tar.gz", hash = "sha256:c6e2a9f24471746bbeaa54a288f5fdfc6e2bcf3ba9a9753fde5d49ed424391f1", size = 9524808, upload-time = "2025-08-13T12:03:55.727Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e0/21/ebf8942e939b96e4040d2285c9b71d42f317618a3b656aa67f95f505b241/streamlit-1.48.1-py3-none-any.whl", hash = "sha256:1da4081c8cc23d574c4ab66f0bb59d6a6000ecf2f06b35242d56cfe16f2bd612", size = 9928586, upload-time = "2025-08-13T12:03:52.816Z" },
+]
+
+[[package]]
+name = "streamlit-antd-components"
+version = "0.3.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "streamlit" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b5/dc/1ed6266b606e3b494b9af3e2c310ea6cbe2e967aa18873d03c5b267b4c81/streamlit_antd_components-0.3.2-py3-none-any.whl", hash = "sha256:5ae28496127202ed266ea167649436a15f3d548a4805ee5d992c6fc0fe103fd6", size = 2805502, upload-time = "2024-01-19T07:11:42.614Z" },
 ]
 
 [[package]]

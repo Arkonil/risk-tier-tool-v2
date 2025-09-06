@@ -137,12 +137,36 @@ def sidebar_widgets(iteration_id: str):
         iteration_graph.set_metadata(iteration_id, "editable", editable)
         st.rerun()
 
+    # Show Previous Iteration Details
+    current_iteration_depth = iteration_graph.iteration_depth(iteration_id)
+    if current_iteration_depth == 2:
+        current_show_prev_iter_details: bool = iteration_graph.get_metadata(
+            iteration_id, "show_prev_iter_details"
+        )
+
+        show_prev_iter_details = st.checkbox(
+            label="Show Previous Iteration Details",
+            value=current_show_prev_iter_details,
+            help="Show Previous Iteration Details",
+        )
+
+        if show_prev_iter_details != current_show_prev_iter_details:
+            iteration_graph.set_metadata(
+                iteration_id, "show_prev_iter_details", show_prev_iter_details
+            )
+            st.rerun()
+
 
 def grid_editor_widget(iteration_id: str, key: int, default: bool = False):
     session: Session = st.session_state["session"]
     iteration_graph = session.iteration_graph
 
     iteration = iteration_graph.iterations[iteration_id]
+    show_prev_iter_details = iteration_graph.get_metadata(
+        iteration_id, "show_prev_iter_details"
+    )
+    current_iteration_depth = iteration_graph.iteration_depth(iteration_id)
+    show_prev_iter_details = show_prev_iter_details and current_iteration_depth == 2
 
     if default:
         st.markdown("##### Default Grid")
@@ -222,6 +246,12 @@ def grid_editor_widget(iteration_id: str, key: int, default: bool = False):
                 subset=idx[row_index, col_index],
             )
 
+    # These Magic numbers are result of extensive experimentation.
+    # Please don't change these 🙏.
+
+    if show_prev_iter_details:
+        st.container(height=20, border=False)
+
     # Grid Editor
     key = f"{'Default' if default else 'Editable'} Grid-{iteration.id}-{key}"
     edited_grid = st.data_editor(
@@ -230,6 +260,9 @@ def grid_editor_widget(iteration_id: str, key: int, default: bool = False):
         hide_index=True,
         use_container_width=True,
         key=key,
+        height=int(min((len(grid_df) + 1) * 35.5, 364))
+        if show_prev_iter_details
+        else None,
     )
 
     if default:
@@ -335,6 +368,11 @@ def grid_metric_widget(
     iteration = iteration_graph.iterations[iteration_id]
 
     scalars_enabled = iteration_graph.get_metadata(iteration_id, "scalars_enabled")
+    show_prev_iter_details = iteration_graph.get_metadata(
+        iteration_id, "show_prev_iter_details"
+    )
+    current_iteration_depth = iteration_graph.iteration_depth(iteration_id)
+    show_prev_iter_details = show_prev_iter_details and current_iteration_depth == 2
     metric_name = metric_summary.name
     risk_tier_details, _ = get_risk_tier_details(iteration.id, recheck=False)
 
@@ -346,22 +384,36 @@ def grid_metric_widget(
         iteration_risk_tier_grid = iteration.risk_tier_grid
 
     # Index
-    groups = pd.DataFrame({RangeColumn.GROUPS: iteration_groups})
-    grid_index = groups.copy()
+    if show_prev_iter_details:
+        grp_col = ("", str(RangeColumn.GROUPS))
+    else:
+        grp_col = str(RangeColumn.GROUPS)
+
+    grid_index = pd.DataFrame({grp_col: iteration_groups})
 
     if show_group_details:
+        lb_col = (
+            ("", str(RangeColumn.LOWER_BOUND))
+            if show_prev_iter_details
+            else str(RangeColumn.LOWER_BOUND)
+        )
+        ub_col = (
+            ("", str(RangeColumn.UPPER_BOUND))
+            if show_prev_iter_details
+            else str(RangeColumn.UPPER_BOUND)
+        )
+        cat_col = (
+            ("", str(RangeColumn.CATEGORIES))
+            if show_prev_iter_details
+            else str(RangeColumn.CATEGORIES)
+        )
+
         if iteration.var_type == VariableType.NUMERICAL:
-            grid_index[RangeColumn.LOWER_BOUND] = grid_index[RangeColumn.GROUPS].map(
-                lambda bounds: bounds[0]
-            )
-            grid_index[RangeColumn.UPPER_BOUND] = grid_index[RangeColumn.GROUPS].map(
-                lambda bounds: bounds[1]
-            )
-            grid_index.drop(columns=[RangeColumn.GROUPS], inplace=True)
+            grid_index[lb_col] = grid_index[grp_col].map(lambda bounds: bounds[0])
+            grid_index[ub_col] = grid_index[grp_col].map(lambda bounds: bounds[1])
+            grid_index.drop(columns=[grp_col], inplace=True)
         else:
-            grid_index.rename(
-                columns={RangeColumn.GROUPS: RangeColumn.CATEGORIES}, inplace=True
-            )
+            grid_index.rename(columns={grp_col: cat_col}, inplace=True)
 
     grid_index.rename_axis(index=GridColumn.GROUP_INDEX, inplace=True)
 
@@ -396,12 +448,37 @@ def grid_metric_widget(
 
         metric_summary = metric_summary[metric_name]
 
-    metric_summary_grid = (
-        metric_summary.to_frame()
-        .unstack(1)
-        .droplevel(0, axis=1)
-        .rename(columns=risk_tier_details[RTDetCol.RISK_TIER])
-    )
+    metric_summary_grid = metric_summary.to_frame().unstack(1).droplevel(0, axis=1)
+
+    if show_prev_iter_details:
+        prev_iteration = iteration_graph.iterations[
+            iteration_graph.get_parent(iteration_id)
+        ]
+        prev_iteration_groups = prev_iteration.groups
+
+        if iteration.var_type == VariableType.NUMERICAL:
+            prev_iteration_groups_str = prev_iteration_groups.map(
+                lambda bounds: f"({bounds[0]}, {bounds[1]}]"
+            )
+        else:
+            prev_iteration_groups_str = prev_iteration_groups.map(
+                lambda items: ", ".join(items)
+            )
+
+        new_columns = [
+            (
+                risk_tier_details.loc[i, RTDetCol.RISK_TIER],
+                prev_iteration_groups_str.loc[i],
+            )
+            for i in metric_summary_grid.columns
+        ]
+        metric_summary_grid.columns = pd.MultiIndex.from_tuples(new_columns)
+    else:
+        new_columns = {
+            i: risk_tier_details.loc[i, RTDetCol.RISK_TIER]
+            for i in metric_summary_grid.columns
+        }
+        metric_summary_grid.rename(columns=new_columns, inplace=True)
 
     metric_summary_grid = grid_index.merge(
         metric_summary_grid,
@@ -410,20 +487,23 @@ def grid_metric_widget(
         right_index=True,
     )
 
-    metric_summary_grid = metric_summary_grid.drop(
-        columns=[RangeColumn.GROUPS], errors="ignore"
-    )
+    metric_summary_grid = metric_summary_grid.drop(columns=[grp_col], errors="ignore")
 
     idx = pd.IndexSlice
     metric_summary_grid_styled = metric_summary_grid.style
 
     for row_index in metric_summary_grid.index:
         for col_label in metric_summary_grid.columns:
-            if col_label not in risk_tier_details[RTDetCol.RISK_TIER].to_list():
+            if isinstance(col_label, tuple):
+                rt_name, _ = col_label
+            else:
+                rt_name = col_label
+
+            if rt_name not in risk_tier_details[RTDetCol.RISK_TIER].to_list():
                 continue
 
             col_index = risk_tier_details.loc[
-                risk_tier_details[RTDetCol.RISK_TIER] == col_label
+                risk_tier_details[RTDetCol.RISK_TIER] == rt_name
             ].index[0]
             rt_label = iteration_risk_tier_grid.loc[row_index, col_index]
 

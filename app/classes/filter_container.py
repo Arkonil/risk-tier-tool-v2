@@ -1,9 +1,7 @@
-import re
 import typing as t
 
 import pandas as pd
 
-from classes.constants import VariableType
 from classes.data import Data
 from classes.filter import Filter
 from classes.utils import integer_generator
@@ -66,11 +64,7 @@ class FilterContainer:
         new_filter.validate_query(available_columns=data.sample_df.columns)
 
         # Creating mask
-        pattern = re.compile(r"(.+) \((Numerical|Categorical)\)")
-        df = data.load_columns(
-            column_names=new_filter.used_columns,
-            column_types=[VariableType.NUMERICAL] * len(new_filter.used_columns),
-        ).rename(columns=lambda s: pattern.match(s).group(1))
+        df = data.load_columns(column_names=new_filter.used_columns)
         new_filter.create_mask(df)
 
         self._verified_filters[query] = new_filter

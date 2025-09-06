@@ -81,6 +81,7 @@ class IterationMetadata(t.TypedDict):
     split_view_enabled: bool
     loss_rate_type: LossRateTypes
     filters: set[str]
+    show_prev_iter_details: bool
 
 
 IterationMetadataKeys = t.Literal[
@@ -168,6 +169,7 @@ class DefaultOptions(Singleton):
             "scalars_enabled": True,
             "split_view_enabled": True,
             "loss_rate_type": LossRateTypes.DLR,
+            "show_prev_iter_details": True,
         }
 
 

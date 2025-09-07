@@ -132,10 +132,10 @@ def comparison_view_widget():
                 iteration_id=iteration_id,
                 default=is_default,
                 editable=False,
-                scalars_enabled=summ_state.ov_scalars_enabled,
+                scalars_enabled=summ_state.cv_scalars_enabled,
                 metric_names=metric_names,
                 key=i,
-                filter_ids=summ_state.ov_filters,
+                filter_ids=summ_state.cv_filters,
             )
 
 

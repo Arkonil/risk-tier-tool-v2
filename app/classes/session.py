@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from classes.data import Data
+from classes.explorer import Explorer
 from classes.filter_container import FilterContainer
 from classes.metric import Metric
 from classes.metric_container import MetricContainer
@@ -40,6 +41,7 @@ class Session:
 
     def reset(self):
         self.data.reset()
+        self.data_explorer = Explorer()
         self.dlr_scalars = Scalar(LossRateTypes.DLR)
         self.ulr_scalars = Scalar(LossRateTypes.ULR)
         self.iteration_graph = IterationGraph()
@@ -63,6 +65,7 @@ class Session:
 
     def to_rt_zip_buffer(self) -> io.BytesIO:
         data_json = self.data.to_dict()
+        data_explorer_json = self.data_explorer.to_dict()
         dlr_scalars_json = self.dlr_scalars.to_dict()
         ulr_scalars_json = self.ulr_scalars.to_dict()
         iteration_graph_json = self.iteration_graph.to_dict()
@@ -75,6 +78,10 @@ class Session:
 
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
             zipf.writestr("data.json", json.dumps(data_json, indent=4, cls=NpEncoder))
+            zipf.writestr(
+                "data_explorer.json",
+                json.dumps(data_explorer_json, indent=4, cls=NpEncoder),
+            )
             zipf.writestr(
                 "dlr_scalars.json",
                 json.dumps(dlr_scalars_json, indent=4, cls=NpEncoder),
@@ -157,6 +164,12 @@ class Session:
             else:
                 data = Data()
 
+            if data_exists:
+                data_explorer_json = json.loads(zipf.read("data_explorer.json"))
+                data_explorer = Explorer.from_dict(data_explorer_json)
+            else:
+                data_explorer = Explorer()
+
             if data_exists and graph_exists:
                 iteration_graph_json = json.loads(zipf.read("iteration_graph.json"))
                 iteration_graph = IterationGraph.from_dict(iteration_graph_json, data)
@@ -218,6 +231,7 @@ class Session:
             self.reset()
 
             self.data = data
+            self.data_explorer = data_explorer
             self.dlr_scalars = dlr_scalars
             self.ulr_scalars = ulr_scalars
             self.iteration_graph = iteration_graph

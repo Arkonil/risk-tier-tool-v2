@@ -83,9 +83,12 @@ smmap==5.0.2
 streamlit==1.48.1
     # via
     #   risk-tier-tool (pyproject.toml)
+    #   streamlit-antd-components
     #   streamlit-code-editor
     #   streamlit-flow-component
     #   streamlit-sortables
+streamlit-antd-components==0.3.2
+    # via risk-tier-tool (pyproject.toml)
 streamlit-code-editor==0.1.22
     # via risk-tier-tool (pyproject.toml)
 streamlit-flow-component==1.6.1

@@ -14,6 +14,8 @@ class Data:
     This class stores the data and all reading attributes
     """
 
+    _pattern = re.compile(r"(.+) \((Numerical|Categorical)\)")
+
     def __init__(self):
         self.reset()
 
@@ -384,8 +386,11 @@ class Data:
         raise IndexError("Column not found")
 
     def load_columns(
-        self, column_names: list[str], column_types: list[VariableType]
+        self, column_names: list[str], column_types: list[VariableType] = None
     ) -> pd.DataFrame:
+        if column_types is None:
+            column_types = [VariableType.NUMERICAL for _ in column_names]
+
         if len(column_names) != len(column_types):
             raise ValueError("column_names and column_types must have the same length")
 
@@ -405,19 +410,17 @@ class Data:
         else:
             final_df = pd.DataFrame()
 
-        if not remaining_columns:
-            return final_df
+        if remaining_columns:
+            remaining_column_names = list(map(lambda c: c[0], remaining_columns))
 
-        remaining_column_names = list(map(lambda c: c[0], remaining_columns))
-
-        new_columns = self._read_data(
-            self.filepath,
-            self.read_mode,
-            self.delimiter,
-            self.sheet_name,
-            self.header_row,
-            usecols=remaining_column_names,
-        )
+            new_columns = self._read_data(
+                self.filepath,
+                self.read_mode,
+                self.delimiter,
+                self.sheet_name,
+                self.header_row,
+                usecols=remaining_column_names,
+            )
 
         for column_name, column_type in remaining_columns:
             preferred_column_name = f"{column_name} ({column_type.capitalize()})"
@@ -453,10 +456,14 @@ class Data:
                 )
                 final_df[preferred_column_name] = self.df[preferred_column_name].copy()
 
+        final_df.rename(columns=lambda s: self._pattern.match(s).group(1), inplace=True)
+
         return final_df
 
     def load_column(
-        self, column_name: str | None, column_type: VariableType
+        self,
+        column_name: str | None,
+        column_type: VariableType = VariableType.NUMERICAL,
     ) -> pd.Series:
         if column_name is None:
             return pd.Series(index=np.arange(self.df_size))
@@ -506,10 +513,7 @@ class Data:
 
         columns_to_load = list(set(used_columns) - set(base_df.columns))
 
-        pattern = re.compile(r"(.+) \((Numerical|Categorical)\)")
-        loaded_data = self.load_columns(
-            columns_to_load, [VariableType.NUMERICAL] * len(columns_to_load)
-        ).rename(columns=lambda s: pattern.match(s).group(1))
+        loaded_data = self.load_columns(columns_to_load)
 
         base_df = pd.concat([base_df, loaded_data], axis=1)
 

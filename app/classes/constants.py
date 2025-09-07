@@ -110,6 +110,7 @@ class AssetPath(StrEnum):
     NO_DATA_ERROR_ICON = "app/assets/no-data-error.svg"
     NO_FILTER_ICON = "app/assets/no-filter.svg"
     NO_METRIC_ICON = "app/assets/no-metric.svg"
+    NO_ITERATION_ICON = "app/assets/no-iteration.svg"
     STYLESHEET = "app/assets/style.css"
     ARROW_RIGHT = "app/assets/arrow-right.svg"
     SESSION_EXPORT_DOC = "app/assets/session_export_doc.md"

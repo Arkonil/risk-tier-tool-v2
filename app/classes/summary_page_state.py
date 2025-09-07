@@ -25,6 +25,13 @@ class SummaryPageState:
         self.cv_view_mode: t.Literal["column", "row"] = "column"
 
         # Crosstab Page Data
+        self.ct_metrics = DefaultOptions().default_metrics
+        self.ct_scalars_enabled = True
+        self.ct_filters: set[str] = set()
+        self.ct_selected_iteration_id: str = None
+        self.ct_selected_iteration_default: bool = None
+        self.ct_variable: str = None
+        self.ct_numeric_variable_bin_count: int = 10
 
     def to_dict(self) -> dict[str, t.Any]:
         """Serializes the HomePageState object to a dictionary."""
@@ -41,6 +48,13 @@ class SummaryPageState:
             "cv_filters": list(self.cv_filters),
             "cv_selected_iterations": self.cv_selected_iterations,
             "cv_view_mode": self.cv_view_mode,
+            "ct_metrics": self.ct_metrics,
+            "ct_scalars_enabled": self.ct_scalars_enabled,
+            "ct_filters": list(self.ct_filters),
+            "ct_selected_iteration_id": self.ct_selected_iteration_id,
+            "ct_selected_iteration_default": self.ct_selected_iteration_default,
+            "ct_variable": self.ct_variable,
+            "ct_numeric_variable_bin_count": self.ct_numeric_variable_bin_count,
         }
 
     @classmethod
@@ -71,5 +85,18 @@ class SummaryPageState:
             ],
         )
         instance.cv_view_mode = data.get("cv_view_mode", "column")
+
+        # Crosstab Page Data
+        instance.ct_metrics = data.get("ct_metrics", DefaultOptions().default_metrics)
+        instance.ct_scalars_enabled = data.get("ct_scalars_enabled", True)
+        instance.ct_filters = set(data.get("ct_filters", []))
+        instance.ct_selected_iteration_id = data.get("ct_selected_iteration_id", None)
+        instance.ct_selected_iteration_default = data.get(
+            "ct_selected_iteration_default", None
+        )
+        instance.ct_variable = data.get("ct_variable", None)
+        instance.ct_numeric_variable_bin_count = data.get(
+            "ct_numeric_variable_bin_count", 10
+        )
 
         return instance

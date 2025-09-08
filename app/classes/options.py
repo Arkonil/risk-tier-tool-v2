@@ -49,6 +49,7 @@ class Options:
     def set_default_values(self):
         self.risk_tier_details = default_options.risk_tier_details
         self.max_iteration_depth = default_options.max_iteration_depth
+        self.max_categorical_unique = default_options.max_categorical_unique
 
     def add_risk_tier_row(self):
         self.risk_tier_details = pd.concat(

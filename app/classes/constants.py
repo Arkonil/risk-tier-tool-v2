@@ -144,6 +144,7 @@ class DefaultOptions(Singleton):
         self._risk_tier_details.columns = self._risk_tier_details.columns.map(str)
 
         self._max_iteration_depth = 10
+        self._max_categorical_unique = 20
         self._default_metrics = [
             DefaultMetrics.VOLUME,
             DefaultMetrics.UNT_BAD_RATE,
@@ -157,6 +158,10 @@ class DefaultOptions(Singleton):
     @property
     def max_iteration_depth(self) -> int:
         return self._max_iteration_depth
+
+    @property
+    def max_categorical_unique(self) -> int:
+        return self._max_categorical_unique
 
     @property
     def default_metrics(self) -> pd.DataFrame:

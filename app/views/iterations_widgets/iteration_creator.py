@@ -60,7 +60,8 @@ def iteration_creation_widget() -> None:
         st.markdown("##### Variable Type")
         variable_dtype = st.selectbox(
             label="Variable Type",
-            options=list(map(lambda m: m.value, VariableType)),
+            options=[VariableType.NUMERICAL, VariableType.CATEGORICAL],
+            index=0,
             label_visibility="collapsed",
         )
 
@@ -90,13 +91,14 @@ def iteration_creation_widget() -> None:
 
             if iteration_graph.current_iter_create_mode == IterationType.DOUBLE:
                 auto_rank_ordering = st.checkbox("Auto Rank Ordering", value=True)
-                upgrade_cont, downgrade_cont = st.columns(2)
+                upgrade_cont_t, downgrade_cont_t = st.columns(2)
+                upgrade_cont_i, downgrade_cont_i = st.columns(2)
 
-                upgrade_cont.markdown(
+                upgrade_cont_t.markdown(
                     "##### Upgrade Limit",
                     help="Upgrade Current RT to a one with lower risk. Example RT2 -> RT1.",
                 )
-                upgrade_limit = upgrade_cont.number_input(
+                upgrade_limit = upgrade_cont_i.number_input(
                     label="Upgrade Limit",
                     min_value=0,
                     step=1,
@@ -106,11 +108,11 @@ def iteration_creation_widget() -> None:
                     value=0,
                 )
 
-                downgrade_cont.markdown(
+                downgrade_cont_t.markdown(
                     "##### Downgrade Limit",
                     help="Downgrade Current RT to a one with lower risk. Example RT2 -> RT4.",
                 )
-                downgrade_limit = downgrade_cont.number_input(
+                downgrade_limit = downgrade_cont_i.number_input(
                     label="Downgrade Limit",
                     min_value=0,
                     step=1,
@@ -230,6 +232,18 @@ def iteration_creation_widget() -> None:
 
     errors = []
 
+    variable = data.load_column(variable_name, variable_dtype)
+
+    is_categorical = (variable_dtype == VariableType.CATEGORICAL) or (
+        not pd.api.types.is_numeric_dtype(variable)
+    )
+
+    if is_categorical and variable.nunique() > options.max_categorical_unique:
+        errors.append(
+            f"Error: Variable `{variable.name}` is not numerical and has more than {options.max_categorical_unique} unique values. "
+            f"Total unique values: {variable.nunique()}",
+        )
+
     if auto_band:
         if loss_rate_type == LossRateTypes.DLR and (
             data.var_dlr_wrt_off is None or data.var_avg_bal is None
@@ -266,9 +280,6 @@ def iteration_creation_widget() -> None:
         disabled=bool(errors),
         icon=":material/add:",
     ):
-        variable_dtype = VariableType(variable_dtype)
-        variable = session.data.load_column(variable_name, variable_dtype)
-
         if not pd.api.types.is_numeric_dtype(variable):
             variable_dtype = VariableType.CATEGORICAL
 

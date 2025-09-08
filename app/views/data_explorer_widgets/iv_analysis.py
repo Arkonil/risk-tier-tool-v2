@@ -50,6 +50,7 @@ def iv_analysis_widget():
     data = session.data
     de = session.data_explorer
     fc = session.filter_container
+    options = session.options
 
     st.markdown("####  Information Value")
     st.write("")
@@ -86,6 +87,8 @@ def iv_analysis_widget():
         return
 
     target = data.load_column(target_variable)
+    input_variables = data.load_columns(list(variables))
+    mask = fc.get_mask(filter_ids=filter_ids, index=target.index)
 
     if not pd.api.types.is_numeric_dtype(target):
         error_container.error(
@@ -93,7 +96,7 @@ def iv_analysis_widget():
         )
         return
 
-    if not target.isin([0, 1]).all():
+    if not target[mask].isin([0, 1]).all():
         values = list(set(target.drop_duplicates().to_list()) - {0, 1})
         if len(values) > 10:
             values_str = ", ".join(map(str, values[:9] + ["..."] + values[-1:]))
@@ -105,9 +108,17 @@ def iv_analysis_widget():
         )
         return
 
-    input_variables = data.load_columns(list(variables))
-
-    mask = fc.get_mask(filter_ids=filter_ids, index=target.index)
+    for variable in variables:
+        if (
+            not pd.api.types.is_numeric_dtype(input_variables[variable])
+            and input_variables[variable].nunique() > options.max_categorical_unique
+        ):
+            error_container.warning(
+                f"Warning: Variable `{variable}` is not numerical and has more than {options.max_categorical_unique} unique values. "
+                f"Total unique values: {input_variables[variable].nunique()}",
+                icon=":material/warning:",
+            )
+            input_variables.drop(columns=[variable], inplace=True)
 
     iv_values = []
 

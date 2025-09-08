@@ -9,18 +9,6 @@ def iv_bar_chart(data: list[tuple[str, float]]):
     data = pd.DataFrame(data, columns=["variable", "iv"])
     data.sort_values("iv", ascending=False, inplace=True)
 
-    # Define a limit for the primary y-axis. Values above this will be handled specially.
-    y_axis_limit = 0.6
-
-    # Create a new column for plotting, where IV values are clipped at the axis limit.
-    data["iv_display"] = data["iv"].clip(upper=y_axis_limit)
-
-    # --- Chart Layers ---
-
-    # 1. Base Layer: The main bar chart
-    # The bars are sorted by the original 'iv' value in descending order.
-    color_values = ["#d8544f", "#8344ca", "#44c1ca", "#5cb75c"]
-
     x = alt.X(
         "variable:N",
         sort=alt.EncodingSortField(field="iv", op="max", order="descending"),
@@ -31,32 +19,8 @@ def iv_bar_chart(data: list[tuple[str, float]]):
     )
 
     y = alt.Y(
-        "iv_display:Q",
+        "iv:Q",
         axis=alt.Axis(title="Information Value (IV)"),
-        scale=alt.Scale(domain=[0, y_axis_limit + 0.05]),
-    )
-
-    lower_bar_colors = alt.Color(
-        "iv_display:Q",
-        title="",
-        scale=alt.Scale(
-            type="threshold",
-            domain=[0.02, 0.1, 0.3, 0.5],
-            range=color_values + ["transparent"],
-        ),
-    ).legend(labelOffset=10, format=".2f")
-
-    higher_bar_colors = alt.Gradient(
-        gradient="linear",
-        x1=1,
-        x2=1,
-        y1=1,
-        y2=0,
-        stops=[
-            alt.GradientStop(color="hsla(35, 84%, 62%, 100%)", offset=0),
-            alt.GradientStop(color="hsla(35, 84%, 62%, 70%)", offset=0.7),
-            alt.GradientStop(color="hsla(35, 84%, 62%, 0%)", offset=1),
-        ],
     )
 
     tooltip = [
@@ -64,55 +28,19 @@ def iv_bar_chart(data: list[tuple[str, float]]):
         alt.Tooltip("iv", title="Information Value", format=".2f"),
     ]
 
-    lower_bars = (
-        alt.Chart(data)
-        .mark_bar()
-        .encode(x=x, y=y, color=lower_bar_colors, tooltip=tooltip)
-    )
-
-    # 2. Data for bars that exceed the y-axis limit
-    break_data = data[data["iv"] > y_axis_limit].copy()
-
-    higher_bars = (
-        alt.Chart(break_data)
-        .mark_bar(color=higher_bar_colors)
-        .encode(x=x, y=y, tooltip=tooltip)
-    )
-
-    # 3. Rule Layer: Horizontal reference lines
-    rule_df = pd.DataFrame({"y": [0.02, 0.1, 0.3, 0.5]})
-
-    rules = (
-        alt.Chart(rule_df)
-        .mark_rule(strokeWidth=1)
-        .encode(
-            y="y:Q",
-            strokeDash=alt.condition(
-                alt.datum.y != 0.5, alt.value([5, 5]), alt.value([1, 0])
-            ),
-            color=alt.Color(
-                "y:Q", scale=alt.Scale(domain=[0.02, 0.1, 0.3, 0.5], range=color_values)
-            ).legend(None),
-        )
-    )
-
-    # 4. Text Layer: Display the actual IV value above the clipped bars
     text_labels = (
-        alt.Chart(break_data)
+        alt.Chart(data)
         .mark_text(
             align="center",
-            dy=-15,  # Position text above the break symbol
-            # fontSize=11,
+            dy=-15,
             color="white" if st.context.theme.type == "dark" else "black",
         )
         .encode(x=x, y=y, text=alt.Text("iv:Q", format=".2f"))
     )
 
-    chart = (
-        (lower_bars + higher_bars + text_labels + rules)
-        .configure_axis(grid=False)
-        .properties(height=500)
-    )
+    bars = alt.Chart(data).mark_bar(color="#44c1ca").encode(x=x, y=y, tooltip=tooltip)
+
+    chart = (bars + text_labels).configure_axis(grid=False).properties(height=500)
 
     return chart
 

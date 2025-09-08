@@ -1,6 +1,6 @@
 import typing as t
 
-from classes.constants import DefaultOptions
+from classes.constants import DefaultOptions, VariableType
 
 
 class SummaryPageState:
@@ -31,6 +31,7 @@ class SummaryPageState:
         self.ct_selected_iteration_id: str = None
         self.ct_selected_iteration_default: bool = None
         self.ct_variable: str = None
+        self.ct_variable_type: VariableType = VariableType.NUMERICAL
         self.ct_numeric_variable_bin_count: int = 10
 
     def to_dict(self) -> dict[str, t.Any]:
@@ -54,6 +55,7 @@ class SummaryPageState:
             "ct_selected_iteration_id": self.ct_selected_iteration_id,
             "ct_selected_iteration_default": self.ct_selected_iteration_default,
             "ct_variable": self.ct_variable,
+            "ct_variable_type": str(self.ct_variable_type),
             "ct_numeric_variable_bin_count": self.ct_numeric_variable_bin_count,
         }
 
@@ -95,6 +97,9 @@ class SummaryPageState:
             "ct_selected_iteration_default", None
         )
         instance.ct_variable = data.get("ct_variable", None)
+        instance.ct_variable_type = VariableType(
+            data.get("ct_variable_type", VariableType.NUMERICAL.value)
+        )
         instance.ct_numeric_variable_bin_count = data.get(
             "ct_numeric_variable_bin_count", 10
         )

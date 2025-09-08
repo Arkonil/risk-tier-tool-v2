@@ -58,6 +58,7 @@ def crosstab_widget():
     fc = session.filter_container
     iteration_graph = session.iteration_graph
     summ_state = session.summary_page_state
+    options = session.options
     all_metrics = session.get_all_metrics()
 
     with st.sidebar:
@@ -69,7 +70,8 @@ def crosstab_widget():
     ]
     metrics = [all_metrics[metric_name] for metric_name in metric_names]
 
-    iteration_selector_container, variable_selector_container = st.columns(2)
+    iteration_selector_container = st.container()
+    variable_selector_container = st.container()
     crosstab_container = st.container()
     error_container = st.container()
 
@@ -89,7 +91,9 @@ def crosstab_widget():
             st.rerun()
 
     with variable_selector_container:
-        column_name = st.selectbox(
+        col1, col2, col3 = st.columns(3)
+
+        column_name = col1.selectbox(
             label="Variable",
             options=data.sample_df.columns,
             index=data.sample_df.columns.get_loc(summ_state.ct_variable)
@@ -101,25 +105,52 @@ def crosstab_widget():
             summ_state.ct_variable = column_name
             st.rerun()
 
-        if pd.api.types.is_numeric_dtype(data.sample_df[summ_state.ct_variable]):
-            bin_count = st.number_input(
-                label="Number of Bins",
-                value=summ_state.ct_numeric_variable_bin_count,
-                min_value=1,
-                max_value=100,
+        column_type = col2.selectbox(
+            label="Variable Type",
+            options=[VariableType.NUMERICAL, VariableType.CATEGORICAL],
+            index=list(VariableType).index(summ_state.ct_variable_type),
+        )
+
+        if column_type != summ_state.ct_variable_type:
+            summ_state.ct_variable_type = column_type
+            st.rerun()
+
+        variable = data.load_column(summ_state.ct_variable, summ_state.ct_variable_type)
+
+        is_categorical = (summ_state.ct_variable_type == VariableType.CATEGORICAL) or (
+            not pd.api.types.is_numeric_dtype(variable)
+        )
+
+        label = "Number of Bins"
+        if is_categorical:
+            label += "(disabled for categorical variables)"
+
+        bin_count = col3.number_input(
+            label=label,
+            value=summ_state.ct_numeric_variable_bin_count,
+            step=1,
+            min_value=1,
+            max_value=100,
+            disabled=is_categorical,
+        )
+
+        if bin_count != summ_state.ct_numeric_variable_bin_count:
+            summ_state.ct_numeric_variable_bin_count = bin_count
+            st.rerun()
+
+        if is_categorical and variable.nunique() > options.max_categorical_unique:
+            error_container.error(
+                f"Error: Variable `{variable.name}` is not numerical and has more than {options.max_categorical_unique} unique values. "
+                f"Total unique values: {variable.nunique()}",
+                icon=":material/error:",
             )
+            return
 
-            if bin_count != summ_state.ct_numeric_variable_bin_count:
-                summ_state.ct_numeric_variable_bin_count = bin_count
-                st.rerun()
-
-    if pd.api.types.is_numeric_dtype(data.sample_df[summ_state.ct_variable]):
+    if not is_categorical:
         variable = pd.cut(
-            data.load_column(summ_state.ct_variable, VariableType.NUMERICAL),
+            variable,
             bins=summ_state.ct_numeric_variable_bin_count,
         )
-    else:
-        variable = data.load_column(summ_state.ct_variable, VariableType.CATEGORICAL)
 
     variable = variable.map(str).convert_dtypes()
     variable.name = "__VARIABLE_PLACEHOLDER_NAME__"
@@ -136,7 +167,6 @@ def crosstab_widget():
         errors = iteration_results["errors"]
         warnings = iteration_results["warnings"]
         risk_tier_column = iteration_results["risk_tier_column"]
-        # risk_tier_column = risk_tier_column.map(risk_tier_details[RTDetCol.RISK_TIER])
 
         if len(errors) > 0:
             with error_container:

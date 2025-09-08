@@ -20,6 +20,9 @@ def calculate_iv(variable: pd.Series, target: pd.Series) -> float:
     if not pd.api.types.is_numeric_dtype(target) or not target.isin([0, 1]).all():
         raise ValueError("Target variable must be binary (0 or 1).")
 
+    if pd.api.types.is_numeric_dtype(variable):
+        variable = pd.qcut(variable, q=20, duplicates="drop")
+
     # Create a DataFrame for convenience
     df = pd.DataFrame({"variable": variable, "target": target}).dropna()
 
@@ -34,7 +37,7 @@ def calculate_iv(variable: pd.Series, target: pd.Series) -> float:
         return 0.0  # IV is undefined or 0 if one class is missing
 
     # Group by the variable and calculate counts
-    grouped = df.groupby("variable")["target"].agg(
+    grouped = df.groupby("variable", observed=True)["target"].agg(
         good_count=lambda x: (x == 0).sum(),
         bad_count=lambda x: (x == 1).sum(),
     )

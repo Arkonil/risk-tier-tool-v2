@@ -435,6 +435,9 @@ class IterationGraph:
                     cut_points = list(sorted(list(set(sum(cut_points, [])))))
                     pairs = itertools.pairwise(cut_points)
 
+                    if not hv_imp_hr:
+                        pairs = list(reversed(list(pairs)))
+
                     groups = pd.Series(pairs, name=RangeColumn.GROUPS)
                     risk_tier_grid = pd.DataFrame(
                         index=groups.index, columns=risk_tier_details.index
@@ -458,14 +461,7 @@ class IterationGraph:
                                 risk_tier_grid.loc[i, j] = j
 
                     if auto_rank_ordering:
-                        risk_tier_grid = risk_tier_grid.cummax(axis=1)
-
-                        if hv_imp_hr:
-                            risk_tier_grid = risk_tier_grid.cummax(axis=0)
-                        else:
-                            risk_tier_grid = (
-                                risk_tier_grid.iloc[::-1].cummax(axis=0).iloc[::-1]
-                            )
+                        risk_tier_grid = risk_tier_grid.cummax(axis=1).cummax(axis=0)
 
                         i = 1
                         while i < risk_tier_grid.shape[0]:

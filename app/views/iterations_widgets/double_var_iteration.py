@@ -323,6 +323,7 @@ def calculate_summ_df(iteration_id: str, default: bool = False):
     all_metrics = session.get_all_metrics()
 
     iteration = iteration_graph.iterations[iteration_id]
+    risk_tier_details, _ = get_risk_tier_details(iteration.id, recheck=False)
 
     metric_names = iteration_graph.get_metadata(iteration.id, "metrics")
     metric_names = [
@@ -342,9 +343,9 @@ def calculate_summ_df(iteration_id: str, default: bool = False):
         groupby_variable_1=curr_iteration_results["risk_tier_column"].rename(
             GridColumn.GROUP_INDEX
         ),
-        groupby_variable_2=prev_iteration_results["risk_tier_column"].rename(
-            GridColumn.PREV_RISK_TIER
-        ),
+        groupby_variable_2=prev_iteration_results["risk_tier_column"]
+        .rename(GridColumn.PREV_RISK_TIER)
+        .astype(pd.CategoricalDtype(risk_tier_details.index)),
         data_filter=fc.get_mask(
             iteration_graph.get_metadata(iteration.id, "filters"),
             index=data.df.index,

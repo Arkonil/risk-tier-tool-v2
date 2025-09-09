@@ -522,10 +522,13 @@ class Data:
 
         # Grouping the DataFrame by the specified variables and aggregating the metrics
         groupby_obj = filtered_df.groupby(groupby_variables, observed=False)
+        all_index = groupby_obj.count().index
         metric_results = []
 
         for metric in metrics:
-            result = groupby_obj.apply(metric.calculate, include_groups=False)
+            result = groupby_obj.apply(metric.calculate, include_groups=False).reindex(
+                all_index
+            )
             result.name = metric.name
             metric_results.append(result)
 

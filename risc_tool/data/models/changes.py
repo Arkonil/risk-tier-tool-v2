@@ -75,9 +75,16 @@ class ChangeNotifier(ChangeTracker):
         if callback_id in self._subscribers:
             del self._subscribers[callback_id]
 
-    def notify_subscribers(self, change_ids: ChangeIDs):
+    def notify_subscribers(self, change_ids: ChangeIDs | None = None):
+        new_change_id: ChangeID = (self._signature, uuid4())
+
+        if change_ids is None:
+            all_change_ids: ChangeIDs = {new_change_id}
+        else:
+            all_change_ids: ChangeIDs = change_ids | {new_change_id}
+
         for callback in self._subscribers.values():
-            callback(change_ids)
+            callback(all_change_ids)
 
     def _on_dependency_update(self, change_ids: ChangeIDs):
         has_changed = super()._on_dependency_update(change_ids)

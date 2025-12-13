@@ -80,8 +80,10 @@ class DataExplorerTabName(StrEnum, metaclass=StrEnumMeta):
 
 
 class Signature(StrEnum):
+    BASE_REPOSITORY = "BASE_REPOSITORY"
     CHNAGE_TRACKER = "CHNAGE_TRACKER"
     CHANGE_NOTIFIER = "CHANGE_NOTIFIER"
+    DATA_REPOSITORY = "DATA_REPOSITORY"
 
 
 __all__ = [

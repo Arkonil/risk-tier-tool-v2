@@ -1,0 +1,192 @@
+import re
+import typing as t
+
+import pandas as pd
+from pydantic import BaseModel, ConfigDict, Field, FilePath
+
+from risc_tool.data.models.enums import VariableType
+from risc_tool.data.services.local_data_import import import_data
+
+
+class DataSource(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+        serialize_by_alias=True,
+        validate_by_alias=True,
+    )
+
+    _pattern = re.compile(r"(.+) \((Numerical|Categorical)\)")
+
+    uid: str
+    label: t.Annotated[str, Field(min_length=1)]
+    filepath: FilePath
+    read_mode: t.Literal["CSV", "EXCEL"] = "CSV"
+    delimiter: str = ","
+    sheet_name: str = "0"
+    header_row: int = 0
+    sample_row_count: int = 100
+    df_size: int | None = None
+
+    def model_post_init(self, context: t.Any) -> None:
+        self._sample_df: pd.DataFrame | None = None
+        self._df: pd.DataFrame = pd.DataFrame()
+
+        return super().model_post_init(context)
+
+    @property
+    def sample_loaded(self) -> bool:
+        return self._sample_df is not None
+
+    def validate_read_config(self) -> None:
+        if not self.filepath or not self.filepath.is_file():
+            raise FileNotFoundError(f"File not found: `{self.filepath}`")
+
+        if self.read_mode == "CSV" and self.filepath.suffix.lower() != ".csv":
+            raise ValueError(f"Selected file is not a CSV: `{self.filepath}`")
+
+        if self.read_mode == "EXCEL" and self.filepath.suffix.lower() not in [
+            ".xlsx",
+            ".xls",
+        ]:
+            raise ValueError(f"Selected file is not a EXCEL: `{self.filepath}`")
+
+    def load_sample(self) -> None:
+        self._sample_df = import_data(
+            self.filepath,
+            self.read_mode,
+            self.delimiter,
+            self.sheet_name,
+            self.header_row,
+            self.sample_row_count,
+        ).convert_dtypes()
+
+        self.df_size = len(
+            import_data(
+                self.filepath,
+                self.read_mode,
+                self.delimiter,
+                self.sheet_name,
+                self.header_row,
+                usecols=[0],
+            )
+        )
+
+        self._df = pd.DataFrame()
+
+    def load_data(self, column_names: list[str]) -> pd.DataFrame:
+        return import_data(
+            self.filepath,
+            self.read_mode,
+            self.delimiter,
+            self.sheet_name,
+            self.header_row,
+            usecols=column_names,
+        )
+
+    @property
+    def column_types(self) -> set[tuple[str, VariableType]]:
+        _column_types: set[tuple[str, VariableType]] = set()
+
+        if not self.sample_loaded:
+            return _column_types
+
+        sample_df = t.cast(pd.DataFrame, self._sample_df)
+
+        for column in sample_df.columns:
+            c_type: VariableType = (
+                VariableType.NUMERICAL
+                if pd.api.types.is_numeric_dtype(sample_df[column])
+                else VariableType.CATEGORICAL
+            )
+
+            _column_types.add((column, c_type))
+
+        return _column_types
+
+    def _load_column_from_cache(self, column_name: str, column_type: VariableType):
+        preferred_column_name = f"{column_name} ({column_type.capitalize()})"
+
+        if preferred_column_name in self._df.columns:
+            return self._df[preferred_column_name].copy()
+
+        alternative_column_name = f"{column_name} ({column_type.other.capitalize()})"
+
+        if (
+            column_type == VariableType.CATEGORICAL
+            and alternative_column_name in self._df.columns
+        ):
+            self._df[preferred_column_name] = self._df[alternative_column_name].astype(
+                "category"
+            )
+            return self._df[preferred_column_name].copy()
+
+        if (
+            column_type == VariableType.NUMERICAL
+            and alternative_column_name in self._df.columns
+        ):
+            try:
+                temp_column = pd.to_numeric(
+                    self._df[alternative_column_name], errors="raise"
+                )
+                self._df[preferred_column_name] = temp_column
+                return self._df[preferred_column_name].copy()
+            except ValueError:
+                return self._df[alternative_column_name].copy()
+
+        raise IndexError("Column not found")
+
+    def load_columns(
+        self, column_names: list[str], column_types: list[VariableType]
+    ) -> pd.DataFrame:
+        cached_columns: list[pd.Series] = []
+        remaining_columns: list[tuple[str, VariableType]] = []
+
+        for c_name, c_type in zip(column_names, column_types):
+            try:
+                cached_columns.append(self._load_column_from_cache(c_name, c_type))
+            except IndexError:
+                remaining_columns.append((c_name, c_type))
+
+        if cached_columns:
+            final_df = pd.concat(cached_columns, axis=1)
+        else:
+            final_df = pd.DataFrame()
+
+        new_columns = pd.DataFrame()
+        if remaining_columns:
+            remaining_column_names = [cn for cn, _ in remaining_columns]
+            new_columns = self.load_data(remaining_column_names)
+
+        for c_name, c_type in remaining_columns:
+            preferred_column_name = f"{c_name} ({c_type.capitalize()})"
+            alternative_column_name = f"{c_name} ({c_type.other.capitalize()})"
+
+            if c_type == VariableType.NUMERICAL:
+                try:
+                    temp_column = pd.to_numeric(new_columns[c_name], errors="raise")
+                    self._df[preferred_column_name] = temp_column
+                    final_df[preferred_column_name] = self._df[
+                        preferred_column_name
+                    ].copy()
+                except ValueError:
+                    self._df[alternative_column_name] = new_columns[c_name].astype(
+                        "category"
+                    )
+                    final_df[alternative_column_name] = self._df[
+                        alternative_column_name
+                    ].copy()
+            else:
+                self._df[preferred_column_name] = new_columns[c_name].astype("category")
+                final_df[preferred_column_name] = self._df[preferred_column_name].copy()
+
+        def rename_col(s: str) -> str:
+            if m := self._pattern.match(s):
+                return str(m.group(1))
+            return s
+
+        final_df.rename(columns=rename_col, inplace=True)
+
+        return final_df
+
+
+__all__ = ["DataSource"]

@@ -38,15 +38,6 @@ class DataConfig(BaseModel):
         for col in all_columns:
             self._completion_cache[col] = self.create_completion(col)
 
-        if self.var_unt_wrt_off not in common_columns:
-            self.var_unt_wrt_off = None
-
-        if self.var_dlr_wrt_off not in common_columns:
-            self.var_dlr_wrt_off = None
-
-        if self.var_avg_bal not in common_columns:
-            self.var_avg_bal = None
-
     def get_completions(self, *, columns: list[str] | None = None, common: bool = True):
         if columns is not None:
             return [self._completion_cache[col] for col in columns]

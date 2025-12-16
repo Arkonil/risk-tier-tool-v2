@@ -9,49 +9,10 @@ from pydantic import ValidationError
 from risc_tool.data.models.data_config import DataConfig
 from risc_tool.data.models.data_source import DataSource
 from risc_tool.data.models.enums import Signature, VariableType
+from risc_tool.data.models.exceptions import DataImportError, SampleDataNotLoadedError
 from risc_tool.data.models.metric import Metric
+from risc_tool.data.models.types import ChangeIDs, DataSourceID
 from risc_tool.data.repositories.base import BaseRepository
-
-
-class MissingColumnError(Exception):
-    """
-    Exception raised when a specified column is not found in the data or has an invalid type.
-    """
-
-    def __init__(self, column_name: str):
-        super().__init__(f"Column '{column_name}' not found in data.")
-
-
-class VariableNotNumericError(Exception):
-    """
-    Exception raised when a variable is expected to be numeric but is not.
-    """
-
-    def __init__(self, variable_name: str, actual_type: str):
-        super().__init__(
-            f"Variable '{variable_name}' is not numeric. Found type: {actual_type}."
-        )
-
-
-class DataImportError(Exception):
-    """
-    Exception raised when there is an error during data import.
-    """
-
-    def __init__(self, message: str, data_source: DataSource | None = None):
-        self.message = message
-        self.data_source = data_source
-        super().__init__(self.message)
-
-
-class SampleDataNotLoadedError(Exception):
-    """
-    Exception raised when sample data is not loaded but is required for an operation.
-    """
-
-    def __init__(self, message: str = "Sample data is not loaded."):
-        self.message = message
-        super().__init__(self.message)
 
 
 class DataRepository(BaseRepository):
@@ -66,8 +27,11 @@ class DataRepository(BaseRepository):
     def __init__(self) -> None:
         super().__init__()
 
-        self.data_sources: OrderedDict[str, DataSource] = OrderedDict()
+        self.data_sources: OrderedDict[DataSourceID, DataSource] = OrderedDict()
         self.data_config: DataConfig = DataConfig()
+
+    def on_dependency_update(self, change_ids: ChangeIDs):
+        return
 
     @property
     def sample_loaded(self) -> bool:
@@ -117,9 +81,9 @@ class DataRepository(BaseRepository):
         return self.data_config.get_completions(columns=columns, common=common)
 
     def available_columns(
-        self, data_source_ids: t.Iterable[str]
+        self, data_source_ids: list[DataSourceID]
     ) -> set[tuple[str, VariableType]]:
-        if not self.sample_loaded:
+        if not self.sample_loaded or not data_source_ids:
             return set()
 
         columns = set.intersection(*[
@@ -130,75 +94,23 @@ class DataRepository(BaseRepository):
 
         return columns
 
-    # def validate_metric_input_column(self, column_name: str):
-    #     available_columns = self.available_columns(self.data_config.metric_data_source_ids)
+    def get_sample_df(self, data_source_ids: list[DataSourceID]):
+        if not self.sample_loaded:
+            raise SampleDataNotLoadedError()
 
-    #     if (column_name, VariableType.CATEGORICAL) in available_columns:
-    #         raise VariableNotNumericError(
-    #             column_name,
-    #             str(
-    #                 self.data_sources[next(iter(self.data_config.metric_data_source_ids))]
-    #                 .load_columns([column_name], [VariableType.CATEGORICAL])
-    #                 .iloc[:, 0]
-    #                 .dtypes
-    #             ),
-    #         )
+        if not data_source_ids:
+            return pd.DataFrame()
 
-    #     if (column_name, VariableType.NUMERICAL) not in available_columns:
-    #         raise MissingColumnError(column_name)
+        sample_dfs = [
+            ds._sample_df
+            for ds in self.data_sources.values()
+            if ds.uid in data_source_ids
+        ]
 
-    # @property
-    # def var_unt_wrt_off(self) -> str | None:
-    #     return self.data_config.var_unt_wrt_off
+        if not sample_dfs:
+            return pd.DataFrame()
 
-    # @var_unt_wrt_off.setter
-    # def var_unt_wrt_off(self, value: str | None):
-    #     if value is None:
-    #         self.data_config.var_unt_wrt_off = None
-    #         return
-
-    #     self.validate_metric_input_column(value)
-
-    #     self.data_config.var_unt_wrt_off = value
-
-    # @property
-    # def var_dlr_wrt_off(self) -> str | None:
-    #     return self.data_config.var_dlr_wrt_off
-
-    # @var_dlr_wrt_off.setter
-    # def var_dlr_wrt_off(self, value: str | None):
-    #     if value is None:
-    #         self.data_config.var_dlr_wrt_off = None
-    #         return
-
-    #     self.validate_metric_input_column(value)
-
-    #     self.data_config.var_dlr_wrt_off = value
-
-    # @property
-    # def var_avg_bal(self) -> str | None:
-    #     return self.data_config.var_avg_bal
-
-    # @var_avg_bal.setter
-    # def var_avg_bal(self, value: str | None):
-    #     if value is None:
-    #         self.data_config.var_avg_bal = None
-    #         return
-
-    #     self.validate_metric_input_column(value)
-
-    #     self.data_config.var_avg_bal = value
-
-    # @property
-    # def current_rate_mob(self) -> int:
-    #     return self.data_config.current_rate_mob
-
-    # @current_rate_mob.setter
-    # def current_rate_mob(self, value: int):
-    #     if value <= 0:
-    #         raise ValueError("Current rate MOB must be a positive integer.")
-
-    #     self.data_config.current_rate_mob = value
+        return pd.concat(sample_dfs, axis=0)
 
     def add_data_source(
         self,
@@ -212,7 +124,7 @@ class DataRepository(BaseRepository):
     ):
         try:
             data_source = DataSource(
-                uid="",
+                uid=DataSourceID.TEMPORARY,
                 filepath=filepath,
                 label=label,
                 read_mode=read_mode,
@@ -238,7 +150,9 @@ class DataRepository(BaseRepository):
         except (FileNotFoundError, ValueError) as error:
             raise DataImportError(str(error))
 
-        data_source.uid = self._get_new_id(current_ids=self.data_sources.keys())
+        data_source.uid = DataSourceID(
+            self._get_new_id(current_ids=self.data_sources.keys())
+        )
         self.data_sources[data_source.uid] = data_source
         data_source.load_sample()
 
@@ -252,7 +166,7 @@ class DataRepository(BaseRepository):
 
     def update_data_source(
         self,
-        data_source_id: str,
+        data_source_id: DataSourceID,
         filepath: pathlib.Path | None = None,
         label: str | None = None,
         read_mode: t.Literal["CSV", "EXCEL"] | None = None,
@@ -311,7 +225,7 @@ class DataRepository(BaseRepository):
 
         return new_data_source
 
-    def delete_data_source(self, data_source_id: str):
+    def delete_data_source(self, data_source_id: DataSourceID):
         del self.data_sources[data_source_id]
 
         self.data_config.refresh(
@@ -324,7 +238,7 @@ class DataRepository(BaseRepository):
         self,
         column_names: list[str],
         column_types: list[VariableType] | None = None,
-        data_source_ids: set[str] | None = None,
+        data_source_ids: list[DataSourceID] | None = None,
     ):
         if not self.sample_loaded:
             raise SampleDataNotLoadedError()
@@ -336,7 +250,7 @@ class DataRepository(BaseRepository):
             raise ValueError("column_names and column_types must have the same length")
 
         dataframes: list[pd.DataFrame] = []
-        keys: list[str] = []
+        keys: list[int] = []
 
         for ds in self.data_sources.values():
             dataframes.append(ds.load_columns(column_names, column_types))
@@ -345,9 +259,9 @@ class DataRepository(BaseRepository):
         final_df = pd.concat(dataframes, axis=0, keys=keys)
 
         if data_source_ids is None:
-            data_source_ids = set(self.data_sources.keys())
+            data_source_ids = list(self.data_sources.keys())
 
-        omitted_source_ids = set(self.data_sources.keys()) - data_source_ids
+        omitted_source_ids = set(self.data_sources.keys()) - set(data_source_ids)
         final_df.loc[(list(omitted_source_ids),), :] = pd.NA
 
         final_df = final_df.convert_dtypes()
@@ -362,7 +276,7 @@ class DataRepository(BaseRepository):
         self,
         column_name: str | None = None,
         column_type: VariableType = VariableType.NUMERICAL,
-        data_source_ids: set[str] | None = None,
+        data_source_ids: list[DataSourceID] | None = None,
     ) -> pd.Series:
         if not self.sample_loaded:
             raise SampleDataNotLoadedError()
@@ -405,9 +319,8 @@ class DataRepository(BaseRepository):
 
         # Creating a filter if not provided
         if data_filter is None:
-            empty_column = self.load_column()
             data_filter = pd.Series(
-                [True] * empty_column.size, index=empty_column.index
+                [True] * groupby_variable_1.size, index=groupby_variable_1.index
             )
 
         # Creating the base DataFrame with the groupby variables

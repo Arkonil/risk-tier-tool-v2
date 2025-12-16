@@ -6,6 +6,9 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 
+from risc_tool.data.models.enums import DefaultMetrics
+from risc_tool.data.models.types import DataSourceID, MetricID
+
 
 def _prepare_element_wise_args(
     *args: pd.Series | int | float,
@@ -255,12 +258,16 @@ class MetricQueryValidator(ast.NodeVisitor):
 
 
 class Metric(BaseModel):
-    model_config = ConfigDict(serialize_by_alias=True, validate_by_alias=True)
+    model_config = ConfigDict(
+        serialize_by_alias=True,
+        validate_by_alias=True,
+        arbitrary_types_allowed=True,
+    )
 
-    uid: str
+    uid: MetricID
     name: str
     query: str
-    valid_data_source_ids: list[str] = Field(default_factory=list)
+    valid_data_source_ids: list[DataSourceID] = Field(default_factory=list)
     used_columns: list[str] = Field(default_factory=list)
 
     use_thousand_sep: bool = True
@@ -356,7 +363,7 @@ class Metric(BaseModel):
 
         return result
 
-    def duplicate(self, uid: str | None = None, name: str | None = None):
+    def duplicate(self, uid: MetricID | None = None, name: str | None = None):
         if uid is None:
             uid = self.uid
         if name is None:
@@ -373,7 +380,64 @@ class Metric(BaseModel):
         )
 
 
+class UnitBadRate(Metric):
+    def __init__(
+        self,
+        var_unt_bad: str,
+        current_rate_mob: int,
+        valid_data_source_ids: list[DataSourceID],
+    ):
+        super().__init__(
+            uid=MetricID.UNT_BAD_RATE,
+            name=DefaultMetrics.UNT_BAD_RATE,
+            query=f"(`{var_unt_bad}`.sum() / `{var_unt_bad}`.count()) * (12 / {current_rate_mob})",
+            use_thousand_sep=False,
+            is_percentage=True,
+            decimal_places=2,
+            valid_data_source_ids=valid_data_source_ids,
+        )
+
+
+class DollarBadRate(Metric):
+    def __init__(
+        self,
+        var_dlr_bad: str,
+        var_avg_bal: str,
+        current_rate_mob: int,
+        valid_data_source_ids: list[DataSourceID],
+    ):
+        super().__init__(
+            uid=MetricID.DLR_BAD_RATE,
+            name=DefaultMetrics.DLR_BAD_RATE,
+            query=f"(`{var_dlr_bad}`.sum() / `{var_avg_bal}`.sum()) * (12 / {current_rate_mob})",
+            use_thousand_sep=False,
+            is_percentage=True,
+            decimal_places=2,
+            valid_data_source_ids=valid_data_source_ids,
+        )
+
+
+class Volume(Metric):
+    def __init__(
+        self,
+        column_name: str,
+        valid_data_source_ids: list[DataSourceID],
+    ):
+        super().__init__(
+            uid=MetricID.VOLUME,
+            name=DefaultMetrics.VOLUME,
+            query=f"`{column_name}`.count()",
+            use_thousand_sep=True,
+            is_percentage=False,
+            decimal_places=0,
+            valid_data_source_ids=valid_data_source_ids,
+        )
+
+
 __all__ = [
     "MetricQueryValidator",
     "Metric",
+    "UnitBadRate",
+    "DollarBadRate",
+    "Volume",
 ]

@@ -15,5 +15,5 @@ class BaseRepository(ChangeNotifier):
 
         self._id_generator = id_generator()
 
-    def _get_new_id(self, current_ids: t.Collection[str] | None = None) -> str:
+    def _get_new_id(self, current_ids: t.Collection[int] | None = None) -> int:
         return new_id(self._id_generator, current_ids)

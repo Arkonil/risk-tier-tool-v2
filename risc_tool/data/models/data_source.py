@@ -5,6 +5,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, FilePath
 
 from risc_tool.data.models.enums import VariableType
+from risc_tool.data.models.types import DataSourceID
 from risc_tool.data.services.local_data_import import import_data
 
 
@@ -13,11 +14,12 @@ class DataSource(BaseModel):
         extra="allow",
         serialize_by_alias=True,
         validate_by_alias=True,
+        arbitrary_types_allowed=True,
     )
 
     _pattern = re.compile(r"(.+) \((Numerical|Categorical)\)")
 
-    uid: str
+    uid: DataSourceID
     label: t.Annotated[str, Field(min_length=1)]
     filepath: FilePath
     read_mode: t.Literal["CSV", "EXCEL"] = "CSV"

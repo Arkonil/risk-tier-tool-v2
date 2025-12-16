@@ -1,14 +1,10 @@
 import typing as t
 from abc import ABC, abstractmethod
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from risc_tool.data.models.enums import Signature
+from risc_tool.data.models.types import Callback, CallbackID, ChangeID, ChangeIDs
 from risc_tool.utils.write_once_dict import WriteOnceOrderedDict
-
-ChangeID = tuple[Signature, UUID]
-ChangeIDs = set[ChangeID]
-CallbackID = UUID
-Callback = t.Callable[[ChangeIDs], bool]
 
 
 class ChangeTracker(ABC):
@@ -50,7 +46,7 @@ class ChangeTracker(ABC):
         return has_changed
 
     @abstractmethod
-    def on_dependency_update(self, change_ids: ChangeIDs):
+    def on_dependency_update(self, change_ids: ChangeIDs) -> None:
         raise NotImplementedError()
 
 
@@ -60,9 +56,9 @@ class ChangeNotifier(ChangeTracker):
         return Signature.CHANGE_NOTIFIER
 
     def __init__(self, dependencies: list["ChangeNotifier"] | None = None):
-        super().__init__(dependencies)
+        super().__init__(dependencies=dependencies)
 
-        self._subscribers: dict[CallbackID, Callback] = {}
+        self._subscribers: t.OrderedDict[CallbackID, Callback] = t.OrderedDict()
 
     def subscribe(self, callback: Callback) -> CallbackID:
         new_callback_id = uuid4()
@@ -93,3 +89,6 @@ class ChangeNotifier(ChangeTracker):
             self.notify_subscribers(change_ids)
 
         return has_changed
+
+
+__all__ = ["ChangeTracker", "ChangeNotifier"]

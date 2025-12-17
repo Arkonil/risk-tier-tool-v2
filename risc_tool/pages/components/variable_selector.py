@@ -22,7 +22,7 @@ def data_source_selector() -> None:
 
     current_data_source_ids = variable_selector_vm.selected_data_source_ids
 
-    col1, col2, col3 = st.columns([4, 1, 11])
+    col1, col2, col3 = st.columns([4, 1, 11], gap=None)
     metric_text_widget(col1, "Data Sources")
     metric_text_widget(col2, "=")
     with col3:
@@ -118,7 +118,7 @@ def mob_selector(mob_type: t.Literal["current", "lifetime"]) -> None:
 
 
 def unt_bad_selector() -> None:
-    col1, col2, col3, col4, col5 = st.columns([4, 1, 5, 1, 5])
+    col1, col2, col3, col4, col5 = st.columns([4, 1, 5, 1, 5], gap=None)
     metric_text_widget(col1, "# Bad Rate %")
     metric_text_widget(col2, "=")
     with col3:
@@ -128,7 +128,7 @@ def unt_bad_selector() -> None:
 
 
 def dlr_bad_selector() -> None:
-    col1, col2, col3, col4, col5 = st.columns([4, 1, 5, 1, 5])
+    col1, col2, col3, col4, col5 = st.columns([4, 1, 5, 1, 5], gap=None)
     metric_text_widget(col1, "$ Bad Rate %")
     metric_text_widget(col2, "=")
     with col3:
@@ -139,7 +139,7 @@ def dlr_bad_selector() -> None:
 
 
 def current_mob_selector() -> None:
-    col1, col2, col3, _ = st.columns([4, 1, 5, 6])
+    col1, col2, col3, _ = st.columns([4, 1, 5, 6], gap=None)
     metric_text_widget(col1, "MOB")
     metric_text_widget(col2, "=")
     with col3:
@@ -147,7 +147,7 @@ def current_mob_selector() -> None:
 
 
 def lifetime_mob_selector() -> None:
-    col1, col2, col3, _ = st.columns([4, 1, 5, 6])
+    col1, col2, col3, _ = st.columns([4, 1, 5, 6], gap=None)
     metric_text_widget(col1, "Lifetime MOB")
     metric_text_widget(col2, "=")
     with col3:

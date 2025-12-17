@@ -1,1 +1,1 @@
-uv run streamlit run main.py -- --debug
+uv run --link-mode=copy streamlit run main.py --logger.level debug --logger.enableRich True -- --debug

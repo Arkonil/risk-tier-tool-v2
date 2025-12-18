@@ -65,8 +65,6 @@ class MetricRepository(BaseRepository):
 
         sample_df = self.__data_repository.get_sample_df(self.data_source_ids)
 
-        print(sample_df)
-
         if (
             self._var_unt_bad not in sample_df.columns
             or not pd.api.types.is_numeric_dtype(sample_df[self._var_unt_bad])

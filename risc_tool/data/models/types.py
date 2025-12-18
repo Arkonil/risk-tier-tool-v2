@@ -24,9 +24,11 @@ class MetricID(SentinelInt):
     VOLUME: "MetricID"
     UNT_BAD_RATE: "MetricID"
     DLR_BAD_RATE: "MetricID"
+    EMPTY: "MetricID"
 
 
 MetricID.TEMPORARY = MetricID(-1, name="TEMPORARY")
 MetricID.VOLUME = MetricID(-2, name="VOLUME")
 MetricID.UNT_BAD_RATE = MetricID(-3, name="UNT_BAD_RATE")
 MetricID.DLR_BAD_RATE = MetricID(-4, name="DLR_BAD_RATE")
+MetricID.EMPTY = MetricID(-5, name="EMPTY")

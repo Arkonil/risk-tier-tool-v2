@@ -76,7 +76,6 @@ class DataRepository(BaseRepository):
     def all_columns(self) -> list[str]:
         return self.data_config.all_columns
 
-    @property
     def get_completions(self, *, columns: list[str] | None = None, common: bool = True):
         return self.data_config.get_completions(columns=columns, common=common)
 

@@ -2,6 +2,7 @@ import streamlit as st
 
 from risc_tool.pages.data_importer import data_importer_page
 from risc_tool.pages.home import home_page
+from risc_tool.pages.metrics import metrics_page
 
 
 def set_page_navigation():
@@ -11,6 +12,7 @@ def set_page_navigation():
         ],
         "Tools": [
             data_importer_page,
+            metrics_page,
         ],
     })
 

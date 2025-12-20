@@ -28,9 +28,13 @@ class MetricRepository(BaseRepository):
         self._data_source_ids: list[DataSourceID] = []
 
         # Cache
-        self.__verified_metrics: dict[str, Metric] = {}
-        self.__unit_bad_rate_metric_cache: dict[tuple[str, int], Metric] = {}
-        self.__dollar_bad_rate_metric_cache: dict[tuple[str, str, int], Metric] = {}
+        self.__verified_metrics: dict[tuple[str, tuple[DataSourceID, ...]], Metric] = {}
+        self.__unit_bad_rate_metric_cache: dict[
+            tuple[str, int, tuple[DataSourceID, ...]], Metric
+        ] = {}
+        self.__dollar_bad_rate_metric_cache: dict[
+            tuple[str, str, int, tuple[DataSourceID, ...]], Metric
+        ] = {}
         self.__volume_metric_cache: Metric | None = None
 
         # Dependencies
@@ -51,7 +55,7 @@ class MetricRepository(BaseRepository):
                     valid_data_source_ids.append(ds_id)
 
             if valid_data_source_ids:
-                metric.valid_data_source_ids = valid_data_source_ids
+                metric.data_source_ids = valid_data_source_ids
             else:
                 metric_ids_to_remove.append(metric_id)
 
@@ -219,16 +223,14 @@ class MetricRepository(BaseRepository):
         if not self.__data_repository.sample_loaded:
             raise SampleDataNotLoadedError()
 
-        if (
+        key = (
             self.var_unt_bad,
             self.current_rate_mob,
-        ) in self.__unit_bad_rate_metric_cache:
-            return self.__unit_bad_rate_metric_cache[
-                (
-                    self.var_unt_bad,
-                    self.current_rate_mob,
-                )
-            ]
+            tuple(sorted(self.data_source_ids)),
+        )
+
+        if key in self.__unit_bad_rate_metric_cache:
+            return self.__unit_bad_rate_metric_cache[key]
 
         sample_df = self.__data_repository.get_sample_df(self.data_source_ids)
         if sample_df.empty:
@@ -239,12 +241,7 @@ class MetricRepository(BaseRepository):
         )
         metric.validate_query(sample_df)
 
-        self.__unit_bad_rate_metric_cache[
-            (
-                self.var_unt_bad,
-                self.current_rate_mob,
-            )
-        ] = metric
+        self.__unit_bad_rate_metric_cache[key] = metric
         return metric
 
     @property
@@ -255,18 +252,15 @@ class MetricRepository(BaseRepository):
         if not self.__data_repository.sample_loaded:
             raise SampleDataNotLoadedError()
 
-        if (
+        key = (
             self.var_dlr_bad,
             self.var_avg_bal,
             self.current_rate_mob,
-        ) in self.__dollar_bad_rate_metric_cache:
-            return self.__dollar_bad_rate_metric_cache[
-                (
-                    self.var_dlr_bad,
-                    self.var_avg_bal,
-                    self.current_rate_mob,
-                )
-            ]
+            tuple(sorted(self.data_source_ids)),
+        )
+
+        if key in self.__dollar_bad_rate_metric_cache:
+            return self.__dollar_bad_rate_metric_cache[key]
 
         sample_df = self.__data_repository.get_sample_df(self.data_source_ids)
         if sample_df.empty:
@@ -280,13 +274,7 @@ class MetricRepository(BaseRepository):
         )
         metric.validate_query(sample_df)
 
-        self.__dollar_bad_rate_metric_cache[
-            (
-                self.var_dlr_bad,
-                self.var_avg_bal,
-                self.current_rate_mob,
-            )
-        ] = metric
+        self.__dollar_bad_rate_metric_cache[key] = metric
         return metric
 
     @property
@@ -312,31 +300,32 @@ class MetricRepository(BaseRepository):
     def validate_metric(
         self, name: str, query: str, data_source_ids: list[DataSourceID]
     ) -> Metric:
-        # TODO: Raise a warning instead
+        # Validate Name
         if name in DefaultMetrics:
             raise ValueError(f"Metric name '{name}' is reserved.")
+
+        # Validate Query with Data Source
+        key = (query, tuple(sorted(data_source_ids)))
+
+        if key in self.__verified_metrics:
+            new_metric = self.__verified_metrics[key].duplicate(name=name)
+
+            return new_metric
 
         sample_df = self.__data_repository.get_sample_df(data_source_ids)
         if sample_df.empty:
             raise SampleDataNotLoadedError()
 
-        if query in self.__verified_metrics:
-            new_metric = self.__verified_metrics[query]
-            new_metric.name = name
-            self.__verified_metrics[query] = new_metric
-
-            return new_metric
-
         new_metric = Metric(
-            uid=MetricID(),
+            uid=MetricID.TEMPORARY,
             name=name,
             query=query,
-            valid_data_source_ids=data_source_ids,
+            data_source_ids=data_source_ids,
         )
 
         # Validating query string
         new_metric.validate_query(data=sample_df)
-        self.__verified_metrics[query] = new_metric
+        self.__verified_metrics[key] = new_metric
 
         return new_metric
 

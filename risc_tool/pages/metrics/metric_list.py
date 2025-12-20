@@ -12,8 +12,8 @@ def sidebar_widgets():
     mc = session.metric_editor_view_model
 
     if st.button(
-        "Create Metric",
-        use_container_width=True,
+        label="Create Metric",
+        width="stretch",
         type="primary",
         icon=":material/add:",
     ):
@@ -59,7 +59,24 @@ def metric_list():
         with st.container(key=f"metric_{metric_id}_container", border=True):
             col1, col2 = st.columns([6, 1], vertical_alignment="center", gap="medium")
             with col1:
-                st.markdown(f"### {metric_obj.name}")
+                with st.container(
+                    horizontal=True, width="stretch", vertical_alignment="bottom"
+                ):
+                    st.subheader(f"{metric_obj.name}", width="content", anchor=False)
+
+                    st.space("stretch")
+
+                    for ds_id in metric_obj.data_source_ids:
+                        st.badge(mc.get_data_source_label(ds_id), width="content")
+
+                    if metric_obj.use_thousand_sep:
+                        st.badge("Thousand Sep", width="content", color="green")
+
+                    if metric_obj.is_percentage:
+                        st.badge("%", width="content", color="green")
+
+                    st.badge(f"Decimals: {metric_obj.decimal_places}", color="yellow")
+
                 st.code(metric_obj.query, language="python")
 
             with col2:

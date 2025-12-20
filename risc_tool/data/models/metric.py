@@ -267,7 +267,7 @@ class Metric(BaseModel):
     uid: MetricID
     name: str
     query: str
-    valid_data_source_ids: list[DataSourceID] = Field(default_factory=list)
+    data_source_ids: list[DataSourceID] = Field(default_factory=list)
     used_columns: list[str] = Field(default_factory=list)
 
     use_thousand_sep: bool = True
@@ -373,7 +373,7 @@ class Metric(BaseModel):
             update={
                 "uid": uid,
                 "name": name,
-                "valid_data_source_ids": self.valid_data_source_ids.copy(),
+                "data_source_ids": self.data_source_ids.copy(),
                 "used_columns": self.used_columns.copy(),
                 "placeholder_map": self.placeholder_map.copy(),
             }
@@ -385,7 +385,7 @@ class UnitBadRate(Metric):
         self,
         var_unt_bad: str,
         current_rate_mob: int,
-        valid_data_source_ids: list[DataSourceID],
+        data_source_ids: list[DataSourceID],
     ):
         super().__init__(
             uid=MetricID.UNT_BAD_RATE,
@@ -394,7 +394,7 @@ class UnitBadRate(Metric):
             use_thousand_sep=False,
             is_percentage=True,
             decimal_places=2,
-            valid_data_source_ids=valid_data_source_ids,
+            data_source_ids=data_source_ids,
         )
 
 
@@ -404,7 +404,7 @@ class DollarBadRate(Metric):
         var_dlr_bad: str,
         var_avg_bal: str,
         current_rate_mob: int,
-        valid_data_source_ids: list[DataSourceID],
+        data_source_ids: list[DataSourceID],
     ):
         super().__init__(
             uid=MetricID.DLR_BAD_RATE,
@@ -413,7 +413,7 @@ class DollarBadRate(Metric):
             use_thousand_sep=False,
             is_percentage=True,
             decimal_places=2,
-            valid_data_source_ids=valid_data_source_ids,
+            data_source_ids=data_source_ids,
         )
 
 
@@ -421,7 +421,7 @@ class Volume(Metric):
     def __init__(
         self,
         column_name: str,
-        valid_data_source_ids: list[DataSourceID],
+        data_source_ids: list[DataSourceID],
     ):
         super().__init__(
             uid=MetricID.VOLUME,
@@ -430,7 +430,7 @@ class Volume(Metric):
             use_thousand_sep=True,
             is_percentage=False,
             decimal_places=0,
-            valid_data_source_ids=valid_data_source_ids,
+            data_source_ids=data_source_ids,
         )
 
 

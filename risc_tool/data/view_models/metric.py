@@ -1,6 +1,7 @@
 import typing as t
 
 from risc_tool.data.models.changes import ChangeTracker
+from risc_tool.data.models.enums import Signature
 from risc_tool.data.models.metric import Metric
 from risc_tool.data.models.types import ChangeIDs, DataSourceID, MetricID
 from risc_tool.data.repositories.data import DataRepository
@@ -31,6 +32,10 @@ def format_value_error(error: ValueError):
 
 
 class MetricViewModel(ChangeTracker):
+    @property
+    def _signature(self) -> Signature:
+        return Signature.METRIC_VIEWMODEL
+
     def __init__(
         self, data_repository: DataRepository, metric_repository: MetricRepository
     ):

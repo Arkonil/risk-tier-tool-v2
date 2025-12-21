@@ -9,6 +9,7 @@ from risc_tool.utils.write_once_dict import WriteOnceOrderedDict
 
 class ChangeTracker(ABC):
     @property
+    @abstractmethod
     def _signature(self) -> Signature:
         return Signature.CHNAGE_TRACKER
 
@@ -52,6 +53,7 @@ class ChangeTracker(ABC):
 
 class ChangeNotifier(ChangeTracker):
     @property
+    @abstractmethod
     def _signature(self) -> Signature:
         return Signature.CHANGE_NOTIFIER
 

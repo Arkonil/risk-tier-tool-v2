@@ -1,4 +1,5 @@
 import typing as t
+from abc import abstractmethod
 
 from risc_tool.data.models.changes import ChangeNotifier
 from risc_tool.data.models.enums import Signature
@@ -7,6 +8,7 @@ from risc_tool.utils.new_id import id_generator, new_id
 
 class BaseRepository(ChangeNotifier):
     @property
+    @abstractmethod
     def _signature(self) -> Signature:
         return Signature.BASE_REPOSITORY
 

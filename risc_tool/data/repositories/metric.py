@@ -1,6 +1,6 @@
 import pandas as pd
 
-from risc_tool.data.models.enums import DefaultMetrics, VariableType
+from risc_tool.data.models.enums import DefaultMetrics, Signature, VariableType
 from risc_tool.data.models.exceptions import MissingColumnError, VariableNotNumericError
 from risc_tool.data.models.metric import DollarBadRate, Metric, UnitBadRate, Volume
 from risc_tool.data.models.types import ChangeIDs, DataSourceID, MetricID
@@ -13,6 +13,10 @@ from risc_tool.utils.duplicate_name import create_duplicate_name
 
 
 class MetricRepository(BaseRepository):
+    @property
+    def _signature(self) -> Signature:
+        return Signature.METRIC_REPOSITORY
+
     def __init__(self, data_repository: DataRepository) -> None:
         super().__init__(dependencies=[data_repository])
 

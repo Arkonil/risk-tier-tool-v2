@@ -1,13 +1,17 @@
 import typing as t
 
 from risc_tool.data.models.changes import ChangeTracker
-from risc_tool.data.models.enums import VariableType
+from risc_tool.data.models.enums import Signature, VariableType
 from risc_tool.data.models.types import ChangeIDs, DataSourceID
 from risc_tool.data.repositories.data import DataRepository
 from risc_tool.data.repositories.metric import MetricRepository
 
 
 class VariableSelectorViewModel(ChangeTracker):
+    @property
+    def _signature(self) -> Signature:
+        return Signature.VARIABLE_SELECTOR_VIEWMODEL
+
     def __init__(
         self, data_repository: DataRepository, metric_repository: MetricRepository
     ):

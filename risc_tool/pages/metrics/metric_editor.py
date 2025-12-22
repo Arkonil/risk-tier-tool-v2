@@ -1,9 +1,9 @@
 import streamlit as st
-from code_editor import code_editor
 
 from risc_tool.data.models.asset_path import AssetPath
 from risc_tool.data.models.metric import MetricQueryValidator
 from risc_tool.data.session import Session
+from risc_tool.pages.components.query_editor import query_editor
 
 
 def back_button():
@@ -53,29 +53,6 @@ def metric_name_selector(current_name: str):
     )
 
     return edited_name
-
-
-def query_editor(current_query: str, column_completions: list[dict[str, str | int]]):
-    code_editor_output = code_editor(
-        # key="code_editor",
-        code=current_query,
-        lang="python",
-        completions=column_completions,
-        replace_completer=True,
-        keybindings="vscode",
-        props={
-            "minLines": 13,
-            "fontSize": 16,
-            "enableSnippets": False,
-            "debounceChangePeriod": 100,
-        },
-        options={
-            "showLineNumbers": True,
-        },
-        response_mode="debounce",
-    )
-
-    return code_editor_output
 
 
 def format_display(use_thousand_sep: bool, is_percentage: bool, decimal_places: int):

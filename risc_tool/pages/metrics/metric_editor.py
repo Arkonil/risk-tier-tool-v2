@@ -78,13 +78,10 @@ def query_editor(current_query: str, column_completions: list[dict[str, str | in
     return code_editor_output
 
 
-def format_display(
-    key: int, use_thousand_sep: bool, is_percentage: bool, decimal_places: int
-):
+def format_display(use_thousand_sep: bool, is_percentage: bool, decimal_places: int):
     with st.container(horizontal=True, vertical_alignment="center"):
         original_value = st.text_input(
             label="Original Value",
-            key=f"format_display_{key}_original_value",
             value=1234.567,
             label_visibility="collapsed",
         )
@@ -102,7 +99,6 @@ def format_display(
         formatter = f"{{:{',' if use_thousand_sep else ''}.{decimal_places}f}}{'%' if is_percentage else ''}"
         st.text_input(
             label="Transformed Value",
-            key=f"format_display_{key}_transformed_value",
             value=formatter.format(
                 original_value * 100 if is_percentage else original_value
             ),
@@ -152,7 +148,6 @@ def format_seletor():
         st.markdown("##### Format Preview:")
 
         format_display(
-            mc.metric_cache.uid,
             use_thousand_sep,
             is_percentage,
             decimal_places,

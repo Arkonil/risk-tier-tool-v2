@@ -213,7 +213,7 @@ def metric_editor():
             label="Save",
             type="primary",
             icon=":material/save:",
-            use_container_width=True,
+            width="stretch",
             on_click=on_save,
             disabled=disabled_save_button,
         )

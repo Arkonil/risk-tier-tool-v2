@@ -158,10 +158,9 @@ class MetricViewModel(ChangeTracker):
         try:
             current_id = self.__metric_cache.uid
 
-            if current_id == MetricID.EMPTY:
-                for metric in self.__metric_repository.metrics.values():
-                    if name == metric.name:
-                        raise ValueError("Metric name already exists")
+            for metric in self.__metric_repository.metrics.values():
+                if name == metric.name and current_id != metric.uid:
+                    raise ValueError("Metric name already exists")
 
             self.__metric_cache = self.__metric_repository.validate_metric(
                 name=name,

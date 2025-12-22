@@ -8,28 +8,28 @@ from risc_tool.pages.components.query_editor import query_editor
 
 def back_button():
     session: Session = st.session_state["session"]
-    mc = session.metric_editor_view_model
+    metric_editor_vm = session.metric_editor_view_model
 
     if st.button(
         label="Back",
         icon=":material/arrow_back_ios:",
         type="primary",
     ):
-        mc.set_mode("view")
+        metric_editor_vm.set_mode("view")
         st.rerun()
 
 
 def data_source_selector():
     session: Session = st.session_state["session"]
-    mc = session.metric_editor_view_model
+    metric_editor_vm = session.metric_editor_view_model
 
-    current_data_source_ids = mc.metric_cache.data_source_ids
+    current_data_source_ids = metric_editor_vm.metric_cache.data_source_ids
 
     selected_data_source_ids = st.multiselect(
         label="Select Data Sources",
-        options=mc.all_data_source_ids,
+        options=metric_editor_vm.all_data_source_ids,
         default=current_data_source_ids,
-        format_func=mc.get_data_source_label,
+        format_func=metric_editor_vm.get_data_source_label,
         key="select_data_source_ids",
         width="stretch",
         label_visibility="collapsed",
@@ -39,7 +39,7 @@ def data_source_selector():
     if set(selected_data_source_ids) == set(current_data_source_ids):
         return
 
-    mc.selected_data_source_ids = selected_data_source_ids
+    metric_editor_vm.selected_data_source_ids = selected_data_source_ids
 
     st.rerun()
 
@@ -133,17 +133,17 @@ def format_seletor():
 
 def on_save():
     session: Session = st.session_state["session"]
-    mc = session.metric_editor_view_model
+    metric_editor_vm = session.metric_editor_view_model
 
     try:
-        mc.save_metric()
+        metric_editor_vm.save_metric()
     except RuntimeError as e:
         st.toast(body=f"RuntimeError: {e}", icon=":material/error:")
 
 
 def metric_editor():
     session: Session = st.session_state["session"]
-    mc = session.metric_editor_view_model
+    metric_editor_vm = session.metric_editor_view_model
 
     back_button()
 
@@ -153,7 +153,7 @@ def metric_editor():
     error_container = st.container()
 
     # Code Completions
-    completions = mc.get_column_completions()
+    completions = metric_editor_vm.get_column_completions()
     completions += list(
         map(
             lambda f: {
@@ -172,18 +172,19 @@ def metric_editor():
     with code_editor_container:
         data_source_selector()
 
-        edited_name = metric_name_selector(mc.metric_cache.name)
-        edited_query = query_editor(mc.metric_cache.query, completions)
+        edited_name = metric_name_selector(metric_editor_vm.metric_cache.name)
+        edited_query = query_editor(metric_editor_vm.metric_cache.query, completions)
 
         if edited_query["text"] == "":
-            edited_query["text"] = mc.metric_cache.query
+            edited_query["text"] = metric_editor_vm.metric_cache.query
 
     # Controls
     with controller_container:
 
         def on_verify():
-            print("on_verify", edited_name, edited_query["text"], edited_query["id"])
-            mc.validate_metric(edited_name, edited_query["text"], edited_query["id"])
+            metric_editor_vm.validate_metric(
+                edited_name, edited_query["text"], edited_query["id"]
+            )
 
         st.button(
             label="Verify",
@@ -196,9 +197,16 @@ def metric_editor():
         format_seletor()
 
         disabled_save_button: bool = (
-            not mc._is_verified
-            or (edited_query["id"] != "" and edited_query["id"] != mc.latest_editor_id)
-            or (edited_name != mc.metric_cache.name)
+            # Current metric in memory is not verified.
+            not metric_editor_vm.is_verified
+            # "" -> verify button was clicked. so `is_verified` above should take care of it
+            # metric_editor_vm.latest_editor_id -> no change since last validation
+            or (
+                edited_query["id"] != ""
+                and edited_query["id"] != metric_editor_vm.latest_editor_id
+            )
+            # Name has changed so need to verify again
+            or (edited_name != metric_editor_vm.metric_cache.name)
         )
 
         st.button(
@@ -210,11 +218,11 @@ def metric_editor():
             disabled=disabled_save_button,
         )
 
-    if error_message := mc.error_message():
+    if error_message := metric_editor_vm.error_message():
         error_container.error(error_message)
     else:
         with error_container.expander(label="Metric Object", expanded=False):
-            st.write(mc.metric_cache)
+            st.write(metric_editor_vm.metric_cache)
 
 
 __all__ = ["metric_editor"]

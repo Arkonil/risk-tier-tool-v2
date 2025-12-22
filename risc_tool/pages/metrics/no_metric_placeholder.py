@@ -6,7 +6,7 @@ from risc_tool.data.session import Session
 
 def no_metric_placeholder(key: int = 0):
     session: Session = st.session_state["session"]
-    vm = session.metric_editor_view_model
+    metric_editor_vm = session.metric_editor_view_model
 
     with st.container(horizontal_alignment="center"):
         st.space("large")
@@ -14,7 +14,7 @@ def no_metric_placeholder(key: int = 0):
         st.image(AssetPath.NO_METRIC_ICON, width=250)
 
         st.subheader(
-            "No Metrics Created Yet",
+            body="No Metrics Created Yet",
             anchor=False,
             width="content",
             text_alignment="center",
@@ -23,13 +23,13 @@ def no_metric_placeholder(key: int = 0):
         st.space("small")
 
         if st.button(
-            "Create Metric",
+            label="Create Metric",
             key=key,
             width="content",
             type="primary",
             icon=":material/add:",
         ):
-            vm.set_mode("edit")
+            metric_editor_vm.set_mode("edit")
             st.rerun()
 
 

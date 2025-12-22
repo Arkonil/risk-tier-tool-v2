@@ -48,7 +48,7 @@ class MetricViewModel(ChangeTracker):
         # Metric Editor States
         self.__view_mode: t.Literal["view", "edit"] = "view"
         self.__metric_cache = self.__empty_metric
-        self._is_verified = False
+        self.is_verified = False
         self.latest_editor_id = ""
         self.__errors: list[ValueError | SyntaxError] = []
 
@@ -58,7 +58,7 @@ class MetricViewModel(ChangeTracker):
 
     def on_dependency_update(self, change_ids: ChangeIDs) -> None:
         self.__metric_cache = self.__empty_metric
-        self._is_verified = False
+        self.is_verified = False
         self.__errors.clear()
 
     @property
@@ -69,7 +69,7 @@ class MetricViewModel(ChangeTracker):
         self, mode: t.Literal["view", "edit"], metric_id: MetricID = MetricID.EMPTY
     ) -> None:
         self.__view_mode = mode
-        self._is_verified = False
+        self.is_verified = False
         self.__errors.clear()
 
         if mode == "edit":
@@ -79,7 +79,7 @@ class MetricViewModel(ChangeTracker):
                 self.__metric_cache = self.__metric_repository.metrics.get(
                     metric_id, self.__empty_metric
                 ).model_copy()
-                self._is_verified = True
+                self.is_verified = True
 
     # For Error View
     @property
@@ -102,11 +102,11 @@ class MetricViewModel(ChangeTracker):
     ):
         if name is not None:
             self.__metric_cache.name = name
-            self._is_verified = False
+            self.is_verified = False
 
         if query is not None:
             self.__metric_cache.query = query
-            self._is_verified = False
+            self.is_verified = False
 
         if use_thousand_sep is not None:
             self.__metric_cache.use_thousand_sep = use_thousand_sep
@@ -128,7 +128,7 @@ class MetricViewModel(ChangeTracker):
     @selected_data_source_ids.setter
     def selected_data_source_ids(self, value: list[DataSourceID]):
         self.__metric_cache.data_source_ids = value
-        self._is_verified = False
+        self.is_verified = False
 
     def get_data_source_label(self, data_source_id: DataSourceID):
         return self.__data_repository.data_sources[data_source_id].label
@@ -144,11 +144,13 @@ class MetricViewModel(ChangeTracker):
 
     def validate_metric(self, name: str, query: str, latest_editor_id: str):
         if query == "":
+            self.__errors.append(ValueError("Metric query cannot be empty"))
+            self.is_verified = False
             return
 
         if name == "":
             self.__errors.append(ValueError("Metric name cannot be empty"))
-            self._is_verified = False
+            self.is_verified = False
             return
 
         self.__errors.clear()
@@ -167,11 +169,11 @@ class MetricViewModel(ChangeTracker):
                 data_source_ids=self.__metric_cache.data_source_ids,
             )
             self.__metric_cache.uid = current_id
-            self._is_verified = True
+            self.is_verified = True
             self.latest_editor_id = latest_editor_id
         except (ValueError, SyntaxError) as e:
             self.__errors.append(e)
-            self._is_verified = False
+            self.is_verified = False
 
     def error_message(self) -> str:
         if not self.__errors:
@@ -188,7 +190,7 @@ class MetricViewModel(ChangeTracker):
         return "\n\n".join(messages)
 
     def save_metric(self):
-        if not self._is_verified or self.__errors:
+        if not self.is_verified or self.__errors:
             raise RuntimeError("Metric is not verified")
 
         if self.__metric_cache.uid == MetricID.TEMPORARY:

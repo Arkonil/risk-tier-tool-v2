@@ -9,7 +9,7 @@ from risc_tool.pages.metrics.no_metric_placeholder import (
 
 def sidebar_widgets():
     session: Session = st.session_state["session"]
-    mc = session.metric_editor_view_model
+    metric_editor_vm = session.metric_editor_view_model
 
     if st.button(
         label="Create Metric",
@@ -17,36 +17,35 @@ def sidebar_widgets():
         type="primary",
         icon=":material/add:",
     ):
-        mc.set_mode("edit")
+        metric_editor_vm.set_mode("edit")
         st.rerun()
 
 
 @st.dialog("Confirm Deletion")
 def delete_confirmation_dialog(metric_id: MetricID):
     session: Session = st.session_state["session"]
-    mc = session.metric_editor_view_model
+    metric_editor_vm = session.metric_editor_view_model
 
-    metric_obj = mc.metrics[metric_id]
+    metric_obj = metric_editor_vm.metrics[metric_id]
 
     st.write(f"Delete Metric `{metric_obj.name}` ?")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("Delete", type="primary", use_container_width=True):
-            mc.remove_metric(metric_id)
+        if st.button("Delete", type="primary", width="stretch"):
+            metric_editor_vm.remove_metric(metric_id)
             st.rerun()
     with col2:
-        if st.button("Cancel", type="secondary", use_container_width=True):
+        if st.button("Cancel", type="secondary", width="stretch"):
             st.rerun()
 
 
 def metric_list():
-    pass
     session: Session = st.session_state["session"]
-    mc = session.metric_editor_view_model
+    metric_editor_vm = session.metric_editor_view_model
 
-    if not mc.metrics:
+    if not metric_editor_vm.metrics:
         no_metric_placeholder()
         return
 
@@ -55,7 +54,7 @@ def metric_list():
     with st.sidebar:
         sidebar_widgets()
 
-    for metric_id, metric_obj in mc.metrics.items():
+    for metric_id, metric_obj in metric_editor_vm.metrics.items():
         with st.container(key=f"metric_{metric_id}_container", border=True):
             col1, col2 = st.columns([6, 1], vertical_alignment="center", gap="medium")
             with col1:
@@ -67,13 +66,18 @@ def metric_list():
                     st.space("stretch")
 
                     for ds_id in metric_obj.data_source_ids:
-                        st.badge(mc.get_data_source_label(ds_id), width="content")
+                        st.badge(
+                            metric_editor_vm.get_data_source_label(ds_id),
+                            width="content",
+                        )
 
                     if metric_obj.use_thousand_sep:
-                        st.badge("Thousand Sep", width="content", color="green")
+                        st.badge(
+                            "&nbsp;&nbsp;,&nbsp;&nbsp;", width="content", color="green"
+                        )
 
                     if metric_obj.is_percentage:
-                        st.badge("%", width="content", color="green")
+                        st.badge("&nbsp;%&nbsp;", width="content", color="green")
 
                     st.badge(f"Decimals: {metric_obj.decimal_places}", color="yellow")
 
@@ -88,7 +92,7 @@ def metric_list():
                     key=f"metric_{metric_id}_edit_btn",
                     type="primary",
                     icon=":material/edit:",
-                    on_click=mc.set_mode,
+                    on_click=metric_editor_vm.set_mode,
                     args=("edit", metric_id),
                     help="Edit",
                 )
@@ -98,7 +102,7 @@ def metric_list():
                     key=f"metric_{metric_id}_create_dupicate_btn",
                     type="primary",
                     icon=":material/content_copy:",
-                    on_click=mc.duplicate_metric,
+                    on_click=metric_editor_vm.duplicate_metric,
                     args=(metric_id,),
                     help="Create Duplicate",
                 )

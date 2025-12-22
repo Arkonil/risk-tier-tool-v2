@@ -67,6 +67,13 @@ class MetricRepository(BaseRepository):
             del self.metrics[metric_id]
 
     def _update_default_metrics(self):
+        if not self.__data_repository.sample_loaded:
+            self._var_unt_bad = None
+            self._var_dlr_bad = None
+            self._var_avg_bal = None
+            self._data_source_ids = []
+            return
+
         self._data_source_ids = list(
             set(self.__data_repository.data_sources.keys()) & set(self.data_source_ids)
         )

@@ -2,33 +2,11 @@ import typing as t
 
 from risc_tool.data.models.changes import ChangeTracker
 from risc_tool.data.models.enums import Signature
+from risc_tool.data.models.exceptions import format_error
 from risc_tool.data.models.metric import Metric
 from risc_tool.data.models.types import ChangeIDs, DataSourceID, MetricID
 from risc_tool.data.repositories.data import DataRepository
 from risc_tool.data.repositories.metric import MetricRepository
-
-
-def format_syntax_error(error: SyntaxError):
-    error_msgs = [
-        f"**SyntaxError**: {error.msg}",
-        f"**Line**: {error.lineno}",
-    ]
-
-    if error.text:
-        error_msgs.append(error.text.rstrip())
-
-    if error.offset is not None and error.end_offset is not None:
-        error_msgs.append(
-            f"{' ' * (error.offset - 1)}{'^' * (error.end_offset - error.offset + 1)}"
-        )
-
-    return "\n\n".join(error_msgs)
-
-
-def format_value_error(error: ValueError):
-    return f"""
-        **ValueError**: {error}
-    """.replace("\n", "\n\n")
 
 
 class MetricViewModel(ChangeTracker):
@@ -181,10 +159,7 @@ class MetricViewModel(ChangeTracker):
         messages: list[str] = []
 
         for error in self.__errors:
-            if isinstance(error, ValueError):
-                messages.append(format_value_error(error))
-            elif isinstance(error, SyntaxError):
-                messages.append(format_syntax_error(error))
+            messages.append(format_error(error))
 
         return "\n\n".join(messages)
 

@@ -118,9 +118,8 @@ class FilterRepository(BaseRepository):
 
         self.notify_subscribers()
 
-    def get_mask(
-        self, filter_ids: t.Iterable[FilterID], index: pd.MultiIndex | pd.Index
-    ) -> pd.Series:
+    def get_mask(self, filter_ids: t.Iterable[FilterID]) -> pd.Series:
+        index = self.__data_repository.index
         mask = pd.Series(True, index=index, dtype=bool)
 
         if not self.filters or not filter_ids:
@@ -139,11 +138,11 @@ class FilterRepository(BaseRepository):
                     )
                 )
 
-            current_mask = t.cast(pd.Series[bool], filter_obj.mask)
+            current_mask = t.cast(pd.Series, filter_obj.mask)
 
             mask &= current_mask
 
-        return mask
+        return mask.astype("boolean")
 
     def get_filters(self, filter_ids: list[FilterID] | None = None):
         filters = self.filters.copy()

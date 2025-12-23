@@ -34,6 +34,20 @@ class DataRepository(BaseRepository):
         return
 
     @property
+    def index(self):
+        if not self.sample_loaded:
+            raise ValueError("Data not loaded")
+
+        indices: list[pd.Series] = []
+        keys: list[DataSourceID] = []
+
+        for ds_id, ds in self.data_sources.items():
+            indices.append(pd.Series(index=ds.index))
+            keys.append(ds_id)
+
+        return pd.concat(indices, keys=keys).index
+
+    @property
     def sample_loaded(self) -> bool:
         return bool(self.data_sources) and all(
             ds.sample_loaded for ds in self.data_sources.values()

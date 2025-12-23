@@ -39,6 +39,16 @@ class DataSource(BaseModel):
     def sample_loaded(self) -> bool:
         return self._sample_df is not None
 
+    @property
+    def index(self):
+        if self._df is not None:
+            return self._df.index
+
+        if self.df_size is None:
+            raise ValueError("Data not loaded")
+
+        return pd.RangeIndex(start=0, stop=self.df_size, step=1)
+
     def validate_read_config(self) -> None:
         if not self.filepath or not self.filepath.is_file():
             raise FileNotFoundError(f"File not found: `{self.filepath}`")
@@ -152,34 +162,42 @@ class DataSource(BaseModel):
         if cached_columns:
             final_df = pd.concat(cached_columns, axis=1)
         else:
-            final_df = pd.DataFrame()
+            final_df = pd.DataFrame(index=self.index)
 
-        new_columns = pd.DataFrame()
+        new_columns = pd.DataFrame(index=self.index)
         if remaining_columns:
-            remaining_column_names = [cn for cn, _ in remaining_columns]
-            new_columns = self.load_data(remaining_column_names)
+            available_column_names = [
+                column[0] for column in remaining_columns if column in self.column_types
+            ]
+            missing_column_names = [
+                column[0]
+                for column in remaining_columns
+                if column not in self.column_types
+            ]
+
+            new_loaded_columns = self.load_data(available_column_names)
+            new_generated_columns = pd.DataFrame(
+                columns=missing_column_names,
+                index=self.index,
+            )
+
+            new_columns = pd.concat([new_loaded_columns, new_generated_columns], axis=1)
 
         for c_name, c_type in remaining_columns:
-            preferred_column_name = f"{c_name} ({c_type.capitalize()})"
-            alternative_column_name = f"{c_name} ({c_type.other.capitalize()})"
+            prf_column_name = f"{c_name} ({c_type.capitalize()})"
+            alt_column_name = f"{c_name} ({c_type.other.capitalize()})"
 
             if c_type == VariableType.NUMERICAL:
                 try:
                     temp_column = pd.to_numeric(new_columns[c_name], errors="raise")
-                    self._df[preferred_column_name] = temp_column
-                    final_df[preferred_column_name] = self._df[
-                        preferred_column_name
-                    ].copy()
+                    self._df[prf_column_name] = temp_column.copy()
+                    final_df[prf_column_name] = temp_column.copy()
                 except ValueError:
-                    self._df[alternative_column_name] = new_columns[c_name].astype(
-                        "category"
-                    )
-                    final_df[alternative_column_name] = self._df[
-                        alternative_column_name
-                    ].copy()
+                    self._df[alt_column_name] = new_columns[c_name].astype("category")
+                    final_df[alt_column_name] = self._df[alt_column_name].copy()
             else:
-                self._df[preferred_column_name] = new_columns[c_name].astype("category")
-                final_df[preferred_column_name] = self._df[preferred_column_name].copy()
+                self._df[prf_column_name] = new_columns[c_name].astype("category")
+                final_df[prf_column_name] = self._df[prf_column_name].copy()
 
         def rename_col(s: str) -> str:
             if m := self._pattern.match(s):

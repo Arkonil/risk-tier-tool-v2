@@ -75,25 +75,27 @@ class MetricRepository(BaseRepository):
             return
 
         self._data_source_ids = list(
-            set(self.__data_repository.data_sources.keys()) & set(self.data_source_ids)
+            set(self.__data_repository.data_sources.keys()) & set(self._data_source_ids)
         )
 
-        sample_df = self.__data_repository.get_sample_df(self.data_source_ids)
+        sample_df = self.__data_repository.get_sample_df(self._data_source_ids)
+        common_columns = self.__data_repository.available_columns(self._data_source_ids)
+        common_column_names = [col for col, _ in common_columns]
 
         if (
-            self._var_unt_bad not in sample_df.columns
+            self._var_unt_bad not in common_column_names
             or not pd.api.types.is_numeric_dtype(sample_df[self._var_unt_bad])
         ):
             self._var_unt_bad = None
 
         if (
-            self._var_dlr_bad not in sample_df.columns
+            self._var_dlr_bad not in common_column_names
             or not pd.api.types.is_numeric_dtype(sample_df[self._var_dlr_bad])
         ):
             self._var_dlr_bad = None
 
         if (
-            self._var_avg_bal not in sample_df.columns
+            self._var_avg_bal not in common_column_names
             or not pd.api.types.is_numeric_dtype(sample_df[self._var_avg_bal])
         ):
             self._var_avg_bal = None

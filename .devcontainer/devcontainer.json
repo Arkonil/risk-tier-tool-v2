@@ -11,7 +11,8 @@
       "extensions": [
         "ms-python.python",
         "mhutchie.git-graph",
-        "charliermarsh.ruff"
+        "charliermarsh.ruff",
+        "google.geminicodeassist"
       ]
     }
   },

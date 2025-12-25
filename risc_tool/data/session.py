@@ -1,6 +1,9 @@
 from risc_tool.data.repositories.data import DataRepository
 from risc_tool.data.repositories.filter import FilterRepository
 from risc_tool.data.repositories.metric import MetricRepository
+from risc_tool.data.repositories.options import OptionRepository
+from risc_tool.data.repositories.scalar import ScalarRepository
+from risc_tool.data.view_models.config import ConfigViewModel
 from risc_tool.data.view_models.data_explorer import DataExplorerViewModel
 from risc_tool.data.view_models.data_importer import DataImporterViewModel
 from risc_tool.data.view_models.filter import FilterViewModel
@@ -16,6 +19,8 @@ class Session:
 
     def reset(self):
         self.data_repository = DataRepository()
+        self.options_repository = OptionRepository()
+        self.scalar_repository = ScalarRepository()
         self.metric_repository = MetricRepository(self.data_repository)
         self.filter_repository = FilterRepository(self.data_repository)
 
@@ -37,6 +42,11 @@ class Session:
         self.filter_editor_view_model = FilterViewModel(
             data_repository=self.data_repository,
             filter_repository=self.filter_repository,
+        )
+        self.config_view_model = ConfigViewModel(
+            options_repository=self.options_repository,
+            scalar_repository=self.scalar_repository,
+            metric_repository=self.metric_repository,
         )
 
 

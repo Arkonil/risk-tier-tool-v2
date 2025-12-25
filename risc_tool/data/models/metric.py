@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 
-from risc_tool.data.models.enums import DefaultMetrics
+from risc_tool.data.models.enums import DefaultMetricNames
 from risc_tool.data.models.types import DataSourceID, MetricID
 
 
@@ -389,7 +389,7 @@ class UnitBadRate(Metric):
     ):
         super().__init__(
             uid=MetricID.UNT_BAD_RATE,
-            name=DefaultMetrics.UNT_BAD_RATE,
+            name=DefaultMetricNames.UNT_BAD_RATE,
             query=f"(`{var_unt_bad}`.sum() / `{var_unt_bad}`.count()) * (12 / {current_rate_mob})",
             use_thousand_sep=False,
             is_percentage=True,
@@ -408,7 +408,7 @@ class DollarBadRate(Metric):
     ):
         super().__init__(
             uid=MetricID.DLR_BAD_RATE,
-            name=DefaultMetrics.DLR_BAD_RATE,
+            name=DefaultMetricNames.DLR_BAD_RATE,
             query=f"(`{var_dlr_bad}`.sum() / `{var_avg_bal}`.sum()) * (12 / {current_rate_mob})",
             use_thousand_sep=False,
             is_percentage=True,
@@ -425,7 +425,7 @@ class Volume(Metric):
     ):
         super().__init__(
             uid=MetricID.VOLUME,
-            name=DefaultMetrics.VOLUME,
+            name=DefaultMetricNames.VOLUME,
             query=f"`{column_name}`.count()",
             use_thousand_sep=True,
             is_percentage=False,

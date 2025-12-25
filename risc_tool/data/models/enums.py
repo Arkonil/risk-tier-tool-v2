@@ -11,7 +11,7 @@ class StrEnumMeta(EnumMeta):
         return True
 
 
-class DefaultMetrics(StrEnum, metaclass=StrEnumMeta):
+class DefaultMetricNames(StrEnum, metaclass=StrEnumMeta):
     VOLUME = "Volume"
     UNT_BAD_RATE = "Annl. # Bad Rate"
     DLR_BAD_RATE = "Annl. $ Bad Rate"
@@ -99,7 +99,7 @@ class Signature(StrEnum):
 
 
 __all__ = [
-    "DefaultMetrics",
+    "DefaultMetricNames",
     "GridColumn",
     "IterationType",
     "LossRateTypes",

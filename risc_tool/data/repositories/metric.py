@@ -1,6 +1,6 @@
 import pandas as pd
 
-from risc_tool.data.models.enums import DefaultMetrics, Signature, VariableType
+from risc_tool.data.models.enums import DefaultMetricNames, Signature, VariableType
 from risc_tool.data.models.exceptions import MissingColumnError, VariableNotNumericError
 from risc_tool.data.models.metric import DollarBadRate, Metric, UnitBadRate, Volume
 from risc_tool.data.models.types import ChangeIDs, DataSourceID, MetricID
@@ -314,7 +314,7 @@ class MetricRepository(BaseRepository):
         self, name: str, query: str, data_source_ids: list[DataSourceID]
     ) -> Metric:
         # Validate Name
-        if name in DefaultMetrics:
+        if name in DefaultMetricNames:
             raise ValueError(f"Metric name '{name}' is reserved.")
 
         # Validate Query with Data Source

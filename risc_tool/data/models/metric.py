@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from risc_tool.data.models.enums import DefaultMetricNames
 from risc_tool.data.models.types import DataSourceID, MetricID
 
+MISSING = np.nan
+
 
 def _prepare_element_wise_args(
     *args: pd.Series | int | float,
@@ -166,6 +168,9 @@ class MetricQueryValidator(ast.NodeVisitor):
         ast.FloorDiv,
     )
 
+    allowed_names = ["__MISSING__"]
+    allowed_series_attributes = ["size"]
+
     def __init__(self, placeholder_map: dict[str, str]):
         self.found_columns: set[str] = set()
         self.placeholder_map = placeholder_map
@@ -173,6 +178,9 @@ class MetricQueryValidator(ast.NodeVisitor):
     def _resolve_and_add_name(self, identifier: str):
         if identifier.startswith("@"):
             return  # Exclude @-variables
+
+        if identifier in self.allowed_names:
+            return
 
         original_name = self.placeholder_map.get(identifier, identifier)
         if (
@@ -225,7 +233,7 @@ class MetricQueryValidator(ast.NodeVisitor):
 
     def is_result_scalar(self, expr_node: ast.AST) -> bool:
         if isinstance(expr_node, ast.Name):
-            return False
+            return expr_node.id in self.allowed_names
 
         if isinstance(expr_node, ast.Constant):
             return True
@@ -254,6 +262,9 @@ class MetricQueryValidator(ast.NodeVisitor):
 
                 return func_name in self.allowed_series_methods
 
+        if isinstance(expr_node, ast.Attribute):
+            return expr_node.attr in self.allowed_series_attributes
+
         return False
 
 
@@ -277,13 +288,21 @@ class Metric(BaseModel):
     processed_query: str = ""
     placeholder_map: dict[str, str] = Field(default_factory=dict)
 
+    def model_post_init(self, context: t.Any) -> None:
+        self.processed_query = self.query
+
+        return super().model_post_init(context)
+
     @property
     def pretty_name(self):
         return self.name
 
-    @property
-    def format(self) -> str:
-        return f"{{:{',' if self.use_thousand_sep else ''}.{self.decimal_places}f}}{'%' if self.is_percentage else ''}"
+    def format(self, value: float):
+        if np.isnan(value):
+            return value
+
+        formatter = f"{{:{',' if self.use_thousand_sep else ''}.{self.decimal_places}f}}{'%' if self.is_percentage else ''}"
+        return formatter.format(value)
 
     def validate_query(self, data: pd.DataFrame) -> None:
         # --- 1. Preprocess Backticked Identifiers ---
@@ -336,8 +355,11 @@ class Metric(BaseModel):
     def calculate(self, data: pd.DataFrame):
         # Local scope for eval
         scope: dict[
-            str, pd.Series | t.Callable[..., pd.Series[t.Any] | int | float]
-        ] = {}
+            str,
+            pd.Series | t.Callable[..., pd.Series[t.Any] | int | float] | float,
+        ] = {
+            "__MISSING__": MISSING,
+        }
 
         # Add columns to scope
         for processed_col, original_col in self.placeholder_map.items():
@@ -361,7 +383,7 @@ class Metric(BaseModel):
         if self.is_percentage:
             result *= 100
 
-        return result
+        return float(result)
 
     def duplicate(self, uid: MetricID | None = None, name: str | None = None):
         if uid is None:
@@ -380,6 +402,22 @@ class Metric(BaseModel):
         )
 
 
+class DefaultUnitBadRate(Metric):
+    def __init__(
+        self,
+        data_source_ids: list[DataSourceID],
+    ):
+        super().__init__(
+            uid=MetricID.UNT_BAD_RATE,
+            name=DefaultMetricNames.UNT_BAD_RATE,
+            query="__MISSING__",
+            use_thousand_sep=False,
+            is_percentage=True,
+            decimal_places=2,
+            data_source_ids=data_source_ids,
+        )
+
+
 class UnitBadRate(Metric):
     def __init__(
         self,
@@ -391,6 +429,22 @@ class UnitBadRate(Metric):
             uid=MetricID.UNT_BAD_RATE,
             name=DefaultMetricNames.UNT_BAD_RATE,
             query=f"(`{var_unt_bad}`.sum() / `{var_unt_bad}`.count()) * (12 / {current_rate_mob})",
+            use_thousand_sep=False,
+            is_percentage=True,
+            decimal_places=2,
+            data_source_ids=data_source_ids,
+        )
+
+
+class DefaultDollarBadRate(Metric):
+    def __init__(
+        self,
+        data_source_ids: list[DataSourceID],
+    ):
+        super().__init__(
+            uid=MetricID.DLR_BAD_RATE,
+            name=DefaultMetricNames.DLR_BAD_RATE,
+            query="__MISSING__",
             use_thousand_sep=False,
             is_percentage=True,
             decimal_places=2,
@@ -417,6 +471,22 @@ class DollarBadRate(Metric):
         )
 
 
+class DefaultVolume(Metric):
+    def __init__(
+        self,
+        data_source_ids: list[DataSourceID],
+    ):
+        super().__init__(
+            uid=MetricID.VOLUME,
+            name=DefaultMetricNames.VOLUME,
+            query="__MISSING__",
+            use_thousand_sep=True,
+            is_percentage=False,
+            decimal_places=0,
+            data_source_ids=data_source_ids,
+        )
+
+
 class Volume(Metric):
     def __init__(
         self,
@@ -426,7 +496,7 @@ class Volume(Metric):
         super().__init__(
             uid=MetricID.VOLUME,
             name=DefaultMetricNames.VOLUME,
-            query=f"`{column_name}`.count()",
+            query=f"`{column_name}`.size",
             use_thousand_sep=True,
             is_percentage=False,
             decimal_places=0,

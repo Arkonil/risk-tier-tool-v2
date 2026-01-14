@@ -2,7 +2,15 @@ import pandas as pd
 
 from risc_tool.data.models.enums import DefaultMetricNames, Signature, VariableType
 from risc_tool.data.models.exceptions import MissingColumnError, VariableNotNumericError
-from risc_tool.data.models.metric import DollarBadRate, Metric, UnitBadRate, Volume
+from risc_tool.data.models.metric import (
+    DefaultDollarBadRate,
+    DefaultUnitBadRate,
+    DefaultVolume,
+    DollarBadRate,
+    Metric,
+    UnitBadRate,
+    Volume,
+)
 from risc_tool.data.models.types import ChangeIDs, DataSourceID, MetricID
 from risc_tool.data.repositories.base import BaseRepository
 from risc_tool.data.repositories.data import (
@@ -51,6 +59,9 @@ class MetricRepository(BaseRepository):
             valid_data_source_ids: list[DataSourceID] = []
 
             for ds_id in self.__data_repository.data_sources:
+                if ds_id not in metric.data_source_ids:
+                    continue
+
                 try:
                     metric.validate_query(self.__data_repository.get_sample_df([ds_id]))
                 except (SyntaxError, ValueError, SampleDataNotLoadedError):
@@ -229,9 +240,9 @@ class MetricRepository(BaseRepository):
         self.notify_subscribers()
 
     @property
-    def unit_bad_rate(self) -> Metric | None:
+    def unit_bad_rate(self) -> Metric:
         if self.var_unt_bad is None:
-            return None
+            return DefaultUnitBadRate(list(self.__data_repository.data_sources.keys()))
 
         if not self.__data_repository.sample_loaded:
             raise SampleDataNotLoadedError()
@@ -246,8 +257,9 @@ class MetricRepository(BaseRepository):
             return self.__unit_bad_rate_metric_cache[key]
 
         sample_df = self.__data_repository.get_sample_df(self.data_source_ids)
+
         if sample_df.empty:
-            return None
+            return DefaultUnitBadRate(list(self.__data_repository.data_sources.keys()))
 
         metric = UnitBadRate(
             self.var_unt_bad, self.current_rate_mob, self.data_source_ids
@@ -258,9 +270,11 @@ class MetricRepository(BaseRepository):
         return metric
 
     @property
-    def dollar_bad_rate(self) -> Metric | None:
+    def dollar_bad_rate(self) -> Metric:
         if self.var_dlr_bad is None or self.var_avg_bal is None:
-            return None
+            return DefaultDollarBadRate(
+                list(self.__data_repository.data_sources.keys())
+            )
 
         if not self.__data_repository.sample_loaded:
             raise SampleDataNotLoadedError()
@@ -277,7 +291,9 @@ class MetricRepository(BaseRepository):
 
         sample_df = self.__data_repository.get_sample_df(self.data_source_ids)
         if sample_df.empty:
-            return None
+            return DefaultDollarBadRate(
+                list(self.__data_repository.data_sources.keys())
+            )
 
         metric = DollarBadRate(
             self.var_dlr_bad,
@@ -291,7 +307,7 @@ class MetricRepository(BaseRepository):
         return metric
 
     @property
-    def volume(self) -> Metric | None:
+    def volume(self) -> Metric:
         if self.__volume_metric_cache is not None:
             return self.__volume_metric_cache
 
@@ -300,10 +316,9 @@ class MetricRepository(BaseRepository):
 
         sample_df = self.__data_repository.get_sample_df(self.data_source_ids)
         if sample_df.empty:
-            return None
+            return DefaultVolume(list(self.__data_repository.data_sources.keys()))
 
         first_column = sample_df.columns[0]
-
         metric = Volume(first_column, self.data_source_ids)
         metric.validate_query(sample_df)
 
@@ -409,13 +424,8 @@ class MetricRepository(BaseRepository):
     def get_all_metrics(self) -> dict[MetricID, Metric]:
         all_metrics: dict[MetricID, Metric] = self.metrics.copy()
 
-        if self.unit_bad_rate is not None:
-            all_metrics[self.unit_bad_rate.uid] = self.unit_bad_rate
-
-        if self.dollar_bad_rate is not None:
-            all_metrics[self.dollar_bad_rate.uid] = self.dollar_bad_rate
-
-        if self.volume is not None:
-            all_metrics[self.volume.uid] = self.volume
+        all_metrics[self.unit_bad_rate.uid] = self.unit_bad_rate
+        all_metrics[self.dollar_bad_rate.uid] = self.dollar_bad_rate
+        all_metrics[self.volume.uid] = self.volume
 
         return all_metrics

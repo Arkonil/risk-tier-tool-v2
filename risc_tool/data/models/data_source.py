@@ -41,7 +41,7 @@ class DataSource(BaseModel):
 
     @property
     def index(self):
-        if self._df is not None:
+        if not self._df.empty:
             return self._df.index
 
         if self.df_size is None:
@@ -166,13 +166,18 @@ class DataSource(BaseModel):
 
         new_columns = pd.DataFrame(index=self.index)
         if remaining_columns:
+            if self._sample_df is not None:
+                all_columns: list[str] = self._sample_df.columns.to_list()
+            else:
+                all_columns: list[str] = []
+
             available_column_names = [
-                column[0] for column in remaining_columns if column in self.column_types
+                column[0] for column in remaining_columns if column[0] in all_columns
             ]
             missing_column_names = [
                 column[0]
                 for column in remaining_columns
-                if column not in self.column_types
+                if column[0] not in all_columns
             ]
 
             new_loaded_columns = self.load_data(available_column_names)

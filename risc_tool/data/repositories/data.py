@@ -1,6 +1,7 @@
 import pathlib
 import typing as t
 from collections import OrderedDict
+from uuid import uuid4
 
 import numpy as np
 import pandas as pd
@@ -247,6 +248,11 @@ class DataRepository(BaseRepository):
 
         self.notify_subscribers()
 
+    def get_data_source_mask(self, data_source_ids: list[DataSourceID]) -> pd.Series:
+        mask = pd.Series(False, index=self.index)
+        mask.loc[data_source_ids] = True
+        return mask
+
     def load_columns(
         self,
         column_names: list[str],
@@ -274,8 +280,8 @@ class DataRepository(BaseRepository):
         if data_source_ids is None:
             data_source_ids = list(self.data_sources.keys())
 
-        omitted_source_ids = set(self.data_sources.keys()) - set(data_source_ids)
-        final_df.loc[(list(omitted_source_ids),), :] = pd.NA
+        data_source_mask = self.get_data_source_mask(data_source_ids)
+        final_df.loc[~data_source_mask, :] = pd.NA
 
         final_df = final_df.convert_dtypes()
 
@@ -322,13 +328,13 @@ class DataRepository(BaseRepository):
         - groupby_variable_1 (pd.Series): The first variable to group by.
         - groupby_variable_2 (pd.Series, optional): The second variable to group by. Defaults to None.
         - filter (pd.Series, optional): A boolean mask to filter the data. Defaults to None.
-        - metrics (list[METRIC], optional): A list of metrics to summarize. Defaults to None.
+        - metrics list[METRIC]: A list of metrics to summarize. Defaults to None.
         Returns:
         - pd.DataFrame: A DataFrame containing the summarized metrics.
         """
 
         if metrics is None:
-            raise ValueError("At least one metric must be provided.")
+            metrics = []
 
         # Creating a filter if not provided
         if data_filter is None:
@@ -337,42 +343,53 @@ class DataRepository(BaseRepository):
             )
 
         # Creating the base DataFrame with the groupby variables
+        var_name_1 = uuid4().hex
         base_df = pd.DataFrame({
-            groupby_variable_1.name: groupby_variable_1,
+            var_name_1: groupby_variable_1,
         })
-        groupby_variables = [groupby_variable_1.name]
+        groupby_variables = [var_name_1]
+        orig_names = [groupby_variable_1.name]
 
         if groupby_variable_2 is not None:
-            base_df[groupby_variable_2.name] = groupby_variable_2
-            groupby_variables.append(groupby_variable_2.name)
+            var_name_2 = uuid4().hex
+            base_df[var_name_2] = groupby_variable_2
+            groupby_variables.append(var_name_2)
+            orig_names.append(groupby_variable_2.name)
 
-        # Loading all required columns for the metrics
-        used_columns = set()
-        for metric in metrics:
-            used_columns.update(metric.used_columns)
+        all_index = base_df.groupby(groupby_variables, observed=False).count().index
 
-        columns_to_load = list(set(used_columns) - set(base_df.columns))
-
-        loaded_data = self.load_columns(columns_to_load)
-
-        base_df = pd.concat([base_df, loaded_data], axis=1)
-
-        # Applying the filter to the base DataFrame
-        filtered_df = base_df[data_filter].copy()
-
-        # Grouping the DataFrame by the specified variables and aggregating the metrics
-        groupby_obj = filtered_df.groupby(groupby_variables, observed=False)
-        all_index = groupby_obj.count().index
         metric_results: list[pd.Series] = []
 
         for metric in metrics:
-            result: pd.Series = groupby_obj.apply(metric.calculate).reindex(all_index)  # type: ignore
-            result.name = metric.name
-            metric_results.append(result)
+            used_columns = metric.used_columns
+            columns_to_load = list(set(used_columns) - set(base_df.columns))
 
-        grouped_df = pd.concat(metric_results, axis=1)
+            loaded_data = self.load_columns(
+                columns_to_load, data_source_ids=metric.data_source_ids
+            )
 
-        return grouped_df
+            metric_data = pd.concat([base_df, loaded_data], axis=1)
+
+            filtered_data = metric_data[
+                data_filter & self.get_data_source_mask(metric.data_source_ids)
+            ]
+
+            metric_result = (
+                filtered_data.groupby(groupby_variables, observed=False)
+                .apply(metric.calculate)
+                .reindex(all_index)
+            )
+            metric_result.name = metric.pretty_name
+            metric_results.append(metric_result)
+
+        if metric_results:
+            result_df = pd.concat(metric_results, axis=1)
+        else:
+            result_df = pd.DataFrame(index=all_index)
+
+        result_df.rename_axis(mapper=orig_names, axis=0, inplace=True)
+
+        return result_df
 
 
 __all__ = ["DataRepository"]

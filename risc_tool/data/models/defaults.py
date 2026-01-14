@@ -59,6 +59,7 @@ class DefaultOptions(Singleton):
             scalars_enabled=True,
             split_view_enabled=True,
             loss_rate_type=LossRateTypes.DLR,
-            filter_ids=[],
+            initial_filter_ids=[],
+            current_filter_ids=[],
             show_prev_iter_details=True,
         )

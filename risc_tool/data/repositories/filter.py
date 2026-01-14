@@ -35,11 +35,11 @@ class FilterRepository(BaseRepository):
         filter_ids_to_remove: list[FilterID] = []
 
         common_columns = self.__data_repository.common_columns
-        data = self.__data_repository.load_columns(common_columns)
 
         for filter_id, filter_obj in self.filters.items():
             try:
                 filter_obj.validate_query(available_columns=common_columns)
+                data = self.__data_repository.load_columns(filter_obj.used_columns)
                 filter_obj.create_mask(data)
             except InvalidFilterError:
                 filter_ids_to_remove.append(filter_id)

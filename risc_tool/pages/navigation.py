@@ -5,6 +5,7 @@ from risc_tool.pages.data_explorer import data_explorer_page
 from risc_tool.pages.data_importer import data_importer_page
 from risc_tool.pages.filters import filter_page
 from risc_tool.pages.home import home_page
+from risc_tool.pages.iterations import iterations_page
 from risc_tool.pages.metrics import metrics_page
 
 
@@ -19,6 +20,7 @@ def set_page_navigation():
             metrics_page,
             filter_page,
             config_page,
+            iterations_page,
         ],
     })
 

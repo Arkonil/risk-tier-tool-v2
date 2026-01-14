@@ -1,5 +1,6 @@
 from risc_tool.data.repositories.data import DataRepository
 from risc_tool.data.repositories.filter import FilterRepository
+from risc_tool.data.repositories.iterations import IterationsRepository
 from risc_tool.data.repositories.metric import MetricRepository
 from risc_tool.data.repositories.options import OptionRepository
 from risc_tool.data.repositories.scalar import ScalarRepository
@@ -7,6 +8,7 @@ from risc_tool.data.view_models.config import ConfigViewModel
 from risc_tool.data.view_models.data_explorer import DataExplorerViewModel
 from risc_tool.data.view_models.data_importer import DataImporterViewModel
 from risc_tool.data.view_models.filter import FilterViewModel
+from risc_tool.data.view_models.iterations import IterationsViewModel
 from risc_tool.data.view_models.metric import MetricViewModel
 from risc_tool.data.view_models.variable_selector import VariableSelectorViewModel
 
@@ -23,6 +25,13 @@ class Session:
         self.scalar_repository = ScalarRepository()
         self.metric_repository = MetricRepository(self.data_repository)
         self.filter_repository = FilterRepository(self.data_repository)
+        self.iterations_repository = IterationsRepository(
+            data_repository=self.data_repository,
+            filter_repository=self.filter_repository,
+            metric_repository=self.metric_repository,
+            options_repository=self.options_repository,
+            scalar_repository=self.scalar_repository,
+        )
 
         self.variable_selector_view_model = VariableSelectorViewModel(
             data_repository=self.data_repository,
@@ -47,6 +56,14 @@ class Session:
             options_repository=self.options_repository,
             scalar_repository=self.scalar_repository,
             metric_repository=self.metric_repository,
+        )
+        self.iterations_view_model = IterationsViewModel(
+            data_repository=self.data_repository,
+            filter_repository=self.filter_repository,
+            iterations_repository=self.iterations_repository,
+            metric_repository=self.metric_repository,
+            scalar_repository=self.scalar_repository,
+            options_repository=self.options_repository,
         )
 
 

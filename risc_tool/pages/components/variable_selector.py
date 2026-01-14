@@ -162,4 +162,16 @@ def variable_selector():
     lifetime_mob_selector()
 
 
-__all__ = ["variable_selector"]
+@st.dialog("Set Variables", width="large", on_dismiss="rerun")
+def variable_selector_dialog():
+    with st.container(border=True):
+        variable_selector()
+
+    _, col = st.columns(2)
+
+    with col:
+        if st.button("Submit", type="primary", width="stretch"):
+            st.rerun()
+
+
+__all__ = ["variable_selector", "variable_selector_dialog"]

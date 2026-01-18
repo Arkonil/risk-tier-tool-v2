@@ -29,20 +29,20 @@ class OptionRepository(BaseRepository):
 
         for row_i in self.risk_segment_details.index:
             if row_i == 0:
-                self.risk_segment_details.loc[row_i, RSDetCol.LOWER_RATE] = 0
+                self.risk_segment_details.at[row_i, RSDetCol.LOWER_RATE] = 0
                 continue
 
             if (
-                self.risk_segment_details.loc[row_i, RSDetCol.UPPER_RATE]
-                == self.risk_segment_details.loc[row_i - 1, RSDetCol.UPPER_RATE]
+                self.risk_segment_details.at[row_i, RSDetCol.UPPER_RATE]
+                == self.risk_segment_details.at[row_i - 1, RSDetCol.UPPER_RATE]
             ):
-                self.risk_segment_details.loc[row_i, RSDetCol.LOWER_RATE] = (
-                    self.risk_segment_details.loc[row_i - 1, RSDetCol.LOWER_RATE]
+                self.risk_segment_details.at[row_i, RSDetCol.LOWER_RATE] = (
+                    self.risk_segment_details.at[row_i - 1, RSDetCol.LOWER_RATE]
                 )
                 continue
 
-            self.risk_segment_details.loc[row_i, RSDetCol.LOWER_RATE] = (
-                self.risk_segment_details.loc[row_i - 1, RSDetCol.UPPER_RATE]
+            self.risk_segment_details.at[row_i, RSDetCol.LOWER_RATE] = (
+                self.risk_segment_details.at[row_i - 1, RSDetCol.UPPER_RATE]
             )
 
         self.risk_segment_details = self.risk_segment_details.set_index(
@@ -87,7 +87,7 @@ class OptionRepository(BaseRepository):
         self.notify_subscribers()
 
     def set_risk_seg_name(self, row_index: int, name: str):
-        self.risk_segment_details.loc[row_index, RSDetCol.RISK_SEGMENT] = name
+        self.risk_segment_details.at[row_index, RSDetCol.RISK_SEGMENT] = name
 
         self.__recalculate_lower_bounds()
 
@@ -125,7 +125,7 @@ class OptionRepository(BaseRepository):
             if loss_rate_type == LossRateTypes.DLR
             else RSDetCol.MAF_ULR
         )
-        self.risk_segment_details.loc[row_index, column_name] = maf
+        self.risk_segment_details.at[row_index, column_name] = maf
 
         self.notify_subscribers()
 

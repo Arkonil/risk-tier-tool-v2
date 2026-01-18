@@ -306,7 +306,7 @@ def editable_range_widget(
 
         for row_index, row_change in edited_rows.items():
             for col_index, change in row_change.items():
-                edited_final_df.loc[row_index, col_index] = change
+                edited_final_df.at[row_index, col_index] = change
 
         iterations_vm.editable_range_edit_handler(
             iteration_id, default, edited_final_df
@@ -389,7 +389,7 @@ def editable_grid_widget(
 
         for row_index, row_change in edited_rows.items():
             for col_index, change in row_change.items():
-                edited_final_df.loc[row_index, col_index] = change
+                edited_final_df.at[row_index, col_index] = change
 
         iterations_vm.editable_grid_edit_handler(iteration_id, default, edited_final_df)
 

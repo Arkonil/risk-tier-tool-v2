@@ -169,8 +169,8 @@ def create_auto_numeric_bands(
         if len(grouped_data[mtc_mask]) > 0:
             last_value = grouped_data[mtc_mask].index[-1]
 
-        groups.loc[index, RangeColumn.LOWER_BOUND] = current_lower_bound  # type: ignore
-        groups.loc[index, RangeColumn.UPPER_BOUND] = last_value  # type: ignore
+        groups.at[index, RangeColumn.LOWER_BOUND] = current_lower_bound  # type: ignore
+        groups.at[index, RangeColumn.UPPER_BOUND] = last_value  # type: ignore
 
         grouped_data = grouped_data[~mtc_mask]
         current_lower_bound = last_value

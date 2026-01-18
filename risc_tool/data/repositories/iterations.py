@@ -767,15 +767,15 @@ class IterationsRepository(BaseRepository):
 
                         rs_group = rs_groups.get(j)
                         if rs_group is None:
-                            risk_segment_grid.loc[i, j] = j
+                            risk_segment_grid.at[i, j] = j
                             continue
 
                         for index, (lb, ub) in rs_group.items():
                             if lb <= lower_bound and ub >= upper_bound:
-                                risk_segment_grid.loc[i, j] = index  # type: ignore
+                                risk_segment_grid.at[i, j] = index  # type: ignore
                                 break
                         else:
-                            risk_segment_grid.loc[i, j] = j
+                            risk_segment_grid.at[i, j] = j
 
                 if auto_rank_ordering:
                     risk_segment_grid = risk_segment_grid.cummax(axis=1).cummax(axis=0)
@@ -1144,7 +1144,7 @@ class IterationsRepository(BaseRepository):
 
         for row_index in risk_segment_grid.index:
             for col_index in risk_segment_grid.columns:
-                value = risk_segment_grid.loc[row_index, col_index]
+                value = risk_segment_grid.at[row_index, col_index]
                 if pd.isna(value):
                     continue
 

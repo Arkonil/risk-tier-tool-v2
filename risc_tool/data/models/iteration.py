@@ -359,7 +359,7 @@ class DoubleVarIteration(IterationBase):
                 f"Invalid value for risk segment provided: {previous_rs_index}"
             )
 
-        self._risk_segment_grid.loc[group_index, previous_rs_index] = value
+        self._risk_segment_grid.at[group_index, previous_rs_index] = value
 
     def remove_group(self, group_index: int):
         self._check_group_index(group_index)

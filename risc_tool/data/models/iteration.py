@@ -52,6 +52,15 @@ class IterationBase(ABC):
         return self._variable
 
     @property
+    def pretty_name(self) -> str:
+        parts = [f"Itearation #{self.uid}"]
+
+        if self.name:
+            parts.append(self.name)
+
+        return " - ".join(parts)
+
+    @property
     @abstractmethod
     def groups(self) -> pd.Series:
         raise NotImplementedError()

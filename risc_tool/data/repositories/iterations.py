@@ -121,6 +121,13 @@ class IterationsRepository(BaseRepository):
         self.__iteration_outputs.clear()
         self.__recalculation_required.clear()
 
+    def iteration_selector_options(self, keep_inactive: bool = False):
+        return {
+            iter_id: iter_obj.pretty_name
+            for iter_id, iter_obj in self.iterations.items()
+            if keep_inactive or iter_obj.active
+        }
+
     def get_iteration(self, iteration_id: IterationID) -> Iteration:
         if iteration_id not in self.iterations:
             raise ValueError(f"Iteration {iteration_id} does not exist.")
@@ -361,8 +368,8 @@ class IterationsRepository(BaseRepository):
 
         # Data Import
         data_import_code = textwrap.dedent("""
-            # Data Import
-
+            # Data Import    
+            data_sources = []
         """)
 
         for i, data_source in enumerate(self.__data_repository.data_sources.values()):
@@ -373,6 +380,7 @@ class IterationsRepository(BaseRepository):
                         delimiter="{data_source.delimiter}",
                         header={data_source.header_row},
                     )
+                    data_sources.append(data_{i})
                 """)
 
             elif data_source.read_mode == "EXCEL":
@@ -380,9 +388,15 @@ class IterationsRepository(BaseRepository):
                     data_{i} = pd.read_excel(
                         io="{str(data_source.filepath.absolute())}",
                         sheet_name={data_source.sheet_name if data_source.sheet_name.isnumeric() else f'"{data_source.sheet_name}"'},
-                        header="{data_source.header_row}",
+                        header={data_source.header_row},
                     )
+                    data_sources.append(data_{i})
                 """)
+
+        data_import_code += textwrap.dedent("""
+            data = pd.concat(data_sources, axis=0, keys=data_sources.keys())
+
+        """)
 
         function_definitions = textwrap.dedent("""
             # Function Definitions:

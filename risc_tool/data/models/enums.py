@@ -79,6 +79,12 @@ class DataExplorerTabName(StrEnum, metaclass=StrEnumMeta):
     IV_ANALYSIS = "IV Analysis"
 
 
+class ExportTabName(StrEnum, metaclass=StrEnumMeta):
+    SESSION_ARCHIVE = "Session Archive"
+    PYTHON_CODE = "Python Code"
+    SAS_CODE = "SAS Code"
+
+
 class Signature(StrEnum):
     # base
     CHNAGE_TRACKER = "CHNAGE_TRACKER"
@@ -101,6 +107,7 @@ class Signature(StrEnum):
     FILTER_VIEWMODEL = "FILTER_VIEWMODEL"
     CONFIG_VIEWMODEL = "CONFIG_VIEWMODEL"
     ITERATION_VIEWMODEL = "ITERATION_VIEWMODEL"
+    EXPORT_VIEWMODEL = "EXPORT_VIEWMODEL"
 
 
 __all__ = [

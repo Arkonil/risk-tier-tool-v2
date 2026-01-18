@@ -7,6 +7,7 @@ from pandas.io.formats.style import Styler
 from pydantic import BaseModel, ConfigDict
 
 from risc_tool.data.models.changes import ChangeTracker
+from risc_tool.data.models.defaults import DefaultOptions
 from risc_tool.data.models.enums import (
     IterationType,
     LossRateTypes,
@@ -15,12 +16,14 @@ from risc_tool.data.models.enums import (
     Signature,
     VariableType,
 )
+from risc_tool.data.models.iteration_metadata import IterationMetadata
 from risc_tool.data.models.types import (
     ChangeIDs,
     FilterID,
     GridEditorViewComponents,
     GridMetricView,
     IterationID,
+    MetricID,
 )
 from risc_tool.data.repositories.data import DataRepository
 from risc_tool.data.repositories.filter import FilterRepository
@@ -98,17 +101,13 @@ class IterationsViewModel(ChangeTracker):
         self.__scalar_repository = scalar_repository
 
         self.__view_status = IteraionViewStatus()
+        self.__metadata: dict[IterationID, IterationMetadata] = {}
 
         # cache
         self.__editable_range_cache: dict[tuple[IterationID, bool], pd.DataFrame] = {}
         self.__editable_grid_cache: dict[tuple[IterationID, bool], pd.DataFrame] = {}
 
-        # self.load_column = self.data_repository.load_column
-        # self.load_columns = self.data_repository.load_columns
         self.get_iteration = self.__iterations_repository.get_iteration
-        self.set_metadata = self.__iterations_repository.set_metadata
-        self.add_single_var_node = self.__iterations_repository.add_single_var_iteration
-        self.add_double_var_node = self.__iterations_repository.add_double_var_iteration
         self.is_rs_details_same = self.__iterations_repository.is_rs_details_same
         self.update_rs_details = self.__iterations_repository.update_rs_details
         self.get_all_groups = self.__iterations_repository.get_all_groups
@@ -201,6 +200,52 @@ class IterationsViewModel(ChangeTracker):
         else:
             raise ValueError(f"Invalid view type: {view}")
 
+    def get_iteration_metadata(self, iteration_id: IterationID):
+        if iteration_id not in self.__metadata:
+            raise ValueError(f"Iteration {iteration_id} does not exist.")
+
+        return self.__metadata[iteration_id]
+
+    def set_metadata(
+        self,
+        iteration_id: IterationID,
+        editable: bool | None = None,
+        metric_ids: list[MetricID] | None = None,
+        scalars_enabled: bool | None = None,
+        split_view_enabled: bool | None = None,
+        loss_rate_type: LossRateTypes | None = None,
+        filter_ids: list[FilterID] | None = None,
+        show_prev_iter_details: bool | None = None,
+    ):
+        metadata = self.get_iteration_metadata(iteration_id)
+
+        # Updating Current Metadata
+        metadata.update(
+            editable=editable,
+            metric_ids=metric_ids,
+            scalars_enabled=scalars_enabled,
+            split_view_enabled=split_view_enabled,
+            loss_rate_type=loss_rate_type,
+            current_filter_ids=filter_ids,
+            show_prev_iter_details=show_prev_iter_details,
+        )
+
+        if (
+            loss_rate_type is not None
+            or filter_ids is not None
+            or metric_ids is not None
+        ) and not self.iteration_graph.is_root(iteration_id):
+            # Getting Root ID
+            root_id = self.iteration_graph.get_root_iter_id(iteration_id)
+
+            # Updating Metadat to Root ID
+            for iter_id in [root_id] + self.iteration_graph.get_descendants(root_id):
+                self.get_iteration_metadata(root_id).update(
+                    loss_rate_type=loss_rate_type,
+                    current_filter_ids=filter_ids,
+                    metric_ids=metric_ids,
+                )
+
     # Data
     @property
     def sample_loaded(self):
@@ -226,26 +271,97 @@ class IterationsViewModel(ChangeTracker):
     def iteration_graph(self):
         return self.__iterations_repository.graph
 
-    def can_have_child(self, node_id: IterationID) -> bool:
+    def can_have_child(self, iteration_id: IterationID) -> bool:
         return (
-            self.__iterations_repository.graph.iteration_depth(node_id)
+            self.__iterations_repository.graph.iteration_depth(iteration_id)
             < self.__options_repository.max_iteration_depth
         )
 
-    def delete_iteration(self, node_id: IterationID):
-        self.__iterations_repository.delete_iteration(node_id)
+    def delete_iteration(self, iteration_id: IterationID):
+        self.__iterations_repository.delete_iteration(iteration_id)
         self.set_current_status("graph")
 
-    def get_risk_segment_details(self, node_id: IterationID):
-        return self.__iterations_repository.get_risk_segment_details(node_id)
+    def get_risk_segment_details(self, iteration_id: IterationID):
+        return self.__iterations_repository.get_risk_segment_details(iteration_id)
 
-    def get_iteration_metadata(self, node_id: IterationID):
-        return self.__iterations_repository.get_metadata(node_id)
+    def add_single_var_iteration(
+        self,
+        name: str,
+        variable_name: str,
+        variable_dtype: VariableType,
+        selected_segments_mask: pd.Series,
+        loss_rate_type: LossRateTypes,
+        filter_ids: list[FilterID],
+        auto_band: bool,
+        use_scalar: bool,
+    ):
+        iteration = self.__iterations_repository.add_single_var_iteration(
+            name,
+            variable_name,
+            variable_dtype,
+            selected_segments_mask,
+            loss_rate_type,
+            filter_ids,
+            auto_band,
+            use_scalar,
+        )
+
+        self.__metadata[iteration.uid] = (
+            DefaultOptions().default_iteation_metadata.with_changes(
+                loss_rate_type=loss_rate_type,
+                initial_filter_ids=filter_ids,
+                current_filter_ids=filter_ids,
+            )
+        )
+
+        return iteration
+
+    def add_double_var_iteration(
+        self,
+        name: str,
+        previous_iteration_id: IterationID,
+        variable_name: str,
+        variable_dtype: VariableType,
+        auto_band: bool,
+        use_scalar: bool,
+        upgrade_limit: int | None = None,
+        downgrade_limit: int | None = None,
+        auto_rank_ordering: bool | None = None,
+    ):
+        prev_metadata = self.get_iteration_metadata(previous_iteration_id)
+        loss_rate_type = prev_metadata.loss_rate_type
+        filter_ids = prev_metadata.initial_filter_ids
+
+        iteration = self.__iterations_repository.add_double_var_iteration(
+            name,
+            previous_iteration_id,
+            variable_name,
+            variable_dtype,
+            loss_rate_type,
+            filter_ids,
+            auto_band,
+            use_scalar,
+            upgrade_limit,
+            downgrade_limit,
+            auto_rank_ordering,
+        )
+
+        self.__metadata[iteration.uid] = (
+            DefaultOptions().default_iteation_metadata.with_changes(
+                loss_rate_type=loss_rate_type,
+                initial_filter_ids=filter_ids,
+                current_filter_ids=filter_ids,
+                metric_ids=prev_metadata.metric_ids,
+            )
+        )
+
+        return iteration
 
     def get_editable_range(
         self, iteration_id: IterationID, default: bool
     ) -> tuple[Styler, list[str], list[str]]:
         iteration = self.__iterations_repository.get_iteration(iteration_id)
+        metadata = self.get_iteration_metadata(iteration_id)
 
         # 1. Label
         rs_label_df = self.__iterations_repository.get_risk_segment_range(iteration_id)
@@ -263,7 +379,11 @@ class IterationsViewModel(ChangeTracker):
 
         # Metrics
         metric_df, errors, warnings = self.__iterations_repository.get_metric_range(
-            iteration_id, default
+            iteration_id=iteration_id,
+            default=default,
+            filter_ids=metadata.current_filter_ids,
+            metric_ids=metadata.metric_ids,
+            scalars_enabled=metadata.scalars_enabled,
         )
 
         # Concatenated df
@@ -449,9 +569,17 @@ class IterationsViewModel(ChangeTracker):
         default: bool,
         show_controls_idx: t.Literal["all", "alternate"] | list[int],
     ) -> tuple[list[GridMetricView], list[str], list[str]]:
+        metadata = self.get_iteration_metadata(iteration_id)
+
         # Get Data
         metric_summaries, errors, warnings = (
-            self.__iterations_repository.get_metric_grids(iteration_id, default)
+            self.__iterations_repository.get_metric_grids(
+                iteration_id=iteration_id,
+                default=default,
+                filter_ids=metadata.current_filter_ids,
+                metric_ids=metadata.metric_ids,
+                scalars_enabled=metadata.scalars_enabled,
+            )
         )
         font_color_grid = self.__iterations_repository.get_risk_segment_grid(
             iteration_id, default, RSDetCol.FONT_COLOR

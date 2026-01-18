@@ -358,7 +358,7 @@ def iteration_creator():
             variable_dtype = VariableType.CATEGORICAL
 
         if iterations_vm.current_iteration_create_mode == IterationType.SINGLE:
-            iteration = iterations_vm.add_single_var_node(
+            iteration = iterations_vm.add_single_var_iteration(
                 name=iteration_name,
                 variable_name=variable_name,
                 variable_dtype=variable_dtype,
@@ -377,7 +377,7 @@ def iteration_creator():
                 IterationID, iterations_vm.current_iteration_create_parent_id
             )
 
-            iteration = iterations_vm.add_double_var_node(
+            iteration = iterations_vm.add_double_var_iteration(
                 name=iteration_name,
                 previous_iteration_id=previous_node_id,
                 variable_name=variable_name,

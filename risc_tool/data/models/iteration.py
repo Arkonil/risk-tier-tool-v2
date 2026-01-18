@@ -44,7 +44,6 @@ class IterationBase(ABC):
         self._variable = variable
         self._groups = self._create_initial_groups(variable, initial_group_count)
         self._default_groups = self._groups.copy()
-        self.metadata = DefaultOptions().default_iteation_metadata
         self.active: bool = True
 
     @property

@@ -5,7 +5,6 @@ import typing as t
 
 import pandas as pd
 
-from risc_tool.data.models.defaults import DefaultOptions
 from risc_tool.data.models.enums import (
     LossRateTypes,
     RangeColumn,
@@ -21,7 +20,6 @@ from risc_tool.data.models.iteration import (
     NumericalSingleVarIteration,
 )
 from risc_tool.data.models.iteration_graph import IterationGraph
-from risc_tool.data.models.iteration_metadata import IterationMetadata
 from risc_tool.data.models.iteration_output import IterationOutput
 from risc_tool.data.models.types import (
     ChangeIDs,
@@ -148,52 +146,6 @@ class IterationsRepository(BaseRepository):
     def get_risk_segment_details(self, iteration_id: IterationID) -> pd.DataFrame:
         root_iter = self.get_root_iteration(iteration_id)
         return root_iter.risk_segment_details
-
-    def get_metadata(self, iteration_id: IterationID) -> IterationMetadata:
-        return self.get_iteration(iteration_id).metadata
-
-    def set_metadata(
-        self,
-        iteration_id: IterationID,
-        editable: bool | None = None,
-        metric_ids: list[MetricID] | None = None,
-        scalars_enabled: bool | None = None,
-        split_view_enabled: bool | None = None,
-        loss_rate_type: LossRateTypes | None = None,
-        filter_ids: list[FilterID] | None = None,
-        show_prev_iter_details: bool | None = None,
-    ):
-        iteration = self.get_iteration(iteration_id)
-
-        # Updating Current Metadata
-        iteration.metadata.update(
-            editable=editable,
-            metric_ids=metric_ids,
-            scalars_enabled=scalars_enabled,
-            split_view_enabled=split_view_enabled,
-            loss_rate_type=loss_rate_type,
-            current_filter_ids=filter_ids,
-            show_prev_iter_details=show_prev_iter_details,
-        )
-
-        if (
-            loss_rate_type is not None or filter_ids is not None
-        ) and not self.graph.is_root(iteration_id):
-            # Getting Root ID
-            root_id = self.graph.get_root_iter_id(iteration_id)
-
-            # Updating Metadat to Root ID
-            for iter_id in [root_id] + self.graph.get_descendants(root_id):
-                self.get_iteration(iter_id).metadata.update(
-                    loss_rate_type=loss_rate_type,
-                    current_filter_ids=filter_ids,
-                )
-
-            self.add_to_calculation_queue(root_id)
-        else:
-            self.add_to_calculation_queue(iteration_id)
-
-        self.notify_subscribers()
 
     def delete_iteration(self, iteration_id: IterationID):
         iteration_ids_to_delete = [iteration_id] + self.graph.get_descendants(
@@ -514,12 +466,6 @@ class IterationsRepository(BaseRepository):
         else:
             raise ValueError(f"Invalid variable type: {variable_dtype}")
 
-        iteration.metadata = DefaultOptions().default_iteation_metadata.with_changes(
-            loss_rate_type=loss_rate_type,
-            initial_filter_ids=filter_ids,
-            current_filter_ids=filter_ids,
-        )
-
         if auto_band:
             filter_mask = self.__filter_repository.get_mask(filter_ids=filter_ids)
             data_source_mask = self.__data_repository.get_data_source_mask(
@@ -599,6 +545,8 @@ class IterationsRepository(BaseRepository):
         previous_iteration_id: IterationID,
         variable_name: str,
         variable_dtype: VariableType,
+        loss_rate_type: LossRateTypes,
+        filter_ids: list[FilterID],
         auto_band: bool,
         use_scalar: bool,
         upgrade_limit: int | None = None,
@@ -639,15 +587,6 @@ class IterationsRepository(BaseRepository):
             )
         else:
             raise ValueError(f"Invalid variable type: {variable_dtype}")
-
-        loss_rate_type = self.iterations[previous_iteration_id].metadata.loss_rate_type
-        filter_ids = self.iterations[previous_iteration_id].metadata.initial_filter_ids
-
-        iteration.metadata = DefaultOptions().default_iteation_metadata.with_changes(
-            loss_rate_type=loss_rate_type,
-            initial_filter_ids=filter_ids,
-            current_filter_ids=filter_ids,
-        )
 
         if auto_band:
             filter_mask = self.__filter_repository.get_mask(filter_ids=filter_ids)
@@ -1053,15 +992,21 @@ class IterationsRepository(BaseRepository):
         self.add_to_calculation_queue(iteration.uid)
         self.notify_subscribers()
 
-    def get_metric_range(self, iteration_id: IterationID, default: bool):
-        iteration = self.get_iteration(iteration_id)
+    def get_metric_range(
+        self,
+        iteration_id: IterationID,
+        default: bool,
+        filter_ids: list[FilterID],
+        metric_ids: list[MetricID],
+        scalars_enabled: bool,
+    ):
         risk_segment_details = self.get_risk_segment_details(iteration_id)
 
         all_metrics = self.__metric_repository.get_all_metrics()
 
         valid_metrics = [
             all_metrics[metric_id]
-            for metric_id in iteration.metadata.metric_ids
+            for metric_id in metric_ids
             if metric_id in all_metrics
         ]
 
@@ -1069,31 +1014,29 @@ class IterationsRepository(BaseRepository):
 
         metric_df = self.__data_repository.get_summarized_metrics(
             groupby_variable_1=iteration_output.risk_segment_column,
-            data_filter=self.__filter_repository.get_mask(
-                iteration.metadata.current_filter_ids
-            ),
+            data_filter=self.__filter_repository.get_mask(filter_ids),
             metrics=valid_metrics,
         )
 
         scalar_df = risk_segment_details[[RSDetCol.MAF_DLR, RSDetCol.MAF_ULR]]
         metric_df = metric_df.loc[scalar_df.index]
 
-        if iteration.metadata.scalars_enabled:
-            if MetricID.DLR_BAD_RATE in iteration.metadata.metric_ids:
+        if scalars_enabled:
+            if MetricID.DLR_BAD_RATE in metric_ids:
                 scalar = self.__scalar_repository.get_scalar(LossRateTypes.DLR)
                 metric_name = all_metrics[MetricID.DLR_BAD_RATE].pretty_name
                 metric_df[metric_name] *= scalar.get_risk_scalar_factor(
                     scalar_df[RSDetCol.MAF_DLR]
                 )
 
-            if MetricID.UNT_BAD_RATE in iteration.metadata.metric_ids:
+            if MetricID.UNT_BAD_RATE in metric_ids:
                 scalar = self.__scalar_repository.get_scalar(LossRateTypes.ULR)
                 metric_name = all_metrics[MetricID.UNT_BAD_RATE].pretty_name
                 metric_df[metric_name] *= scalar.get_risk_scalar_factor(
                     scalar_df[RSDetCol.MAF_ULR]
                 )
 
-        for metric_id in iteration.metadata.metric_ids:
+        for metric_id in metric_ids:
             metric = all_metrics[metric_id]
             metric_name = metric.pretty_name
             metric_df[metric_name] = metric_df[metric_name].map(metric.format)
@@ -1174,7 +1117,14 @@ class IterationsRepository(BaseRepository):
         self.add_to_calculation_queue(iteration.uid)
         self.notify_subscribers()
 
-    def get_metric_grids(self, iteration_id: IterationID, default: bool):
+    def get_metric_grids(
+        self,
+        iteration_id: IterationID,
+        default: bool,
+        filter_ids: list[FilterID],
+        metric_ids: list[MetricID],
+        scalars_enabled: bool,
+    ):
         iteration = self.get_iteration(iteration_id)
 
         parent_iteration_id = self.graph.get_parent(iteration_id)
@@ -1202,17 +1152,13 @@ class IterationsRepository(BaseRepository):
             groupby_variable_2=col_output.risk_segment_column.rename(
                 "Previous Iter Result"
             ),
-            data_filter=self.__filter_repository.get_mask(
-                iteration.metadata.current_filter_ids
-            ),
-            metrics=[
-                all_metrics[metric_id] for metric_id in iteration.metadata.metric_ids
-            ],
+            data_filter=self.__filter_repository.get_mask(filter_ids),
+            metrics=[all_metrics[metric_id] for metric_id in metric_ids],
         )
 
-        if iteration.metadata.scalars_enabled and (
-            (MetricID.DLR_BAD_RATE in iteration.metadata.metric_ids)
-            or (MetricID.UNT_BAD_RATE in iteration.metadata.metric_ids)
+        if scalars_enabled and (
+            (MetricID.DLR_BAD_RATE in metric_ids)
+            or (MetricID.UNT_BAD_RATE in metric_ids)
         ):
             risk_segment_grid = (
                 iteration.default_risk_segment_grid
@@ -1233,14 +1179,14 @@ class IterationsRepository(BaseRepository):
             )
             scalar_df = scalar_df.reindex(index=metric_df.index)
 
-            if MetricID.DLR_BAD_RATE in iteration.metadata.metric_ids:
+            if MetricID.DLR_BAD_RATE in metric_ids:
                 scalar = self.__scalar_repository.get_scalar(LossRateTypes.DLR)
                 metric_name = all_metrics[MetricID.DLR_BAD_RATE].pretty_name
                 metric_df[metric_name] *= scalar.get_risk_scalar_factor(
                     scalar_df[RSDetCol.MAF_DLR]
                 )
 
-            if MetricID.UNT_BAD_RATE in iteration.metadata.metric_ids:
+            if MetricID.UNT_BAD_RATE in metric_ids:
                 scalar = self.__scalar_repository.get_scalar(LossRateTypes.ULR)
                 metric_name = all_metrics[MetricID.UNT_BAD_RATE].pretty_name
                 metric_df[metric_name] *= scalar.get_risk_scalar_factor(
@@ -1251,7 +1197,7 @@ class IterationsRepository(BaseRepository):
 
         metric_outputs: list[GridMetricSummary] = []
 
-        for metric_id in iteration.metadata.metric_ids:
+        for metric_id in metric_ids:
             metric = all_metrics[metric_id]
             metric_name = metric.pretty_name
             metric_df[metric_name] = metric_df[metric_name].map(metric.format)

@@ -29,6 +29,7 @@ def data_viewer():
         tabs,
         index=ds_ids.index(current_ds_id),
         return_index=True,
+        key="data-viewer-tabs",
     )
 
     selected_tab_index = t.cast(int, selected_tab_index)

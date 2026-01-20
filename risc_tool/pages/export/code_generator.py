@@ -14,20 +14,8 @@ def iteration_code_generator(language: t.Literal["sas", "python"]):
 
     with control_container:
         st.markdown("##### Select Iteration")
-        selected_iteration_id = iteration_selector(
+        selected_iteration_id, default = iteration_selector(
             key=f"{language}-code-iteration-selector"
-        )
-
-        warning_container = st.container()
-
-        mode = st.segmented_control(
-            label="Default/Edited",
-            options=["Default", "Edited"],
-            selection_mode="single",
-            default="Edited",
-            width="stretch",
-            label_visibility="collapsed",
-            key=f"{language}-code-mode-selector",
         )
 
         if language == "sas":
@@ -39,22 +27,16 @@ def iteration_code_generator(language: t.Literal["sas", "python"]):
         else:
             use_macro = True
 
-        if mode is None:
-            warning_container.warning(
-                "Select either 'Default' or 'Edited' mode.", icon=":material/warning:"
-            )
-            return
-
         if language == "sas":
             code = export_vm.get_sas_code(
                 iteration_id=selected_iteration_id,
-                default=(mode == "Default"),
+                default=default,
                 use_macro=use_macro,
             )
         elif language == "python":
             code = export_vm.get_python_code(
                 iteration_id=selected_iteration_id,
-                default=(mode == "Default"),
+                default=default,
             )
 
     with code_preview_container:

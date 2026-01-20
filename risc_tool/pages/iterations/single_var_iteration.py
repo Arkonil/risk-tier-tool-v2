@@ -30,7 +30,7 @@ def single_var_iteration():
         iteration_sidebar_components(iteration_id=iteration.uid)
 
     # Main Page
-    st.title(f"Iteration #{iteration.uid}")
+    st.title(iteration.pretty_name)
     st.write(f"##### Variable: `{iteration.variable.name}`")
 
     ## Risk Tier Details Check

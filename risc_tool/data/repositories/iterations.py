@@ -120,11 +120,14 @@ class IterationsRepository(BaseRepository):
         self.__recalculation_required.clear()
 
     def iteration_selector_options(self, keep_inactive: bool = False):
-        return {
-            iter_id: iter_obj.pretty_name
-            for iter_id, iter_obj in self.iterations.items()
-            if keep_inactive or iter_obj.active
-        }
+        options: dict[tuple[IterationID, bool], str] = {}
+
+        for iter_id, iter_obj in self.iterations.items():
+            if iter_obj.active or keep_inactive:
+                options[(iter_id, True)] = f"{iter_obj.pretty_name} (Default)"
+                options[(iter_id, False)] = f"{iter_obj.pretty_name} (Custom)"
+
+        return options
 
     def get_iteration(self, iteration_id: IterationID) -> Iteration:
         if iteration_id not in self.iterations:

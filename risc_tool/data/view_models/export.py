@@ -1,7 +1,6 @@
 from risc_tool.data.models.changes import ChangeTracker
 from risc_tool.data.models.enums import ExportTabName, Signature
 from risc_tool.data.models.types import ChangeIDs, IterationID
-from risc_tool.data.repositories.data import DataRepository
 from risc_tool.data.repositories.iterations import IterationsRepository
 
 
@@ -12,12 +11,10 @@ class ExportViewModel(ChangeTracker):
 
     def __init__(
         self,
-        data_repository: DataRepository,
         iteration_repository: IterationsRepository,
     ):
-        super().__init__(dependencies=[data_repository, iteration_repository])
+        super().__init__(dependencies=[iteration_repository])
 
-        self.__data_repository = data_repository
         self.__iteration_repository = iteration_repository
 
         self.tab_names: list[ExportTabName] = [

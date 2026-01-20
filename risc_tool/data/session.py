@@ -67,7 +67,6 @@ class Session:
             options_repository=self.options_repository,
         )
         self.export_view_model = ExportViewModel(
-            data_repository=self.data_repository,
             iteration_repository=self.iterations_repository,
         )
 

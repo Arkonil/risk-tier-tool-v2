@@ -357,11 +357,16 @@ class IterationsViewModel(ChangeTracker):
 
         return iteration
 
-    def get_editable_range(
-        self, iteration_id: IterationID, default: bool
+    def get_iteration_metric_table(
+        self,
+        iteration_id: IterationID,
+        default: bool,
+        show_controls: bool,
+        filter_ids: list[FilterID],
+        metric_ids: list[MetricID],
+        scalars_enabled: bool,
     ) -> tuple[Styler, list[str], list[str]]:
         iteration = self.__iterations_repository.get_iteration(iteration_id)
-        metadata = self.get_iteration_metadata(iteration_id)
 
         # 1. Label
         rs_label_df = self.__iterations_repository.get_risk_segment_range(iteration_id)
@@ -370,7 +375,7 @@ class IterationsViewModel(ChangeTracker):
         )
 
         # 2. Control
-        if iteration.iter_type == IterationType.SINGLE:
+        if show_controls and iteration.iter_type == IterationType.SINGLE:
             control_df = self.__iterations_repository.get_controls(
                 iteration_id, default=default
             )
@@ -381,9 +386,9 @@ class IterationsViewModel(ChangeTracker):
         metric_df, errors, warnings = self.__iterations_repository.get_metric_range(
             iteration_id=iteration_id,
             default=default,
-            filter_ids=metadata.current_filter_ids,
-            metric_ids=metadata.metric_ids,
-            scalars_enabled=metadata.scalars_enabled,
+            filter_ids=filter_ids,
+            metric_ids=metric_ids,
+            scalars_enabled=scalars_enabled,
         )
 
         # Concatenated df

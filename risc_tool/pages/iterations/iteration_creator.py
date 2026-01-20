@@ -13,8 +13,8 @@ from risc_tool.data.models.enums import (
 )
 from risc_tool.data.models.types import FilterID, IterationID
 from risc_tool.data.session import Session
+from risc_tool.pages.components.error_warnings import error_and_warning_widget
 from risc_tool.pages.components.variable_selector import variable_selector_dialog
-from risc_tool.pages.iterations.common import error_and_warning_widget
 from risc_tool.pages.iterations.navigation import navigation_widgets
 
 

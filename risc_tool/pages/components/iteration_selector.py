@@ -10,25 +10,25 @@ def iteration_selector(
     default: bool | None = None,
 ) -> tuple[IterationID, bool]:
     session: Session = st.session_state["session"]
-    options = session.iterations_repository.iteration_selector_options()
+    iterations = session.iterations_repository.iteration_selector_options()
 
-    options_list = list(options.keys())
+    options = list(iterations.keys())
 
     if (
         iteration_id is not None
         and default is not None
-        and (iteration_id, default) in options_list
+        and (iteration_id, default) in options
     ):
-        index = options_list.index((iteration_id, default))
+        index = options.index((iteration_id, default))
     else:
         index = 0
 
     iteration_id, default = st.selectbox(
         label=f"iter_selector_{key}",
-        options=options_list,
+        options=options,
         index=index,
         label_visibility="collapsed",
-        format_func=lambda k: options.get(k, ""),
+        format_func=lambda k: iterations.get(k, ""),
         key=f"iter_selector_{key}",
     )
 

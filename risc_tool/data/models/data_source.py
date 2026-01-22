@@ -35,6 +35,32 @@ class DataSource(BaseModel):
 
         return super().model_post_init(context)
 
+    def to_dict(self) -> dict[str, t.Any]:
+        """
+        Converts the DataSource instance to a dictionary.
+        """
+        return self.model_dump(mode="json", by_alias=True)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, t.Any]) -> "DataSource":
+        """
+        Creates a DataSource instance from a dictionary.
+        Validates the input type and restores the object.
+        """
+        if not isinstance(data, dict):
+            raise TypeError("The input must be a dictionary.")
+
+        instance = cls.model_validate(data)
+
+        # Restore SentinelInt identity for known sentinels if necessary
+        # This is needed because serialization/deserialization via int loses the sentinel's _name property
+        if int(instance.uid) == int(DataSourceID.TEMPORARY):
+            instance.uid = DataSourceID.TEMPORARY
+        elif int(instance.uid) == int(DataSourceID.EMPTY):
+            instance.uid = DataSourceID.EMPTY
+
+        return instance
+
     @property
     def sample_loaded(self) -> bool:
         return self._sample_df is not None

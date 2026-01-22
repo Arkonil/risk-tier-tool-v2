@@ -1,6 +1,7 @@
 import typing as t
 
 import streamlit as st
+import streamlit_antd_components as sac
 
 from risc_tool.data.models.enums import (
     IterationType,
@@ -123,6 +124,33 @@ def iteration_sidebar_components(iteration_id: IterationID):
         )
         st.rerun()
 
+    # Split View Toggle
+    if iteration.iter_type == IterationType.DOUBLE:
+        current_split_view_enabled = iterations_vm.get_iteration_metadata(
+            iteration_id
+        ).split_view_enabled
+
+        selected_idx = sac.segmented(
+            [
+                sac.SegmentedItem("list", "list"),
+                sac.SegmentedItem("grid", "grid"),
+            ],
+            use_container_width=True,
+            size="sm",
+            index=1 if current_split_view_enabled else 0,
+            key=f"split-view-{iteration_id}",
+            return_index=True,
+        )
+
+        split_view_enabled = selected_idx == 1
+
+        if split_view_enabled != current_split_view_enabled:
+            iterations_vm.set_metadata(
+                iteration_id=iteration_id,
+                split_view_enabled=split_view_enabled,
+            )
+            st.rerun()
+
     # Scalar Toggle
     current_scalars_enabled = iterations_vm.get_iteration_metadata(
         iteration_id
@@ -140,25 +168,6 @@ def iteration_sidebar_components(iteration_id: IterationID):
             scalars_enabled=scalars_enabled,
         )
         st.rerun()
-
-    # Split View Toggle
-    if iteration.iter_type == IterationType.DOUBLE:
-        current_split_view_enabled = iterations_vm.get_iteration_metadata(
-            iteration_id
-        ).split_view_enabled
-
-        split_view_enabled = st.checkbox(
-            label="Split into columns",
-            value=current_split_view_enabled,
-            help="Split the grid view into columns for each metric",
-        )
-
-        if split_view_enabled != current_split_view_enabled:
-            iterations_vm.set_metadata(
-                iteration_id=iteration_id,
-                split_view_enabled=split_view_enabled,
-            )
-            st.rerun()
 
     # Editable Toggle
     if iteration.iter_type == IterationType.DOUBLE:

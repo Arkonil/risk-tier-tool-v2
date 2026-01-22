@@ -84,6 +84,16 @@ class IterationsRepository(BaseRepository):
             tuple[IterationID, t.Literal["default", "edited"]]
         ] = set()
 
+        self.__metric_range_cache: dict[
+            tuple[IterationID, bool, tuple[FilterID, ...], tuple[MetricID, ...], bool],
+            tuple[pd.DataFrame, list[str], list[str]],
+        ] = {}
+
+        self.__metric_grid_cache: dict[
+            tuple[IterationID, bool, tuple[FilterID, ...], tuple[MetricID, ...], bool],
+            tuple[list[GridMetricSummary], list[str], list[str]],
+        ] = {}
+
         # Dependencies
         self.__data_repository = data_repository
         self.__filter_repository = filter_repository
@@ -118,6 +128,8 @@ class IterationsRepository(BaseRepository):
         # Clear Cache
         self.__iteration_outputs.clear()
         self.__recalculation_required.clear()
+        self.__metric_range_cache.clear()
+        self.__metric_grid_cache.clear()
 
     def iteration_selector_options(self, keep_inactive: bool = False):
         options: dict[tuple[IterationID, bool], str] = {}
@@ -1002,7 +1014,18 @@ class IterationsRepository(BaseRepository):
         filter_ids: list[FilterID],
         metric_ids: list[MetricID],
         scalars_enabled: bool,
-    ):
+    ) -> tuple[pd.DataFrame, list[str], list[str]]:
+        key = (
+            iteration_id,
+            default,
+            tuple(sorted(filter_ids)),
+            tuple(sorted(metric_ids)),
+            scalars_enabled,
+        )
+
+        if key in self.__metric_range_cache:
+            return self.__metric_range_cache[key]
+
         risk_segment_details = self.get_risk_segment_details(iteration_id)
 
         all_metrics = self.__metric_repository.get_all_metrics()
@@ -1043,6 +1066,12 @@ class IterationsRepository(BaseRepository):
             metric = all_metrics[metric_id]
             metric_name = metric.pretty_name
             metric_df[metric_name] = metric_df[metric_name].map(metric.format)
+
+        self.__metric_range_cache[key] = (
+            metric_df,
+            iteration_output.errors,
+            iteration_output.warnings,
+        )
 
         return metric_df, iteration_output.errors, iteration_output.warnings
 
@@ -1128,6 +1157,17 @@ class IterationsRepository(BaseRepository):
         metric_ids: list[MetricID],
         scalars_enabled: bool,
     ):
+        key = (
+            iteration_id,
+            default,
+            tuple(sorted(filter_ids)),
+            tuple(sorted(metric_ids)),
+            scalars_enabled,
+        )
+
+        if key in self.__metric_grid_cache:
+            return self.__metric_grid_cache[key]
+
         iteration = self.get_iteration(iteration_id)
 
         parent_iteration_id = self.graph.get_parent(iteration_id)
@@ -1215,5 +1255,11 @@ class IterationsRepository(BaseRepository):
                     ],
                 )
             )
+
+        self.__metric_grid_cache[key] = (
+            metric_outputs,
+            errors,
+            warnings,
+        )
 
         return metric_outputs, errors, warnings

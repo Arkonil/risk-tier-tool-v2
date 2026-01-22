@@ -79,6 +79,12 @@ class DataExplorerTabName(StrEnum, metaclass=StrEnumMeta):
     IV_ANALYSIS = "IV Analysis"
 
 
+class SummaryPageTabName(StrEnum, metaclass=StrEnumMeta):
+    OVERVIEW = "Overview"
+    COMPARISON = "Comparison"
+    CROSSTAB = "Crosstab"
+
+
 class ExportTabName(StrEnum, metaclass=StrEnumMeta):
     SESSION_ARCHIVE = "Session Archive"
     PYTHON_CODE = "Python Code"
@@ -107,6 +113,7 @@ class Signature(StrEnum):
     FILTER_VIEWMODEL = "FILTER_VIEWMODEL"
     CONFIG_VIEWMODEL = "CONFIG_VIEWMODEL"
     ITERATION_VIEWMODEL = "ITERATION_VIEWMODEL"
+    SUMMARY_VIEWMODEL = "SUMMARY_VIEWMODEL"
     EXPORT_VIEWMODEL = "EXPORT_VIEWMODEL"
 
 

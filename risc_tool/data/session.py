@@ -11,6 +11,7 @@ from risc_tool.data.view_models.export import ExportViewModel
 from risc_tool.data.view_models.filter import FilterViewModel
 from risc_tool.data.view_models.iterations import IterationsViewModel
 from risc_tool.data.view_models.metric import MetricViewModel
+from risc_tool.data.view_models.summary import SummaryViewModel
 from risc_tool.data.view_models.variable_selector import VariableSelectorViewModel
 
 
@@ -65,6 +66,10 @@ class Session:
             metric_repository=self.metric_repository,
             scalar_repository=self.scalar_repository,
             options_repository=self.options_repository,
+        )
+        self.summary_view_model = SummaryViewModel(
+            data_repository=self.data_repository,
+            iteration_repository=self.iterations_repository,
         )
         self.export_view_model = ExportViewModel(
             iteration_repository=self.iterations_repository,

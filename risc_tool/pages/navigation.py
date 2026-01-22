@@ -8,6 +8,7 @@ from risc_tool.pages.filters import filter_page
 from risc_tool.pages.home import home_page
 from risc_tool.pages.iterations import iterations_page
 from risc_tool.pages.metrics import metrics_page
+from risc_tool.pages.summary import summary_page
 
 
 def set_page_navigation():
@@ -24,6 +25,7 @@ def set_page_navigation():
             iterations_page,
         ],
         "Results": [
+            summary_page,
             export_page,
         ],
     })

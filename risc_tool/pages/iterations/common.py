@@ -9,6 +9,7 @@ from risc_tool.data.models.enums import (
 )
 from risc_tool.data.models.types import IterationID
 from risc_tool.data.session import Session
+from risc_tool.pages.components.filter_selector import filter_selector
 from risc_tool.pages.components.metric_selector import metric_selector_button
 from risc_tool.pages.components.variable_selector import variable_selector_dialog
 
@@ -104,17 +105,10 @@ def iteration_sidebar_components(iteration_id: IterationID):
     current_filter_ids = iterations_vm.get_iteration_metadata(
         iteration_id
     ).current_filter_ids
-    all_filters = iterations_vm.get_filters()
 
-    selected_filter_ids = st.multiselect(
-        label="Filter",
-        options=iterations_vm.get_filters().keys(),
-        default=current_filter_ids,
-        format_func=lambda filter_id: all_filters[filter_id].pretty_name,
-        label_visibility="collapsed",
-        key=f"filter_selector_{iteration_id}",
-        help="Select filters to apply to the iteration",
-        placeholder="Select Filters",
+    selected_filter_ids = filter_selector(
+        key=f"{iteration_id}",
+        filter_ids=current_filter_ids,
     )
 
     if set(selected_filter_ids) != set(current_filter_ids):

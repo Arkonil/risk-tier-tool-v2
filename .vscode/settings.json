@@ -14,5 +14,7 @@
   "files.exclude": {
     "**/__pycache__/": true
   },
-  "python.analysis.diagnosticMode": "workspace"
+  "python.analysis.diagnosticMode": "workspace",
+  "python.analysis.exclude": ["**/tests/**"],
+  "python.analysis.ignore": ["**/tests/**"]
 }

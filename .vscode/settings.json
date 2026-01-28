@@ -16,5 +16,5 @@
   },
   "python.analysis.diagnosticMode": "workspace",
   "python.analysis.exclude": ["**/tests/**"],
-  "python.analysis.ignore": ["**/tests/**"]
+  "python.analysis.ignore": ["**/tests/**", ".venv/**"]
 }

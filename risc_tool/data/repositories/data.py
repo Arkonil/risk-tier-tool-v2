@@ -126,6 +126,11 @@ class DataRepository(BaseRepository):
 
         return pd.concat(sample_dfs, axis=0)
 
+    def refresh_data_config(self):
+        self.data_config.refresh(
+            common_columns=self._common_columns, all_columns=self._all_columns
+        )
+
     def add_data_source(
         self,
         filepath: pathlib.Path,
@@ -170,10 +175,7 @@ class DataRepository(BaseRepository):
         self.data_sources[data_source.uid] = data_source
         data_source.load_sample()
 
-        self.data_config.refresh(
-            common_columns=self._common_columns, all_columns=self._all_columns
-        )
-
+        self.refresh_data_config()
         self.notify_subscribers()
 
         return data_source
@@ -230,9 +232,7 @@ class DataRepository(BaseRepository):
         new_data_source.load_sample()
 
         # Update the common columns
-        self.data_config.refresh(
-            common_columns=self._common_columns, all_columns=self._all_columns
-        )
+        self.refresh_data_config()
 
         # Notify subscribers
         self.notify_subscribers()
@@ -242,9 +242,7 @@ class DataRepository(BaseRepository):
     def delete_data_source(self, data_source_id: DataSourceID):
         del self.data_sources[data_source_id]
 
-        self.data_config.refresh(
-            common_columns=self._common_columns, all_columns=self._all_columns
-        )
+        self.refresh_data_config()
 
         self.notify_subscribers()
 

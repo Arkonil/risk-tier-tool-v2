@@ -119,19 +119,16 @@ class DataImporterViewModel(ChangeTracker):
                 self.showing_empty_data_source = False
                 self.empty_data_source_view = DataSourceViewModel()
             except DataImportError as e:
-                self.empty_data_source_view.data_source = (
-                    self.empty_data_source_view.data_source.model_copy(
-                        update={
-                            "filepath": filepath or pathlib.Path(""),
-                            "label": label,
-                            "read_mode": read_mode,
-                            "delimiter": delimiter,
-                            "sheet_name": sheet_name,
-                            "header_row": header_row,
-                            "sample_row_count": sample_row_count,
-                        }
-                    )
-                )
+                eds = self.empty_data_source_view.data_source
+
+                eds.filepath = filepath or pathlib.Path("")
+                eds.label = label
+                eds.read_mode = read_mode
+                eds.delimiter = delimiter
+                eds.sheet_name = sheet_name
+                eds.header_row = header_row
+                eds.sample_row_count = sample_row_count
+
                 self.empty_data_source_view.import_status = {
                     "status": "error",
                     "message": str(e),

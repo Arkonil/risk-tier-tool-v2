@@ -11,6 +11,7 @@ from risc_tool.data.view_models.export import ExportViewModel
 from risc_tool.data.view_models.filter import FilterViewModel
 from risc_tool.data.view_models.iterations import IterationsViewModel
 from risc_tool.data.view_models.metric import MetricViewModel
+from risc_tool.data.view_models.session_archive import SessionArchiveViewModel
 from risc_tool.data.view_models.summary import SummaryViewModel
 from risc_tool.data.view_models.variable_selector import VariableSelectorViewModel
 
@@ -22,6 +23,7 @@ class Session:
         self.debug_mode = debug_mode
 
     def reset(self):
+        # Repositories
         self.data_repository = DataRepository()
         self.options_repository = OptionRepository()
         self.scalar_repository = ScalarRepository()
@@ -35,6 +37,7 @@ class Session:
             scalar_repository=self.scalar_repository,
         )
 
+        # View Models
         self.variable_selector_view_model = VariableSelectorViewModel(
             data_repository=self.data_repository,
             metric_repository=self.metric_repository,
@@ -73,6 +76,82 @@ class Session:
         )
         self.export_view_model = ExportViewModel(
             iteration_repository=self.iterations_repository,
+        )
+
+        # Import/Export
+        self.session_archive_view_model = SessionArchiveViewModel(
+            data_repository=self.data_repository,
+            filter_repository=self.filter_repository,
+            metric_repository=self.metric_repository,
+            options_repository=self.options_repository,
+            scalar_repository=self.scalar_repository,
+            iterations_repository=self.iterations_repository,
+            iterations_view_model=self.iterations_view_model,
+            summary_view_model=self.summary_view_model,
+        )
+
+    def dangerously_set_repo_vm(
+        self,
+        data_repository: DataRepository,
+        options_repository: OptionRepository,
+        scalar_repository: ScalarRepository,
+        metric_repository: MetricRepository,
+        filter_repository: FilterRepository,
+        iterations_repository: IterationsRepository,
+        iterations_view_model: IterationsViewModel,
+        summary_view_model: SummaryViewModel,
+    ):
+        self.data_repository = data_repository
+        self.options_repository = options_repository
+        self.scalar_repository = scalar_repository
+        self.metric_repository = metric_repository
+        self.filter_repository = filter_repository
+        self.iterations_repository = iterations_repository
+
+        self.variable_selector_view_model = VariableSelectorViewModel(
+            data_repository=self.data_repository,
+            metric_repository=self.metric_repository,
+        )
+        self.data_importer_view_model = DataImporterViewModel(
+            data_repository=self.data_repository,
+        )
+        self.data_importer_view_model.showing_empty_data_source = False
+        if data_repository.data_sources:
+            self.data_importer_view_model._current_ds_id = next(
+                iter(data_repository.data_sources)
+            )
+
+        self.data_explorer_view_model = DataExplorerViewModel(
+            data_repository=self.data_repository,
+            filter_repository=self.filter_repository,
+        )
+        self.metric_editor_view_model = MetricViewModel(
+            data_repository=self.data_repository,
+            metric_repository=self.metric_repository,
+        )
+        self.filter_editor_view_model = FilterViewModel(
+            data_repository=self.data_repository,
+            filter_repository=self.filter_repository,
+        )
+        self.config_view_model = ConfigViewModel(
+            options_repository=self.options_repository,
+            scalar_repository=self.scalar_repository,
+            metric_repository=self.metric_repository,
+        )
+        self.iterations_view_model = iterations_view_model
+        self.summary_view_model = summary_view_model
+        self.export_view_model = ExportViewModel(
+            iteration_repository=self.iterations_repository,
+        )
+        self.session_archive_view_model = SessionArchiveViewModel(
+            data_repository=self.data_repository,
+            filter_repository=self.filter_repository,
+            metric_repository=self.metric_repository,
+            options_repository=self.options_repository,
+            scalar_repository=self.scalar_repository,
+            iterations_repository=self.iterations_repository,
+            iterations_view_model=self.iterations_view_model,
+            summary_view_model=self.summary_view_model,
         )
 
 

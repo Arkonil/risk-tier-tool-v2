@@ -1,15 +1,19 @@
-from pydantic import BaseModel, ConfigDict, Field
-
+from risc_tool.data.models.json_models import IterationGraphJSON
 from risc_tool.data.models.types import IterationID
 
 
-class IterationGraph(BaseModel):
-    model_config = ConfigDict(
-        serialize_by_alias=True,
-        validate_by_alias=True,
-        arbitrary_types_allowed=True,
-    )
-    connections: dict[IterationID, list[IterationID]] = Field(default_factory=dict)
+class IterationGraph:
+    def __init__(self):
+        self.connections: dict[IterationID, list[IterationID]] = {}
+
+    def to_dict(self) -> IterationGraphJSON:
+        return IterationGraphJSON(connections=self.connections)
+
+    @classmethod
+    def from_dict(cls, data: IterationGraphJSON) -> "IterationGraph":
+        graph = cls()
+        graph.connections = data.connections
+        return graph
 
     def add_child(self, parent_id: IterationID, child_id: IterationID):
         if parent_id not in self.connections:

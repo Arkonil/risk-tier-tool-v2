@@ -1,25 +1,18 @@
 import re
-import typing as t
-
-from pydantic import BaseModel, ConfigDict, Field
 
 from risc_tool.data.models.completion import Completion
 
 
-class DataConfig(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-        serialize_by_alias=True,
-        validate_by_alias=True,
-    )
+class DataConfig:
+    def __init__(
+        self,
+        common_columns: list[str] | None = None,
+        all_columns: list[str] | None = None,
+    ):
+        self.common_columns: list[str] = common_columns or []
+        self.all_columns: list[str] = all_columns or []
 
-    common_columns: list[str] = Field(default_factory=list)
-    all_columns: list[str] = Field(default_factory=list)
-
-    def model_post_init(self, context: t.Any) -> None:
         self._completion_cache: dict[str, Completion] = {}
-
-        return super().model_post_init(context)
 
     @staticmethod
     def create_completion(column: str) -> Completion:

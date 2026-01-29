@@ -1,4 +1,5 @@
 from risc_tool.data.models.enums import LossRateTypes, Signature
+from risc_tool.data.models.json_models import ScalarRepositoryJSON
 from risc_tool.data.models.scalar import Scalar
 from risc_tool.data.models.types import ChangeIDs
 from risc_tool.data.repositories.base import BaseRepository
@@ -40,6 +41,18 @@ class ScalarRepository(BaseRepository):
         scalar.lifetime_rate = lifetime_rate
 
         self.notify_subscribers()
+
+    def to_dict(self) -> ScalarRepositoryJSON:
+        return ScalarRepositoryJSON(
+            scalars={k: v.to_dict() for k, v in self.scalars.items()}
+        )
+
+    @classmethod
+    def from_dict(cls, data: ScalarRepositoryJSON) -> "ScalarRepository":
+        repo = cls()
+        repo.scalars = {k: Scalar.from_dict(v) for k, v in data.scalars.items()}
+
+        return repo
 
 
 __all__ = ["ScalarRepository"]

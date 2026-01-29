@@ -1,14 +1,15 @@
 import typing as t
 from uuid import UUID, uuid4
 
-from risc_tool.data.models.changes import ChangeTracker
+from risc_tool.data.models.changes import ChangeNotifier
 from risc_tool.data.models.enums import Signature, SummaryPageTabName
+from risc_tool.data.models.json_models import SummaryViewModelJSON
 from risc_tool.data.models.types import ChangeIDs, FilterID, IterationID, MetricID
 from risc_tool.data.repositories.data import DataRepository
 from risc_tool.data.repositories.iterations import IterationsRepository
 
 
-class SummaryViewModel(ChangeTracker):
+class SummaryViewModel(ChangeNotifier):
     @property
     def _signature(self) -> Signature:
         return Signature.SUMMARY_VIEWMODEL
@@ -55,6 +56,42 @@ class SummaryViewModel(ChangeTracker):
             t.OrderedDict()
         )
         self.cv_view_mode: t.Literal["grid", "list"] = "list"
+
+    def to_dict(self) -> SummaryViewModelJSON:
+        return SummaryViewModelJSON(
+            ov_metric_ids=self.ov_metric_ids,
+            ov_filter_ids=self.ov_filter_ids,
+            ov_selected_iteration_id=self.ov_selected_iteration_id,
+            ov_selected_iteration_default=self.ov_selected_iteration_default,
+            cv_metric_ids=self.cv_metric_ids,
+            cv_filter_ids=self.cv_filter_ids,
+            cv_scalars_enabled=self.cv_scalars_enabled,
+            cv_selected_iterations=self.cv_selected_iterations,
+            cv_view_mode=self.cv_view_mode,
+        )
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: SummaryViewModelJSON,
+        data_repository: DataRepository,
+        iteration_repository: IterationsRepository,
+    ) -> "SummaryViewModel":
+        instance = cls(
+            data_repository=data_repository,
+            iteration_repository=iteration_repository,
+        )
+        instance.ov_metric_ids = data.ov_metric_ids
+        instance.ov_filter_ids = data.ov_filter_ids
+        instance.ov_selected_iteration_id = data.ov_selected_iteration_id
+        instance.ov_selected_iteration_default = data.ov_selected_iteration_default
+        instance.cv_metric_ids = data.cv_metric_ids
+        instance.cv_filter_ids = data.cv_filter_ids
+        instance.cv_scalars_enabled = data.cv_scalars_enabled
+        instance.cv_selected_iterations = data.cv_selected_iterations
+        instance.cv_view_mode = data.cv_view_mode
+
+        return instance
 
     def on_dependency_update(self, change_ids: ChangeIDs) -> None:
         return

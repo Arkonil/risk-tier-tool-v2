@@ -4,9 +4,9 @@ import typing as t
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field
 
 from risc_tool.data.models.enums import DefaultMetricNames
+from risc_tool.data.models.json_models import MetricJSON
 from risc_tool.data.models.types import DataSourceID, MetricID
 
 MISSING = np.nan
@@ -268,34 +268,64 @@ class MetricQueryValidator(ast.NodeVisitor):
         return False
 
 
-class Metric(BaseModel):
-    model_config = ConfigDict(
-        serialize_by_alias=True,
-        validate_by_alias=True,
-        arbitrary_types_allowed=True,
-    )
+class Metric:
+    def __init__(
+        self,
+        uid: MetricID,
+        name: str,
+        query: str,
+        data_source_ids: list[DataSourceID],
+        use_thousand_sep: bool = True,
+        is_percentage: bool = False,
+        decimal_places: int = 2,
+    ) -> None:
+        self.uid: MetricID = uid
+        self.name: str = name
+        self.query: str = query
+        self.data_source_ids: list[DataSourceID] = data_source_ids
+        self.used_columns: list[str] = []
 
-    uid: MetricID
-    name: str
-    query: str
-    data_source_ids: list[DataSourceID] = Field(default_factory=list)
-    used_columns: list[str] = Field(default_factory=list)
+        self.use_thousand_sep: bool = use_thousand_sep
+        self.is_percentage: bool = is_percentage
+        self.decimal_places: int = decimal_places
 
-    use_thousand_sep: bool = True
-    is_percentage: bool = False
-    decimal_places: int = 2
-
-    processed_query: str = ""
-    placeholder_map: dict[str, str] = Field(default_factory=dict)
-
-    def model_post_init(self, context: t.Any) -> None:
-        self.processed_query = self.query
-
-        return super().model_post_init(context)
+        self.processed_query: str = query
+        self.placeholder_map: dict[str, str] = {}
 
     @property
     def pretty_name(self):
         return self.name
+
+    def to_dict(self) -> MetricJSON:
+        return MetricJSON(
+            uid=self.uid,
+            name=self.name,
+            query=self.query,
+            data_source_ids=self.data_source_ids,
+            used_columns=self.used_columns,
+            use_thousand_sep=self.use_thousand_sep,
+            is_percentage=self.is_percentage,
+            decimal_places=self.decimal_places,
+            processed_query=self.processed_query,
+            placeholder_map=self.placeholder_map,
+        )
+
+    @classmethod
+    def from_dict(cls, data: MetricJSON) -> "Metric":
+        instance = cls(
+            uid=data.uid,
+            name=data.name,
+            query=data.query,
+            data_source_ids=data.data_source_ids,
+            use_thousand_sep=data.use_thousand_sep,
+            is_percentage=data.is_percentage,
+            decimal_places=data.decimal_places,
+        )
+
+        instance.used_columns = data.used_columns
+        instance.processed_query = data.processed_query
+        instance.placeholder_map = data.placeholder_map
+        return instance
 
     def format(self, value: float):
         if np.isnan(value):
@@ -391,15 +421,21 @@ class Metric(BaseModel):
         if name is None:
             name = self.name
 
-        return self.model_copy(
-            update={
-                "uid": uid,
-                "name": name,
-                "data_source_ids": self.data_source_ids.copy(),
-                "used_columns": self.used_columns.copy(),
-                "placeholder_map": self.placeholder_map.copy(),
-            }
+        new_metric = Metric(
+            uid=uid,
+            name=name,
+            query=self.query,
+            data_source_ids=self.data_source_ids.copy(),
+            use_thousand_sep=self.use_thousand_sep,
+            is_percentage=self.is_percentage,
+            decimal_places=self.decimal_places,
         )
+
+        new_metric.used_columns = self.used_columns.copy()
+        new_metric.processed_query = self.processed_query
+        new_metric.placeholder_map = self.placeholder_map.copy()
+
+        return new_metric
 
 
 class DefaultUnitBadRate(Metric):

@@ -1,24 +1,53 @@
-from pydantic import BaseModel, ConfigDict
-
 from risc_tool.data.models.enums import LossRateTypes
+from risc_tool.data.models.json_models import IterationMetadataJSON
 from risc_tool.data.models.types import FilterID, MetricID
 
 
-class IterationMetadata(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+class IterationMetadata:
+    def __init__(
+        self,
+        editable: bool,
+        scalars_enabled: bool,
+        split_view_enabled: bool,
+        show_prev_iter_details: bool,
+        loss_rate_type: LossRateTypes,
+        initial_filter_ids: list[FilterID],
+        current_filter_ids: list[FilterID],
+        metric_ids: list[MetricID],
+    ):
+        self.editable: bool = editable
+        self.scalars_enabled: bool = scalars_enabled
+        self.split_view_enabled: bool = split_view_enabled
+        self.show_prev_iter_details: bool = show_prev_iter_details
+        self.loss_rate_type: LossRateTypes = loss_rate_type
+        self.initial_filter_ids: list[FilterID] = initial_filter_ids
+        self.current_filter_ids: list[FilterID] = current_filter_ids
+        self.metric_ids: list[MetricID] = metric_ids
 
-    editable: bool
-    scalars_enabled: bool
-    split_view_enabled: bool
-    show_prev_iter_details: bool
-    loss_rate_type: LossRateTypes
-    initial_filter_ids: list[FilterID]
-    current_filter_ids: list[FilterID]
-    metric_ids: list[MetricID]
+    def to_dict(self) -> IterationMetadataJSON:
+        return IterationMetadataJSON(
+            editable=self.editable,
+            scalars_enabled=self.scalars_enabled,
+            split_view_enabled=self.split_view_enabled,
+            show_prev_iter_details=self.show_prev_iter_details,
+            loss_rate_type=self.loss_rate_type,
+            initial_filter_ids=self.initial_filter_ids,
+            current_filter_ids=self.current_filter_ids,
+            metric_ids=self.metric_ids,
+        )
 
-    @property
-    def properties(self):
-        return set(self.model_dump(mode="python").keys())
+    @classmethod
+    def from_dict(cls, data: IterationMetadataJSON):
+        return cls(
+            editable=data.editable,
+            scalars_enabled=data.scalars_enabled,
+            split_view_enabled=data.split_view_enabled,
+            show_prev_iter_details=data.show_prev_iter_details,
+            loss_rate_type=data.loss_rate_type,
+            initial_filter_ids=data.initial_filter_ids,
+            current_filter_ids=data.current_filter_ids,
+            metric_ids=data.metric_ids,
+        )
 
     def update(
         self,

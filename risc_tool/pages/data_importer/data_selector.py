@@ -22,7 +22,9 @@ def data_label_input_widget(key: str, label: str = "") -> str:
 
 
 def filepath_input_widget(
-    key: str, filepath: pathlib.Path | None = None
+    key: str,
+    filepath: pathlib.Path | None = None,
+    disabled: bool = False,
 ) -> pathlib.Path | None:
     widget_label = "##### File Path:"
 
@@ -37,6 +39,7 @@ def filepath_input_widget(
         label_visibility="collapsed",
         value=default_value,
         key=f"{widget_label}-{key}",
+        disabled=disabled,
     )
 
     if not path_text:
@@ -50,6 +53,7 @@ def filepath_input_widget(
 def read_mode_input_widget(
     key: str,
     read_mode: t.Literal["CSV", "EXCEL"],
+    disabled: bool = False,
 ) -> t.Literal["CSV", "EXCEL"]:
     widget_label = "##### Read Mode:"
     options: list[t.Literal["CSV", "EXCEL"]] = ["CSV", "EXCEL"]
@@ -62,10 +66,11 @@ def read_mode_input_widget(
         label_visibility="collapsed",
         index=options.index(read_mode),
         key=f"{widget_label}-{key}",
+        disabled=disabled,
     )
 
 
-def delimiter_input_widget(key: str, delimiter: str) -> str:
+def delimiter_input_widget(key: str, delimiter: str, disabled: bool = False) -> str:
     widget_label = "##### Delimiter:"
     delimiters = [
         {"name": "comma", "value": ","},
@@ -93,12 +98,13 @@ def delimiter_input_widget(key: str, delimiter: str) -> str:
         label_visibility="collapsed",
         index=current_index,
         key=f"{widget_label}-{key}",
+        disabled=disabled,
     )
 
     return selected_option["value"]
 
 
-def sheet_input_widget(key: str, sheet_name: str) -> str:
+def sheet_input_widget(key: str, sheet_name: str, disabled: bool = False) -> str:
     widget_label = "##### Sheet Name or Index:"
 
     st.markdown(widget_label)
@@ -108,10 +114,11 @@ def sheet_input_widget(key: str, sheet_name: str) -> str:
         label_visibility="collapsed",
         value=sheet_name,
         key=f"{widget_label}-{key}",
+        disabled=disabled,
     )
 
 
-def header_row_input_widget(key: str, header_row: int):
+def header_row_input_widget(key: str, header_row: int, disabled: bool = False):
     widget_label = "##### Header Row:"
 
     st.markdown(widget_label)
@@ -123,10 +130,15 @@ def header_row_input_widget(key: str, header_row: int):
         value=header_row,
         label_visibility="collapsed",
         key=f"{widget_label}-{key}",
+        disabled=disabled,
     )
 
 
-def sample_row_count_input_widget(key: str, sample_row_count: int):
+def sample_row_count_input_widget(
+    key: str,
+    sample_row_count: int,
+    disabled: bool = False,
+):
     widget_label = "##### Sample Row Count:"
 
     st.markdown(widget_label)
@@ -138,6 +150,7 @@ def sample_row_count_input_widget(key: str, sample_row_count: int):
         step=100,
         label_visibility="collapsed",
         key=f"{widget_label}-{key}",
+        disabled=disabled,
     )
 
 

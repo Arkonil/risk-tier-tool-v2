@@ -17,11 +17,16 @@ from risc_tool.data.models.enums import (
     VariableType,
 )
 from risc_tool.data.models.iteration_metadata import IterationMetadata
+from risc_tool.data.models.json_models import (
+    IteraionViewStatusJSON,
+    IterationsViewModelJSON,
+)
 from risc_tool.data.models.types import (
     ChangeIDs,
     FilterID,
     GridEditorViewComponents,
     GridMetricView,
+    IteraionView,
     IterationID,
     MetricID,
 )
@@ -31,8 +36,6 @@ from risc_tool.data.repositories.iterations import IterationsRepository
 from risc_tool.data.repositories.metric import MetricRepository
 from risc_tool.data.repositories.options import OptionRepository
 from risc_tool.data.repositories.scalar import ScalarRepository
-
-IteraionView = t.Literal["graph", "view", "create"]
 
 
 class IteraionViewStatus(BaseModel):
@@ -120,6 +123,47 @@ class IterationsViewModel(ChangeTracker):
 
         self.__editable_range_cache.clear()
         self.__editable_grid_cache.clear()
+
+    def to_dict(self) -> IterationsViewModelJSON:
+        return IterationsViewModelJSON(
+            view_status=IteraionViewStatusJSON(
+                view=self.__view_status.view,
+                iteration_id=self.__view_status.iteration_id,
+            ),
+            metadata={k: v.to_dict() for k, v in self.__metadata.items()},
+        )
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: IterationsViewModelJSON,
+        data_repository: DataRepository,
+        iterations_repository: IterationsRepository,
+        options_repository: OptionRepository,
+        filter_repository: FilterRepository,
+        metric_repository: MetricRepository,
+        scalar_repository: ScalarRepository,
+    ) -> "IterationsViewModel":
+        instance = cls(
+            data_repository=data_repository,
+            iterations_repository=iterations_repository,
+            options_repository=options_repository,
+            filter_repository=filter_repository,
+            metric_repository=metric_repository,
+            scalar_repository=scalar_repository,
+        )
+
+        instance.__view_status = IteraionViewStatus(
+            view=data.view_status.view,
+            iteration_id=data.view_status.iteration_id,
+        )
+        instance.__metadata = {
+            k: IterationMetadata.from_dict(v) for k, v in data.metadata.items()
+        }
+
+        instance.set_current_status("graph")
+
+        return instance
 
     # View Model
     @property

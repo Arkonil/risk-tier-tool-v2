@@ -32,7 +32,7 @@ class MetricViewModel(ChangeTracker):
 
     @property
     def __empty_metric(self):
-        return Metric(uid=MetricID.EMPTY, name="", query="")
+        return Metric(uid=MetricID.EMPTY, name="", query="", data_source_ids=[])
 
     def on_dependency_update(self, change_ids: ChangeIDs) -> None:
         self.__metric_cache = self.__empty_metric
@@ -56,7 +56,7 @@ class MetricViewModel(ChangeTracker):
             else:
                 self.__metric_cache = self.__metric_repository.metrics.get(
                     metric_id, self.__empty_metric
-                ).model_copy()
+                ).duplicate()
                 self.is_verified = True
 
     # For Error View

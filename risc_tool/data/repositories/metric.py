@@ -1,7 +1,10 @@
+import typing as t
+
 import pandas as pd
 
 from risc_tool.data.models.enums import DefaultMetricNames, Signature, VariableType
 from risc_tool.data.models.exceptions import MissingColumnError, VariableNotNumericError
+from risc_tool.data.models.json_models import MetricRepositoryJSON
 from risc_tool.data.models.metric import (
     DefaultDollarBadRate,
     DefaultUnitBadRate,
@@ -429,3 +432,52 @@ class MetricRepository(BaseRepository):
         all_metrics[self.volume.uid] = self.volume
 
         return all_metrics
+
+    def to_dict(self) -> MetricRepositoryJSON:
+        return MetricRepositoryJSON(
+            metrics=[m.to_dict() for m in self.metrics.values()],
+            var_unt_bad=self._var_unt_bad,
+            var_dlr_bad=self._var_dlr_bad,
+            var_avg_bal=self._var_avg_bal,
+            current_rate_mob=self._current_rate_mob,
+            lifetime_rate_mob=self._lifetime_rate_mob,
+            data_source_ids=[ds_id for ds_id in self._data_source_ids],
+        )
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: MetricRepositoryJSON,
+        data_repository: DataRepository,
+        errors: t.Literal["ignore", "raise"],
+    ):
+        repo = cls(data_repository=data_repository)
+
+        invalid_metrics: list[tuple[Metric, Exception]] = []
+
+        for metric_json in data.metrics:
+            metric_obj = Metric.from_dict(metric_json)
+
+            try:
+                metric_obj.validate_query(
+                    data_repository.get_sample_df(metric_obj.data_source_ids)
+                )
+            except (SyntaxError, ValueError, SampleDataNotLoadedError) as error:
+                if errors == "raise":
+                    invalid_metrics.append((metric_obj, error))
+
+                continue
+
+            repo.metrics[metric_obj.uid] = metric_obj
+
+        repo._var_unt_bad = data.var_unt_bad
+        repo._var_dlr_bad = data.var_dlr_bad
+        repo._var_avg_bal = data.var_avg_bal
+        repo._current_rate_mob = data.current_rate_mob
+        repo._lifetime_rate_mob = data.lifetime_rate_mob
+        repo._data_source_ids = [DataSourceID(i) for i in data.data_source_ids]
+
+        repo._update_user_defined_metrics()  # This cleans up invalid metrics if data repo has data
+        repo._update_default_metrics()  # This cleans up default metrics config if invalid
+
+        return repo, invalid_metrics

@@ -16,6 +16,7 @@ from risc_tool.data.models.enums import (
     VariableType,
 )
 from risc_tool.data.models.iteration_output import IterationOutput
+from risc_tool.data.models.json_models import DataFrameTightJSON, IterationJSON
 from risc_tool.data.models.types import IterationID
 from risc_tool.utils.wrap_text import TAB, wrap_text
 
@@ -105,17 +106,17 @@ class IterationBase(ABC):
                 f"Provided value: {group_index}"
             )
 
-    def to_dict(self) -> dict[str, t.Any]:
+    def to_dict(self) -> IterationJSON:
         """Serializes the IterationBase object to a dictionary."""
-        return {
-            "var_type": self.var_type.value,
-            "iter_type": self.iter_type.value,
-            "uid": self.uid,
-            "name": self.name,
-            "variable_name": self._variable.name,
-            "groups": self._groups.to_dict(),
-            "default_groups": self._default_groups.to_dict(),
-        }
+        return IterationJSON(
+            var_type=self.var_type,
+            iter_type=self.iter_type,
+            uid=self.uid,
+            name=self.name,
+            variable_name=str(self._variable.name),
+            groups=self._groups.to_dict(),
+            default_groups=self._default_groups.to_dict(),
+        )
 
     def generate_sas_code_for_groups(
         self, default: bool, mapping: dict[t.Hashable, int]
@@ -229,14 +230,12 @@ class SingleVarIteration(IterationBase):
 
         return output
 
-    def to_dict(self):
+    def to_dict(self) -> IterationJSON:
         dict_data = super().to_dict()
 
-        risk_segment_details_data = self._risk_segment_details.to_dict(orient="tight")
-
-        dict_data.update({
-            "risk_segment_details": risk_segment_details_data,
-        })
+        dict_data.risk_segment_details = DataFrameTightJSON.model_validate(
+            self._risk_segment_details.to_dict(orient="tight")
+        )
 
         return dict_data
 
@@ -409,17 +408,13 @@ class DoubleVarIteration(IterationBase):
     def to_dict(self):
         dict_data = super().to_dict()
 
-        groups_mask_data = self._groups_mask.to_dict()
-        risk_segment_grid_data = self._risk_segment_grid.to_dict(orient="tight")
-        default_risk_segment_grid_data = self._default_risk_segment_grid.to_dict(
-            orient="tight"
+        dict_data.groups_mask = self._groups_mask.to_dict()
+        dict_data.risk_segment_grid = DataFrameTightJSON.model_validate(
+            self._risk_segment_grid.to_dict(orient="tight")
         )
-
-        dict_data.update({
-            "groups_mask": groups_mask_data,
-            "risk_segment_grid": risk_segment_grid_data,
-            "default_risk_segment_grid": default_risk_segment_grid_data,
-        })
+        dict_data.default_risk_segment_grid = DataFrameTightJSON.model_validate(
+            self._default_risk_segment_grid.to_dict(orient="tight")
+        )
 
         return dict_data
 
@@ -849,17 +844,19 @@ class CategoricalDoubleVarIteration(CategoricalIteration, DoubleVarIteration):
         )
 
 
-def from_dict(dict_data: dict[str, t.Any], variable: pd.Series) -> IterationBase:
-    """Creates an IterationBase object from a dictionary."""
-    try:
-        iter_type = IterationType(dict_data.get("iter_type"))
-    except ValueError:
-        raise ValueError(f"Unsupported iteration type: {dict_data.get('iter_type')}")
+Iteration = (
+    NumericalSingleVarIteration
+    | NumericalDoubleVarIteration
+    | CategoricalSingleVarIteration
+    | CategoricalDoubleVarIteration
+)
 
-    try:
-        var_type = VariableType(dict_data.get("var_type"))
-    except ValueError:
-        raise ValueError(f"Unsupported variable type: {dict_data.get('var_type')}")
+
+def from_dict(dict_data: IterationJSON, variable: pd.Series) -> Iteration:
+    """Creates an IterationBase object from a dictionary."""
+
+    iter_type = dict_data.iter_type
+    var_type = dict_data.var_type
 
     class_map = {
         (IterationType.SINGLE, VariableType.NUMERICAL): NumericalSingleVarIteration,
@@ -870,46 +867,70 @@ def from_dict(dict_data: dict[str, t.Any], variable: pd.Series) -> IterationBase
 
     cls = class_map[(iter_type, var_type)]
 
-    uid = IterationID(dict_data.get("uid", IterationID.INVALID))
-    name = str(dict_data.get("name"))
-    # variable_name = str(dict_data.get("variable_name"))
-    # variable = data.df[variable_name]
-
     instance: IterationBase = cls(
-        uid=uid,
-        name=name,
+        uid=dict_data.uid,
+        name=dict_data.name,
         variable=variable,
         risk_segment_details=DefaultOptions().risk_segment_details,
     )
 
     map_func = tuple if var_type == VariableType.NUMERICAL else set
 
-    groups = pd.Series(dict_data.get("groups", {}), name=RangeColumn.GROUPS).map(
-        map_func
-    )
+    # groups
+    groups = pd.Series(dict_data.groups, name=RangeColumn.GROUPS).map(map_func)
     groups.index = groups.index.astype(int)
 
-    default_groups = pd.Series(
-        dict_data.get("default_groups", {}), name=RangeColumn.GROUPS
-    ).map(map_func)
+    # default groups
+    default_groups = pd.Series(dict_data.default_groups, name=RangeColumn.GROUPS).map(
+        map_func
+    )
     default_groups.index = default_groups.index.astype(int)
 
     instance._groups = groups
     instance._default_groups = default_groups
 
-    if iter_type == IterationType.SINGLE:
-        risk_segment_details = pd.DataFrame.from_dict(
-            dict_data.get("risk_segment_details", {}), orient="tight"
+    # risk segment details
+    if (
+        isinstance(
+            instance, (NumericalSingleVarIteration, CategoricalSingleVarIteration)
         )
-        instance._risk_segment_details = risk_segment_details  # type: ignore
-    else:
-        instance._groups_mask = pd.Series(dict_data.get("groups_mask", {}))  # type: ignore
-        instance._groups_mask.index = instance._groups_mask.index.astype(int)  # type: ignore
-        instance._risk_segment_grid = pd.DataFrame.from_dict(  # type: ignore
-            dict_data.get("risk_segment_grid", {}), orient="tight"
+        and dict_data.risk_segment_details is not None
+    ):
+        instance._risk_segment_details = pd.DataFrame.from_dict(
+            dict_data.risk_segment_details.model_dump(), orient="tight"
         )
-        instance._default_risk_segment_grid = pd.DataFrame.from_dict(  # type: ignore
-            dict_data.get("default_risk_segment_grid", {}), orient="tight"
+        instance._risk_segment_details[RSDetCol.UPPER_RATE] = (
+            instance._risk_segment_details[RSDetCol.UPPER_RATE].fillna(np.inf)
+        )
+
+    # groups mask
+    if not isinstance(
+        instance, (NumericalSingleVarIteration, CategoricalSingleVarIteration)
+    ):
+        instance._groups_mask = pd.Series(
+            dict_data.groups_mask, name=GridColumn.GROUP_INDEX
+        )
+
+    # risk segment grid
+    if (
+        not isinstance(
+            instance, (NumericalSingleVarIteration, CategoricalSingleVarIteration)
+        )
+        and dict_data.risk_segment_grid is not None
+    ):
+        instance._risk_segment_grid = pd.DataFrame.from_dict(
+            dict_data.risk_segment_grid.model_dump(), orient="tight"
+        )
+
+    # default risk segment grid
+    if (
+        not isinstance(
+            instance, (NumericalSingleVarIteration, CategoricalSingleVarIteration)
+        )
+        and dict_data.default_risk_segment_grid is not None
+    ):
+        instance._default_risk_segment_grid = pd.DataFrame.from_dict(
+            dict_data.default_risk_segment_grid.model_dump(), orient="tight"
         )
 
     return instance

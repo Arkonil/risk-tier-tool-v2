@@ -56,7 +56,7 @@ class FilterViewModel(ChangeTracker):
             else:
                 self.__filter_cache = self.__filter_repository.filters.get(
                     filter_id, self.__empty_filter
-                ).model_copy()
+                ).duplicate()
                 self.is_verified = True
 
     # For Error View

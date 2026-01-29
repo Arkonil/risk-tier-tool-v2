@@ -3,6 +3,7 @@ import pandas as pd
 
 from risc_tool.data.models.defaults import DefaultOptions
 from risc_tool.data.models.enums import LossRateTypes, RSDetCol, Signature
+from risc_tool.data.models.json_models import DataFrameTightJSON, OptionsRepositoryJSON
 from risc_tool.data.models.types import ChangeIDs
 from risc_tool.data.repositories.base import BaseRepository
 
@@ -133,3 +134,44 @@ class OptionRepository(BaseRepository):
         self.risk_segment_details = default_options.risk_segment_details
 
         self.notify_subscribers()
+
+    def to_dict(self) -> OptionsRepositoryJSON:
+        rs_details_dict = self.risk_segment_details.to_dict(orient="tight")
+        rs_details_json = DataFrameTightJSON(
+            index=rs_details_dict["index"],
+            columns=rs_details_dict["columns"],
+            data=rs_details_dict["data"],
+            index_names=rs_details_dict["index_names"],
+            column_names=rs_details_dict["column_names"],
+        )
+
+        return OptionsRepositoryJSON(
+            risk_segment_details=rs_details_json,
+            max_iteration_depth=self.max_iteration_depth,
+            max_categorical_unique=self.max_categorical_unique,
+        )
+
+    @classmethod
+    def from_dict(cls, data: OptionsRepositoryJSON) -> "OptionRepository":
+        repo = cls()
+
+        rs_details_json = data.risk_segment_details
+        rs_details_dict = {
+            "index": rs_details_json.index,
+            "columns": rs_details_json.columns,
+            "data": rs_details_json.data,
+            "index_names": rs_details_json.index_names,
+            "column_names": rs_details_json.column_names,
+        }
+        repo.risk_segment_details = pd.DataFrame.from_dict(
+            rs_details_dict, orient="tight"
+        )
+
+        repo.risk_segment_details[RSDetCol.UPPER_RATE] = repo.risk_segment_details[
+            RSDetCol.UPPER_RATE
+        ].fillna(np.inf)
+
+        repo.max_iteration_depth = data.max_iteration_depth
+        repo.max_categorical_unique = data.max_categorical_unique
+
+        return repo

@@ -2,9 +2,9 @@ import ast
 import re
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field
 
 from risc_tool.data.models.exceptions import InvalidFilterError
+from risc_tool.data.models.json_models import FilterJSON
 from risc_tool.data.models.types import FilterID
 
 
@@ -60,23 +60,43 @@ class FilterQueryValidator(ast.NodeVisitor):
             self.visit(kwarg.value)
 
 
-class Filter(BaseModel):
-    model_config = ConfigDict(
-        serialize_by_alias=True,
-        validate_by_alias=True,
-        extra="allow",
-        arbitrary_types_allowed=True,
-    )
-
-    uid: FilterID
-    name: str
-    query: str
-    used_columns: list[str] = Field(default_factory=list)
-    mask: pd.Series | None = None
+class Filter:
+    def __init__(self, uid: FilterID, name: str, query: str) -> None:
+        self.uid: FilterID = uid
+        self.name: str = name
+        self.query: str = query
+        self.used_columns: list[str] = []
+        self.mask: pd.Series | None = None
 
     @property
     def pretty_name(self):
         return self.name
+
+    def to_dict(self) -> FilterJSON:
+        """
+        Converts the Filter instance to a dictionary.
+        """
+        return FilterJSON(
+            uid=self.uid,
+            name=self.name,
+            query=self.query,
+            used_columns=self.used_columns,
+        )
+
+    @classmethod
+    def from_dict(cls, data: FilterJSON) -> "Filter":
+        """
+        Creates a Filter instance from a dictionary.
+        Validates the input type and restores the object.
+        """
+
+        instance = cls(
+            uid=data.uid,
+            name=data.name,
+            query=data.query,
+        )
+
+        return instance
 
     def validate_query(self, available_columns: list[str] | None = None) -> None:
         # --- 1. Preprocess Backticked Identifiers ---
@@ -202,14 +222,16 @@ class Filter(BaseModel):
         if name is None:
             name = self.name
 
-        return self.model_copy(
-            update={
-                "uid": uid,
-                "name": name,
-                "used_columns": self.used_columns.copy(),
-                "mask": self.mask.copy() if self.mask is not None else None,
-            }
+        new_instance = Filter(
+            uid=uid,
+            name=name,
+            query=self.query,
         )
+
+        new_instance.used_columns = self.used_columns.copy()
+        new_instance.mask = self.mask.copy() if self.mask is not None else None
+
+        return new_instance
 
 
 __all__ = ["Filter"]

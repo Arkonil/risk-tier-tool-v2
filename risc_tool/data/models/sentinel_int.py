@@ -1,3 +1,9 @@
+import typing as t
+
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import core_schema
+
+
 class SentinelInt(int):
     # 1. Declare the field here so Pylance knows it exists
     _name: str | None = None
@@ -39,6 +45,36 @@ class SentinelInt(int):
     def __hash__(self):
         # Allow these to be used in sets/dicts
         return super().__hash__()
+
+    @classmethod
+    def validate_sentinel(cls, v: int) -> t.Self:
+        return cls(v)
+
+    @classmethod
+    def serialize_sentinel(cls, v: t.Self) -> int:
+        return int(v)
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: t.Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        """
+        Defines how Pydantic validates and serializes this custom type.
+        1. Validate: Input -> int -> Check Sentinels -> MetricID
+        2. Serialize: MetricID -> int
+        """
+
+        # C. Construct the Schema
+        return core_schema.no_info_after_validator_function(
+            function=cls.validate_sentinel,
+            # We start with int_schema, which handles parsing (e.g., "123" -> 123)
+            schema=core_schema.int_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                cls.serialize_sentinel,
+                return_schema=core_schema.int_schema(),  # Helps generate correct JSON Schema
+                when_used="json",
+            ),
+        )
 
 
 __all__ = ["SentinelInt"]

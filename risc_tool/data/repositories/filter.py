@@ -5,6 +5,7 @@ import pandas as pd
 from risc_tool.data.models.enums import Signature
 from risc_tool.data.models.exceptions import InvalidFilterError
 from risc_tool.data.models.filter import Filter
+from risc_tool.data.models.json_models import FilterRepositoryJSON
 from risc_tool.data.models.types import ChangeIDs, FilterID
 from risc_tool.data.repositories.base import BaseRepository
 from risc_tool.data.repositories.data import DataRepository
@@ -151,3 +152,35 @@ class FilterRepository(BaseRepository):
             return filters
 
         return {filter_id: filters[filter_id] for filter_id in filter_ids}
+
+    def to_dict(self) -> FilterRepositoryJSON:
+        return FilterRepositoryJSON(
+            filters=[f.to_dict() for f in self.filters.values()]
+        )
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: FilterRepositoryJSON,
+        data_repository: DataRepository,
+        errors: t.Literal["ignore", "raise"],
+    ):
+        repo = cls(data_repository=data_repository)
+        invalid_filters: list[tuple[Filter, Exception]] = []
+
+        for filter_json in data.filters:
+            filter_obj = Filter.from_dict(filter_json)
+
+            try:
+                filter_obj.validate_query(data_repository.common_columns)
+            except InvalidFilterError as error:
+                if errors == "raise":
+                    invalid_filters.append((filter_obj, error))
+
+                continue
+
+            df = data_repository.load_columns(filter_obj.used_columns)
+            filter_obj.create_mask(df)
+            repo.filters[filter_obj.uid] = filter_obj
+
+        return repo, invalid_filters

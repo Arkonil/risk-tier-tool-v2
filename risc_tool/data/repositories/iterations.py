@@ -16,11 +16,14 @@ from risc_tool.data.models.iteration import (
     CategoricalDoubleVarIteration,
     CategoricalSingleVarIteration,
     DoubleVarIteration,
+    Iteration,
     NumericalDoubleVarIteration,
     NumericalSingleVarIteration,
 )
+from risc_tool.data.models.iteration import from_dict as iteration_from_dict
 from risc_tool.data.models.iteration_graph import IterationGraph
 from risc_tool.data.models.iteration_output import IterationOutput
+from risc_tool.data.models.json_models import IterationRepositoryJSON
 from risc_tool.data.models.types import (
     ChangeIDs,
     FilterID,
@@ -39,13 +42,6 @@ from risc_tool.data.services.auto_band import (
     does_high_value_implies_high_risk,
 )
 from risc_tool.utils.wrap_text import TAB
-
-Iteration = (
-    NumericalSingleVarIteration
-    | NumericalDoubleVarIteration
-    | CategoricalSingleVarIteration
-    | CategoricalDoubleVarIteration
-)
 
 
 class IterationsRepository(BaseRepository):
@@ -1269,3 +1265,50 @@ class IterationsRepository(BaseRepository):
         )
 
         return metric_outputs, errors, warnings
+
+    def to_dict(self) -> IterationRepositoryJSON:
+        return IterationRepositoryJSON(
+            iterations=[iter.to_dict() for iter in self.iterations.values()],
+            graph=self.graph.to_dict(),
+        )
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: IterationRepositoryJSON,
+        data_repository: DataRepository,
+        filter_repository: FilterRepository,
+        metric_repository: MetricRepository,
+        options_repository: OptionRepository,
+        scalar_repository: ScalarRepository,
+        errors: t.Literal["ignore", "raise"],
+    ):
+        repo = cls(
+            data_repository=data_repository,
+            filter_repository=filter_repository,
+            metric_repository=metric_repository,
+            options_repository=options_repository,
+            scalar_repository=scalar_repository,
+        )
+
+        repo.graph = IterationGraph.from_dict(data.graph)
+
+        invalid_iterations: list[tuple[IterationID, Exception]] = []
+
+        if data.iterations:
+            for iteration_json in data.iterations:
+                iter_id = IterationID(iteration_json.uid)
+                variable_name = iteration_json.variable_name
+                var_type = iteration_json.var_type
+
+                try:
+                    variable = data_repository.load_column(variable_name, var_type)
+                    iter_obj = iteration_from_dict(iteration_json, variable)
+                    repo.iterations[iter_id] = iter_obj
+
+                except Exception as error:
+                    if errors == "raise":
+                        invalid_iterations.append((iter_id, error))
+                        repo.delete_iteration(iter_id)
+
+        return repo, invalid_iterations

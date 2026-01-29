@@ -11,6 +11,7 @@ from risc_tool.data.models.data_config import DataConfig
 from risc_tool.data.models.data_source import DataSource
 from risc_tool.data.models.enums import Signature, VariableType
 from risc_tool.data.models.exceptions import DataImportError, SampleDataNotLoadedError
+from risc_tool.data.models.json_models import DataRepositoryJSON
 from risc_tool.data.models.metric import Metric
 from risc_tool.data.models.types import ChangeIDs, DataSourceID
 from risc_tool.data.repositories.base import BaseRepository
@@ -388,6 +389,24 @@ class DataRepository(BaseRepository):
         result_df.rename_axis(mapper=orig_names, axis=0, inplace=True)
 
         return result_df
+
+    def to_dict(self) -> DataRepositoryJSON:
+        return DataRepositoryJSON(
+            data_sources=[ds.to_dict() for ds in self.data_sources.values()],
+        )
+
+    @classmethod
+    def from_dict(cls, data: DataRepositoryJSON):
+        repo = cls()
+
+        for ds_data in data.data_sources:
+            ds = DataSource.from_dict(ds_data)
+            ds.load_sample()
+            repo.data_sources[ds.uid] = ds
+
+        repo.refresh_data_config()
+
+        return repo
 
 
 __all__ = ["DataRepository"]

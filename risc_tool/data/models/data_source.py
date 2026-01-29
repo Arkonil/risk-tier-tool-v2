@@ -1,63 +1,72 @@
+import pathlib as p
 import re
 import typing as t
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field, FilePath
 
 from risc_tool.data.models.enums import VariableType
+from risc_tool.data.models.json_models import DataSourceJSON
 from risc_tool.data.models.types import DataSourceID
 from risc_tool.data.services.local_data_import import import_data
 
 
-class DataSource(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-        serialize_by_alias=True,
-        validate_by_alias=True,
-        arbitrary_types_allowed=True,
-    )
-
+class DataSource:
     _pattern = re.compile(r"(.+) \((Numerical|Categorical)\)")
 
-    uid: DataSourceID
-    label: t.Annotated[str, Field(min_length=1)]
-    filepath: FilePath
-    read_mode: t.Literal["CSV", "EXCEL"] = "CSV"
-    delimiter: str = ","
-    sheet_name: str = "0"
-    header_row: int = 0
-    sample_row_count: int = 100
-    df_size: int | None = None
+    def __init__(
+        self,
+        uid: DataSourceID,
+        label: str,
+        filepath: p.Path,
+        read_mode: t.Literal["CSV", "EXCEL"] = "CSV",
+        delimiter: str = ",",
+        sheet_name: str = "0",
+        header_row: int = 0,
+        sample_row_count: int = 100,
+    ):
+        self.uid: DataSourceID = uid
+        self.label: str = label
+        self.filepath: p.Path = filepath
+        self.read_mode: t.Literal["CSV", "EXCEL"] = read_mode
+        self.delimiter: str = delimiter
+        self.sheet_name: str = sheet_name
+        self.header_row: int = header_row
+        self.sample_row_count: int = sample_row_count
+        self.df_size: int | None = None
 
-    def model_post_init(self, context: t.Any) -> None:
         self._sample_df: pd.DataFrame | None = None
         self._df: pd.DataFrame = pd.DataFrame()
 
-        return super().model_post_init(context)
-
-    def to_dict(self) -> dict[str, t.Any]:
-        """
-        Converts the DataSource instance to a dictionary.
-        """
-        return self.model_dump(mode="json", by_alias=True)
+    def to_dict(self) -> DataSourceJSON:
+        return DataSourceJSON(
+            uid=self.uid,
+            label=self.label,
+            filepath=self.filepath,
+            read_mode=self.read_mode,
+            delimiter=self.delimiter,
+            sheet_name=self.sheet_name,
+            header_row=self.header_row,
+            sample_row_count=self.sample_row_count,
+            df_size=self.df_size,
+        )
 
     @classmethod
-    def from_dict(cls, data: dict[str, t.Any]) -> "DataSource":
+    def from_dict(cls, data: DataSourceJSON) -> "DataSource":
         """
         Creates a DataSource instance from a dictionary.
         Validates the input type and restores the object.
         """
-        if not isinstance(data, dict):
-            raise TypeError("The input must be a dictionary.")
 
-        instance = cls.model_validate(data)
-
-        # Restore SentinelInt identity for known sentinels if necessary
-        # This is needed because serialization/deserialization via int loses the sentinel's _name property
-        if int(instance.uid) == int(DataSourceID.TEMPORARY):
-            instance.uid = DataSourceID.TEMPORARY
-        elif int(instance.uid) == int(DataSourceID.EMPTY):
-            instance.uid = DataSourceID.EMPTY
+        instance = cls(
+            uid=data.uid,
+            label=data.label,
+            filepath=data.filepath,
+            read_mode=data.read_mode,
+            delimiter=data.delimiter,
+            sheet_name=data.sheet_name,
+            header_row=data.header_row,
+            sample_row_count=data.sample_row_count,
+        )
 
         return instance
 

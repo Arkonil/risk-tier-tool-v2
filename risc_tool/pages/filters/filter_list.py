@@ -103,7 +103,7 @@ def filter_list():
                 )
 
             if show_object:
-                st.write(filter_obj)
+                st.write(filter_obj.to_dict())
 
 
 __all__ = ["filter_list"]

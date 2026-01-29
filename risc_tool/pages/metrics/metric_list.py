@@ -126,7 +126,7 @@ def metric_list():
                 )
 
             if show_object:
-                st.write(metric_obj)
+                st.write(metric_obj.to_dict())
 
 
 __all__ = ["metric_list"]

@@ -185,9 +185,15 @@ class IterationsRepository(BaseRepository):
                 child for child in children if child not in iteration_ids_to_delete
             ]
 
+        self.__metric_range_cache.clear()
+        self.__metric_grid_cache.clear()
+
         self.notify_subscribers()
 
     def add_to_calculation_queue(self, iteration_id: IterationID):
+        self.__metric_range_cache.clear()
+        self.__metric_grid_cache.clear()
+
         self.__recalculation_required.add((iteration_id, "default"))
         self.__recalculation_required.add((iteration_id, "edited"))
 
@@ -1019,7 +1025,7 @@ class IterationsRepository(BaseRepository):
             iteration_id,
             default,
             tuple(sorted(filter_ids)),
-            tuple(sorted(metric_ids)),
+            tuple(metric_ids),
             scalars_enabled,
         )
 
@@ -1161,7 +1167,7 @@ class IterationsRepository(BaseRepository):
             iteration_id,
             default,
             tuple(sorted(filter_ids)),
-            tuple(sorted(metric_ids)),
+            tuple(metric_ids),
             scalars_enabled,
         )
 

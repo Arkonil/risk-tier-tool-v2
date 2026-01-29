@@ -715,7 +715,7 @@ class IterationsRepository(BaseRepository):
                     for g in rs_group.to_list():
                         cut_points.extend(list(g))
 
-                pairs = list(itertools.pairwise(cut_points))
+                pairs = list(itertools.pairwise(sorted(set(cut_points))))
 
                 if not hv_imp_hr:
                     pairs = list(reversed(pairs))

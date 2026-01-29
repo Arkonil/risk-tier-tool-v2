@@ -545,7 +545,7 @@ class NumericalIteration(IterationBase):
     ):
         self._check_group_index(group_index)
 
-        if isinstance(lower_bound, float) and isinstance(upper_bound, float):
+        if lower_bound is not None and upper_bound is not None:
             self._groups[group_index] = (lower_bound, upper_bound)
 
     def _validate(self, default: bool) -> tuple[list[str], list[str], list]:

@@ -11,7 +11,7 @@ class ChangeTracker(ABC):
     @property
     @abstractmethod
     def _signature(self) -> Signature:
-        return Signature.CHNAGE_TRACKER
+        return Signature.CHANGE_TRACKER
 
     def __init__(self, dependencies: list["ChangeNotifier"] | None = None):
         self._previous_changes: ChangeIDs = set()

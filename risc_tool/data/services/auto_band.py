@@ -68,7 +68,7 @@ def does_high_value_implies_high_risk(
     m3 = np.sum(x * x * x * w)  # 3rd raw moment
 
     u3 = m3 - 3 * m2 * m1 + 2 * m1 * m1 * m1  # 3rd central moment
-    hv_imp_hr = u3 < 0  # Negatiavely skewed <=> High value implies high risk
+    hv_imp_hr = u3 < 0  # Negatively skewed <=> High value implies high risk
 
     return hv_imp_hr
 
@@ -330,7 +330,7 @@ def create_auto_bands(
         .max()
     )
 
-    def create_intermidiate_rates(df):
+    def create_intermediate_rates(df):
         minimum = df[RSDetCol.LOWER_RATE].iloc[0]
         maximum = df[RSDetCol.UPPER_RATE].iloc[0]
 
@@ -344,7 +344,7 @@ def create_auto_bands(
         risk_segment_details.groupby(RSDetCol.UPPER_RATE, observed=False)[
             risk_segment_details.columns
         ]
-        .apply(create_intermidiate_rates)
+        .apply(create_intermediate_rates)
         .droplevel(level=0, axis=0)
     )  # type: ignore
 

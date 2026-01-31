@@ -11,7 +11,7 @@ ChangeID = tuple[Signature, UUID]
 ChangeIDs = set[ChangeID]
 CallbackID = UUID
 Callback = t.Callable[[ChangeIDs], bool]
-IteraionView = t.Literal["graph", "view", "create"]
+IterationView = t.Literal["graph", "view", "create"]
 
 
 class DataSourceID(SentinelInt):

@@ -99,7 +99,7 @@ def metric_list():
 
                 col22.button(
                     label="",
-                    key=f"metric_{metric_id}_create_dupicate_btn",
+                    key=f"metric_{metric_id}_create_duplicate_btn",
                     type="primary",
                     icon=":material/content_copy:",
                     on_click=metric_editor_vm.duplicate_metric,

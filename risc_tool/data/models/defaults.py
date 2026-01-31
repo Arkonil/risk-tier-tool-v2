@@ -52,7 +52,7 @@ class DefaultOptions(Singleton):
         return self.__max_categorical_unique
 
     @property
-    def default_iteation_metadata(self) -> IterationMetadata:
+    def default_iteration_metadata(self) -> IterationMetadata:
         return IterationMetadata(
             editable=True,
             metric_ids=[MetricID.VOLUME, MetricID.UNT_BAD_RATE, MetricID.DLR_BAD_RATE],

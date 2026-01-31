@@ -1,9 +1,9 @@
 import streamlit as st
 
 
-def crosstab():
+def pivot():
     st.header("(Coming Soon)")
     st.balloons()
 
 
-__all__ = ["crosstab"]
+__all__ = ["pivot"]

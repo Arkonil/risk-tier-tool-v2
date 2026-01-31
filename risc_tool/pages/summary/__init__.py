@@ -7,9 +7,9 @@ from risc_tool.data.models.enums import SummaryPageTabName
 from risc_tool.data.session import Session
 from risc_tool.pages.components.load_data_prompt import load_data_prompt
 from risc_tool.pages.summary.comparison import comparison
-from risc_tool.pages.summary.crosstab import crosstab
 from risc_tool.pages.summary.no_summary_placeholder import no_summary_placeholder
 from risc_tool.pages.summary.overview import overview
+from risc_tool.pages.summary.pivot import pivot
 
 
 def summary_view():
@@ -52,8 +52,8 @@ def summary_view():
         overview()
     elif selected_tab_name == SummaryPageTabName.COMPARISON:
         comparison()
-    elif selected_tab_name == SummaryPageTabName.CROSSTAB:
-        crosstab()
+    elif selected_tab_name == SummaryPageTabName.PIVOT:
+        pivot()
 
 
 summary_page = st.Page(

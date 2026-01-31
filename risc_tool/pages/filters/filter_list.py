@@ -76,7 +76,7 @@ def filter_list():
 
                 col22.button(
                     label="",
-                    key=f"filter_{filter_id}_create_dupicate_btn",
+                    key=f"filter_{filter_id}_create_duplicate_btn",
                     type="primary",
                     icon=":material/content_copy:",
                     on_click=filter_editor_vm.duplicate_filter,

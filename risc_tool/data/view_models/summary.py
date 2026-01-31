@@ -12,7 +12,7 @@ from risc_tool.data.repositories.iterations import IterationsRepository
 class SummaryViewModel(ChangeNotifier):
     @property
     def _signature(self) -> Signature:
-        return Signature.SUMMARY_VIEWMODEL
+        return Signature.SUMMARY_VIEW_MODEL
 
     def __init__(
         self,
@@ -29,7 +29,7 @@ class SummaryViewModel(ChangeNotifier):
         self.tab_names: list[SummaryPageTabName] = [
             SummaryPageTabName.OVERVIEW,
             SummaryPageTabName.COMPARISON,
-            SummaryPageTabName.CROSSTAB,
+            SummaryPageTabName.PIVOT,
         ]
         self.current_tab_name: SummaryPageTabName = self.tab_names[0]
 

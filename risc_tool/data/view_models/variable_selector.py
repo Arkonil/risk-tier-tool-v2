@@ -10,7 +10,7 @@ from risc_tool.data.repositories.metric import MetricRepository
 class VariableSelectorViewModel(ChangeTracker):
     @property
     def _signature(self) -> Signature:
-        return Signature.VARIABLE_SELECTOR_VIEWMODEL
+        return Signature.VARIABLE_SELECTOR_VIEW_MODEL
 
     def __init__(
         self, data_repository: DataRepository, metric_repository: MetricRepository

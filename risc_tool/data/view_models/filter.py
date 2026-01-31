@@ -12,7 +12,7 @@ from risc_tool.data.repositories.filter import FilterRepository
 class FilterViewModel(ChangeTracker):
     @property
     def _signature(self) -> Signature:
-        return Signature.FILTER_VIEWMODEL
+        return Signature.FILTER_VIEW_MODEL
 
     def __init__(
         self, data_repository: DataRepository, filter_repository: FilterRepository

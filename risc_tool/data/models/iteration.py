@@ -53,7 +53,7 @@ class IterationBase(ABC):
 
     @property
     def pretty_name(self) -> str:
-        parts = [f"Itearation #{self.uid}"]
+        parts = [f"Iteration #{self.uid}"]
 
         if self.name:
             parts.append(self.name)
@@ -102,7 +102,7 @@ class IterationBase(ABC):
 
         if group_index < 0 or group_index >= num_groups:
             raise ValueError(
-                f"Value of colidx out of range [0, {num_groups - 1}]. "
+                f"Value of group_index out of range [0, {num_groups - 1}]. "
                 f"Provided value: {group_index}"
             )
 

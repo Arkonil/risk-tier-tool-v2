@@ -16,5 +16,32 @@
   },
   "python.analysis.diagnosticMode": "workspace",
   "python.analysis.exclude": ["**/tests/**"],
-  "python.analysis.ignore": ["**/tests/**", ".venv/**"]
+  "python.analysis.ignore": [
+    "**/tests/**",
+    ".venv/**"
+  ],
+  "cSpell.words": [
+    "Annl",
+    "annualization",
+    "annualizing",
+    "antd",
+    "arccos",
+    "arccosh",
+    "arcsin",
+    "arcsinh",
+    "arctan",
+    "arctanh",
+    "autocorr",
+    "BACKTICKED",
+    "cumm",
+    "downcasting",
+    "fullcode",
+    "isscalar",
+    "jsons",
+    "Mult",
+    "printoptions",
+    "qcut",
+    "selectbox",
+    "simplebezier"
+  ]
 }

@@ -11,7 +11,7 @@ from risc_tool.data.repositories.scalar import ScalarRepository
 class ConfigViewModel(ChangeTracker):
     @property
     def _signature(self) -> Signature:
-        return Signature.CONFIG_VIEWMODEL
+        return Signature.CONFIG_VIEW_MODEL
 
     def __init__(
         self,

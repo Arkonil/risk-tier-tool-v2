@@ -12,7 +12,7 @@ from risc_tool.utils.hash_boolean_series import hash_boolean_series
 class DataExplorerViewModel(ChangeTracker):
     @property
     def _signature(self) -> Signature:
-        return Signature.DATA_EXPLORER_VIEWMODEL
+        return Signature.DATA_EXPLORER_VIEW_MODEL
 
     def __init__(
         self, data_repository: DataRepository, filter_repository: FilterRepository

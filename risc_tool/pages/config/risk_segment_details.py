@@ -221,7 +221,7 @@ def risk_seg_details_selector() -> None:
         )
 
         st.error(
-            f"Risk Segment Names must be unique. The following names have repitation: {duplicate_values}",
+            f"Risk Segment Names must be unique. The following names have repetition: {duplicate_values}",
             icon=":material/error:",
         )
 

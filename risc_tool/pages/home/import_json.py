@@ -17,7 +17,7 @@ from risc_tool.pages.data_importer.data_selector import (
 
 
 def file_selector(data_source: DataSource, disabled: bool) -> DataSource | None:
-    key = f"file_selector-{data_source.uid}-disabeled_{disabled}"
+    key = f"file_selector-{data_source.uid}-disabled_{disabled}"
 
     with st.container(border=True, width="stretch", key=key):
         col1, col2 = st.columns([0.75, 0.25])

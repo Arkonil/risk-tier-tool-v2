@@ -12,7 +12,7 @@ from risc_tool.data.repositories.metric import MetricRepository
 class MetricViewModel(ChangeTracker):
     @property
     def _signature(self) -> Signature:
-        return Signature.METRIC_VIEWMODEL
+        return Signature.METRIC_VIEW_MODEL
 
     def __init__(
         self, data_repository: DataRepository, metric_repository: MetricRepository

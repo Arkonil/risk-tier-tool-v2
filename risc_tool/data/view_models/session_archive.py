@@ -34,7 +34,7 @@ class NewRepoVMs(t.TypedDict):
 class SessionArchiveViewModel(ChangeTracker):
     @property
     def _signature(self) -> Signature:
-        return Signature.SESSION_ARCHIVE_VIEWMODEL
+        return Signature.SESSION_ARCHIVE_VIEW_MODEL
 
     def __init__(
         self,

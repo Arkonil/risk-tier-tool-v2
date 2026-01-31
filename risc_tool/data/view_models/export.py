@@ -7,7 +7,7 @@ from risc_tool.data.repositories.iterations import IterationsRepository
 class ExportViewModel(ChangeTracker):
     @property
     def _signature(self) -> Signature:
-        return Signature.EXPORT_VIEWMODEL
+        return Signature.EXPORT_VIEW_MODEL
 
     def __init__(
         self,

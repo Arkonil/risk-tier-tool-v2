@@ -7,8 +7,8 @@ from risc_tool.data.models.enums import IterationType, LossRateTypes, VariableTy
 from risc_tool.data.models.types import (
     DataSourceID,
     FilterID,
-    IteraionView,
     IterationID,
+    IterationView,
     MetricID,
 )
 
@@ -126,8 +126,8 @@ class IterationRepositoryJSON(BaseJSON):
     graph: IterationGraphJSON
 
 
-class IteraionViewStatusJSON(BaseJSON):
-    view: IteraionView = "graph"
+class IterationViewStatusJSON(BaseJSON):
+    view: IterationView = "graph"
     iteration_id: IterationID | None = None
 
 
@@ -143,7 +143,7 @@ class IterationMetadataJSON(BaseJSON):
 
 
 class IterationsViewModelJSON(BaseJSON):
-    view_status: IteraionViewStatusJSON
+    view_status: IterationViewStatusJSON
     metadata: dict[IterationID, IterationMetadataJSON]
 
 

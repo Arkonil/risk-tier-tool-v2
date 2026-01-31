@@ -42,7 +42,7 @@ class DataSourceViewModel:
 class DataImporterViewModel(ChangeTracker):
     @property
     def _signature(self) -> Signature:
-        return Signature.DATA_IMPORTER_VIEWMODEL
+        return Signature.DATA_IMPORTER_VIEW_MODEL
 
     def __init__(self, data_repository: DataRepository) -> None:
         super().__init__(dependencies=[data_repository])

@@ -84,7 +84,7 @@ def format_display(use_thousand_sep: bool, is_percentage: bool, decimal_places: 
         )
 
 
-def format_seletor():
+def format_selector():
     session: Session = st.session_state["session"]
     mc = session.metric_editor_view_model
 
@@ -194,7 +194,7 @@ def metric_editor():
             on_click=on_verify,
         )
 
-        format_seletor()
+        format_selector()
 
         disabled_save_button: bool = (
             # Current metric in memory is not verified.

@@ -86,7 +86,7 @@ def delimiter_input_widget(key: str, delimiter: str, disabled: bool = False) -> 
     else:
         current_index = 0
 
-    def format_delimeter(delimiter) -> str:
+    def format_delimiter(delimiter) -> str:
         return f"{delimiter['name'].capitalize()} ({delimiter['value']})"
 
     st.markdown(widget_label)
@@ -94,7 +94,7 @@ def delimiter_input_widget(key: str, delimiter: str, disabled: bool = False) -> 
     selected_option = st.selectbox(
         label=widget_label,
         options=delimiters,
-        format_func=format_delimeter,
+        format_func=format_delimiter,
         label_visibility="collapsed",
         index=current_index,
         key=f"{widget_label}-{key}",

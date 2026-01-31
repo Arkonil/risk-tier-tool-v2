@@ -72,7 +72,7 @@ def loss_rate_type_selector() -> LossRateTypes:
     label = "##### Loss Rate Type"
 
     all_options = list(map(lambda m: m.value, LossRateTypes))
-    default_option = DefaultOptions().default_iteation_metadata.loss_rate_type
+    default_option = DefaultOptions().default_iteration_metadata.loss_rate_type
 
     st.markdown(label)
     loss_rate_type = st.selectbox(
@@ -202,7 +202,7 @@ def risk_segment_details_selector():
             },
         )
 
-    coloumn_config = {
+    column_config = {
         RSDetCol.SELECTED.value: st.column_config.CheckboxColumn(
             label=RSDetCol.SELECTED,
         ),
@@ -230,7 +230,7 @@ def risk_segment_details_selector():
             RSDetCol.LOWER_RATE,
             RSDetCol.UPPER_RATE,
         ],
-        column_config=coloumn_config,
+        column_config=column_config,
         width="stretch",
         hide_index=True,
         disabled=disabled_columns,
@@ -329,7 +329,7 @@ def iteration_creator():
 
         else:
             use_scalars = False
-            loss_rate_type = DefaultOptions().default_iteation_metadata.loss_rate_type
+            loss_rate_type = DefaultOptions().default_iteration_metadata.loss_rate_type
 
         filter_ids: list[FilterID] = filter_selector()
 

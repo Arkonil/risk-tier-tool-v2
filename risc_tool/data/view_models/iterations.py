@@ -18,16 +18,16 @@ from risc_tool.data.models.enums import (
 )
 from risc_tool.data.models.iteration_metadata import IterationMetadata
 from risc_tool.data.models.json_models import (
-    IteraionViewStatusJSON,
     IterationsViewModelJSON,
+    IterationViewStatusJSON,
 )
 from risc_tool.data.models.types import (
     ChangeIDs,
     FilterID,
     GridEditorViewComponents,
     GridMetricView,
-    IteraionView,
     IterationID,
+    IterationView,
     MetricID,
 )
 from risc_tool.data.repositories.data import DataRepository
@@ -38,10 +38,10 @@ from risc_tool.data.repositories.options import OptionRepository
 from risc_tool.data.repositories.scalar import ScalarRepository
 
 
-class IteraionViewStatus(BaseModel):
+class IterationViewStatus(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    view: IteraionView = "graph"
+    view: IterationView = "graph"
     iteration_id: IterationID | None = None
 
 
@@ -74,7 +74,7 @@ def style_from_dfs(
 class IterationsViewModel(ChangeTracker):
     @property
     def _signature(self) -> Signature:
-        return Signature.ITERATION_VIEWMODEL
+        return Signature.ITERATION_VIEW_MODEL
 
     def __init__(
         self,
@@ -103,7 +103,7 @@ class IterationsViewModel(ChangeTracker):
         self.__metric_repository = metric_repository
         self.__scalar_repository = scalar_repository
 
-        self.__view_status = IteraionViewStatus()
+        self.__view_status = IterationViewStatus()
         self.__metadata: dict[IterationID, IterationMetadata] = {}
 
         # cache
@@ -126,7 +126,7 @@ class IterationsViewModel(ChangeTracker):
 
     def to_dict(self) -> IterationsViewModelJSON:
         return IterationsViewModelJSON(
-            view_status=IteraionViewStatusJSON(
+            view_status=IterationViewStatusJSON(
                 view=self.__view_status.view,
                 iteration_id=self.__view_status.iteration_id,
             ),
@@ -153,7 +153,7 @@ class IterationsViewModel(ChangeTracker):
             scalar_repository=scalar_repository,
         )
 
-        instance.__view_status = IteraionViewStatus(
+        instance.__view_status = IterationViewStatus(
             view=data.view_status.view,
             iteration_id=data.view_status.iteration_id,
         )
@@ -224,7 +224,7 @@ class IterationsViewModel(ChangeTracker):
 
     def set_current_status(
         self,
-        view: IteraionView,
+        view: IterationView,
         current_iteration_id: IterationID | None = None,
         selected_iteration_id: IterationID | None = None,
         iteration_create_parent_id: IterationID | None = None,
@@ -282,7 +282,7 @@ class IterationsViewModel(ChangeTracker):
             # Getting Root ID
             root_id = self.iteration_graph.get_root_iter_id(iteration_id)
 
-            # Updating Metadat to Root ID
+            # Updating Metadata to Root ID
             for iter_id in [root_id] + self.iteration_graph.get_descendants(root_id):
                 self.get_iteration_metadata(root_id).update(
                     loss_rate_type=loss_rate_type,
@@ -351,7 +351,7 @@ class IterationsViewModel(ChangeTracker):
         )
 
         self.__metadata[iteration.uid] = (
-            DefaultOptions().default_iteation_metadata.with_changes(
+            DefaultOptions().default_iteration_metadata.with_changes(
                 loss_rate_type=loss_rate_type,
                 initial_filter_ids=filter_ids,
                 current_filter_ids=filter_ids,
@@ -391,7 +391,7 @@ class IterationsViewModel(ChangeTracker):
         )
 
         self.__metadata[iteration.uid] = (
-            DefaultOptions().default_iteation_metadata.with_changes(
+            DefaultOptions().default_iteration_metadata.with_changes(
                 loss_rate_type=loss_rate_type,
                 initial_filter_ids=filter_ids,
                 current_filter_ids=filter_ids,

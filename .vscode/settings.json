@@ -35,6 +35,7 @@
     "BACKTICKED",
     "cumm",
     "downcasting",
+    "errstate",
     "fullcode",
     "isscalar",
     "jsons",

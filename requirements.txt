@@ -2,6 +2,8 @@
 #    uv pip compile pyproject.toml -o requirements.txt
 altair==5.5.0
     # via streamlit
+annotated-types==0.7.0
+    # via pydantic
 attrs==25.3.0
     # via
     #   jsonschema
@@ -16,6 +18,8 @@ charset-normalizer==3.4.3
     # via requests
 click==8.2.1
     # via streamlit
+colorama==0.4.6
+    # via click
 et-xmlfile==2.0.0
     # via openpyxl
 gitdb==4.0.12
@@ -60,6 +64,10 @@ pyarrow==21.0.0
     # via
     #   risk-tier-tool (pyproject.toml)
     #   streamlit
+pydantic==2.12.5
+    # via risk-tier-tool (pyproject.toml)
+pydantic-core==2.41.5
+    # via pydantic
 pydeck==0.9.1
     # via streamlit
 python-dateutil==2.9.0.post0
@@ -80,7 +88,7 @@ six==1.17.0
     # via python-dateutil
 smmap==5.0.2
     # via gitdb
-streamlit==1.48.1
+streamlit==1.52.0
     # via
     #   risk-tier-tool (pyproject.toml)
     #   streamlit-antd-components
@@ -104,8 +112,13 @@ tornado==6.5.2
 typing-extensions==4.14.1
     # via
     #   altair
+    #   pydantic
+    #   pydantic-core
     #   referencing
     #   streamlit
+    #   typing-inspection
+typing-inspection==0.4.2
+    # via pydantic
 tzdata==2025.2
     # via pandas
 urllib3==2.5.0

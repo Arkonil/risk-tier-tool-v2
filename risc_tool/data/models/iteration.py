@@ -426,7 +426,7 @@ class DoubleVarIteration(IterationBase):
 
         for column in grid.columns:
             mapping = {
-                group_index: grid_value
+                group_index: int(grid_value)
                 for group_index, grid_value in grid[column].to_dict().items()
             }
 

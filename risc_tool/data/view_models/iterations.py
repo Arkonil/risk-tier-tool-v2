@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict
 from risc_tool.data.models.changes import ChangeTracker
 from risc_tool.data.models.defaults import DefaultOptions
 from risc_tool.data.models.enums import (
+    Colors,
     IterationType,
     LossRateTypes,
     RangeColumn,
@@ -23,6 +24,7 @@ from risc_tool.data.models.json_models import (
 )
 from risc_tool.data.models.types import (
     ChangeIDs,
+    ColorTheme,
     FilterID,
     GridEditorViewComponents,
     GridMetricView,
@@ -43,6 +45,28 @@ class IterationViewStatus(BaseModel):
 
     view: IterationView = "graph"
     iteration_id: IterationID | None = None
+
+
+def style_df_edge(
+    styler_data: pd.DataFrame,
+    style_row: bool,
+    style_col: bool,
+    color_theme: ColorTheme,
+):
+    if color_theme == "dark":
+        style = f"color: {Colors.F_TABLE_TOTAL_DARK}; background-color: {Colors.B_TABLE_TOTAL_DARK}; font-weight: bold;"
+    else:
+        style = f"color: {Colors.F_TABLE_TOTAL_LIGHT}; background-color: {Colors.B_TABLE_TOTAL_LIGHT}; font-weight: bold;"
+
+    style_df = pd.DataFrame("", index=styler_data.index, columns=styler_data.columns)
+
+    if style_row:
+        style_df.iloc[-1, :] = style
+
+    if style_col:
+        style_df.iloc[:, -1] = style
+
+    return style_df
 
 
 def style_from_dfs(
@@ -68,6 +92,7 @@ def style_from_dfs(
 
     # Vectorized string concatenation
     styles = "color: " + font_df + "; background-color: " + bg_df + ";"
+
     return styles
 
 
@@ -409,13 +434,17 @@ class IterationsViewModel(ChangeTracker):
         filter_ids: list[FilterID],
         metric_ids: list[MetricID],
         scalars_enabled: bool,
+        show_total_row: bool = False,
+        theme: ColorTheme = "dark",
     ) -> tuple[Styler, list[str], list[str]]:
         iteration = self.__iterations_repository.get_iteration(iteration_id)
 
         # 1. Label
-        rs_label_df = self.__iterations_repository.get_risk_segment_range(iteration_id)
+        rs_label_df = self.__iterations_repository.get_risk_segment_range(
+            iteration_id, show_total_row
+        )
         font_color_df, bg_color_df = self.__iterations_repository.get_color_range(
-            iteration_id
+            iteration_id, show_total_row
         )
 
         # 2. Control
@@ -433,6 +462,7 @@ class IterationsViewModel(ChangeTracker):
             filter_ids=filter_ids,
             metric_ids=metric_ids,
             scalars_enabled=scalars_enabled,
+            show_total_row=show_total_row,
         )
 
         # Concatenated df
@@ -449,6 +479,14 @@ class IterationsViewModel(ChangeTracker):
             subset=rs_label_df.columns,
             font_df=font_color_df,
             bg_df=bg_color_df,
+        )
+
+        final_df_styled = final_df_styled.apply(
+            style_df_edge,
+            axis=None,
+            style_row=True,
+            style_col=False,
+            color_theme=theme,
         )
 
         return final_df_styled, errors, warnings

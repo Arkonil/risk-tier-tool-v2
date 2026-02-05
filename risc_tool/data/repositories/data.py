@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from risc_tool.data.models.data_config import DataConfig
 from risc_tool.data.models.data_source import DataSource
-from risc_tool.data.models.enums import Signature, VariableType
+from risc_tool.data.models.enums import RowIndex, Signature, VariableType
 from risc_tool.data.models.exceptions import DataImportError, SampleDataNotLoadedError
 from risc_tool.data.models.json_models import DataRepositoryJSON
 from risc_tool.data.models.metric import Metric
@@ -316,16 +316,14 @@ class DataRepository(BaseRepository):
 
     def get_summarized_metrics(
         self,
-        groupby_variable_1: pd.Series,
-        groupby_variable_2: pd.Series | None = None,
+        groupby_variables: list[pd.Series],
         data_filter: pd.Series | None = None,
         metrics: list[Metric] | None = None,
     ):
         """
         Summarizes metrics based on the provided groupby variables and filter.
         Parameters:
-        - groupby_variable_1 (pd.Series): The first variable to group by.
-        - groupby_variable_2 (pd.Series, optional): The second variable to group by. Defaults to None.
+        - groupby_variables list[pd.Series]: The list of variables to group by.
         - filter (pd.Series, optional): A boolean mask to filter the data. Defaults to None.
         - metrics list[METRIC]: A list of metrics to summarize. Defaults to None.
         Returns:
@@ -335,36 +333,34 @@ class DataRepository(BaseRepository):
         if metrics is None:
             metrics = []
 
+        if not groupby_variables:
+            groupby_variables = [
+                pd.Series(RowIndex.TOTAL, index=self.index, name="Total")
+            ]
+
         # Creating a filter if not provided
         if data_filter is None:
-            data_filter = pd.Series(
-                [True] * groupby_variable_1.size, index=groupby_variable_1.index
-            )
+            data_filter = pd.Series(True, index=self.index)
+
+        assert all(
+            len(series) == len(self.index)
+            for series in groupby_variables + [data_filter]
+        ), "All groupby variables must have the same length as the index."
 
         # Creating the base DataFrame with the groupby variables
-        var_name_1 = uuid4().hex
-        base_df = pd.DataFrame({
-            var_name_1: groupby_variable_1,
-        })
-        groupby_variables = [var_name_1]
-        orig_names = [groupby_variable_1.name]
+        temp_var_names = [uuid4().hex for _ in groupby_variables]
+        orig_var_names = [str(var.name) for var in groupby_variables]
 
-        if groupby_variable_2 is not None:
-            var_name_2 = uuid4().hex
-            base_df[var_name_2] = groupby_variable_2
-            groupby_variables.append(var_name_2)
-            orig_names.append(groupby_variable_2.name)
+        base_df = pd.concat(groupby_variables, axis=1)
+        base_df.columns = temp_var_names
 
         all_index = base_df.groupby(groupby_variables, observed=False).count().index
 
         metric_results: list[pd.Series] = []
 
         for metric in metrics:
-            used_columns = metric.used_columns
-            columns_to_load = list(set(used_columns) - set(base_df.columns))
-
             loaded_data = self.load_columns(
-                columns_to_load, data_source_ids=metric.data_source_ids
+                metric.used_columns, data_source_ids=metric.data_source_ids
             )
 
             metric_data = pd.concat([base_df, loaded_data], axis=1)
@@ -386,7 +382,7 @@ class DataRepository(BaseRepository):
         else:
             result_df = pd.DataFrame(index=all_index)
 
-        result_df.rename_axis(mapper=orig_names, axis=0, inplace=True)
+        result_df.rename_axis(mapper=orig_var_names, axis=0, inplace=True)
 
         return result_df
 

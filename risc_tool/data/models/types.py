@@ -12,6 +12,7 @@ ChangeIDs = set[ChangeID]
 CallbackID = UUID
 Callback = t.Callable[[ChangeIDs], bool]
 IterationView = t.Literal["graph", "view", "create"]
+ColorTheme = t.Literal["dark", "light"]
 
 
 class DataSourceID(SentinelInt):

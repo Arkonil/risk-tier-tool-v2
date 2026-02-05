@@ -1,5 +1,16 @@
 import typing as t
-from enum import EnumMeta, StrEnum
+from enum import EnumMeta, IntEnum, StrEnum
+
+
+class RowIndex(IntEnum):
+    TOTAL = -1
+
+
+class Colors(StrEnum):
+    F_TABLE_TOTAL_LIGHT = "#000000"
+    B_TABLE_TOTAL_LIGHT = "#EEF1F5"
+    F_TABLE_TOTAL_DARK = "#FFFFFF"
+    B_TABLE_TOTAL_DARK = "#292B34"
 
 
 class StrEnumMeta(EnumMeta):
@@ -128,5 +139,6 @@ __all__ = [
     "VariableType",
     "ScalarTableColumn",
     "DataExplorerTabName",
+    "RowIndex",
     "Signature",
 ]

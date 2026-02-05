@@ -8,6 +8,7 @@ import pandas as pd
 from risc_tool.data.models.enums import (
     LossRateTypes,
     RangeColumn,
+    RowIndex,
     RSDetCol,
     Signature,
     VariableType,
@@ -81,7 +82,14 @@ class IterationsRepository(BaseRepository):
         ] = set()
 
         self.__metric_range_cache: dict[
-            tuple[IterationID, bool, tuple[FilterID, ...], tuple[MetricID, ...], bool],
+            tuple[
+                IterationID,
+                bool,
+                tuple[FilterID, ...],
+                tuple[MetricID, ...],
+                bool,
+                bool,
+            ],
             tuple[pd.DataFrame, list[str], list[str]],
         ] = {}
 
@@ -928,17 +936,31 @@ class IterationsRepository(BaseRepository):
         self.add_to_calculation_queue(iteration.uid)
         self.notify_subscribers()
 
-    def get_risk_segment_range(self, iteration_id: IterationID) -> pd.DataFrame:
+    def get_risk_segment_range(
+        self, iteration_id: IterationID, show_total_row: bool = False
+    ) -> pd.DataFrame:
         risk_segment_details = self.get_risk_segment_details(iteration_id)
-        return risk_segment_details[[RSDetCol.RISK_SEGMENT]]
+
+        risk_segments = risk_segment_details[[RSDetCol.RISK_SEGMENT]].copy()
+
+        if show_total_row:
+            risk_segments.loc[RowIndex.TOTAL, RSDetCol.RISK_SEGMENT] = "Total"
+
+        return risk_segments
 
     def get_color_range(
-        self, iteration_id: IterationID
+        self,
+        iteration_id: IterationID,
+        show_total_row: bool = False,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         risk_segment_details = self.get_risk_segment_details(iteration_id)
 
         font_color_df = risk_segment_details[[RSDetCol.FONT_COLOR]]
         bg_color_df = risk_segment_details[[RSDetCol.BG_COLOR]]
+
+        if show_total_row:
+            font_color_df.loc[RowIndex.TOTAL, RSDetCol.FONT_COLOR] = "black"
+            bg_color_df.loc[RowIndex.TOTAL, RSDetCol.BG_COLOR] = "white"
 
         return font_color_df, bg_color_df
 
@@ -1016,6 +1038,7 @@ class IterationsRepository(BaseRepository):
         filter_ids: list[FilterID],
         metric_ids: list[MetricID],
         scalars_enabled: bool,
+        show_total_row: bool,
     ) -> tuple[pd.DataFrame, list[str], list[str]]:
         key = (
             iteration_id,
@@ -1023,6 +1046,7 @@ class IterationsRepository(BaseRepository):
             tuple(sorted(filter_ids)),
             tuple(metric_ids),
             scalars_enabled,
+            show_total_row,
         )
 
         if key in self.__metric_range_cache:
@@ -1041,12 +1065,26 @@ class IterationsRepository(BaseRepository):
         iteration_output = self.get_risk_segments(iteration_id, default=default)
 
         metric_df = self.__data_repository.get_summarized_metrics(
-            groupby_variable_1=iteration_output.risk_segment_column,
+            groupby_variables=[iteration_output.risk_segment_column],
             data_filter=self.__filter_repository.get_mask(filter_ids),
             metrics=valid_metrics,
         )
 
         scalar_df = risk_segment_details[[RSDetCol.MAF_DLR, RSDetCol.MAF_ULR]]
+
+        if show_total_row:
+            total_metric_df_row = self.__data_repository.get_summarized_metrics(
+                groupby_variables=[],
+                data_filter=self.__filter_repository.get_mask(filter_ids),
+                metrics=valid_metrics,
+            )
+            metric_df = pd.concat([metric_df, total_metric_df_row], axis=0)
+
+            total_scalar_df_row = pd.DataFrame(
+                1, index=total_metric_df_row.index, columns=scalar_df.columns
+            )
+            scalar_df = pd.concat([scalar_df, total_scalar_df_row], axis=0)
+
         metric_df = metric_df.loc[scalar_df.index]
 
         if scalars_enabled:
@@ -1191,12 +1229,10 @@ class IterationsRepository(BaseRepository):
         all_metrics = self.__metric_repository.get_all_metrics()
 
         metric_df = self.__data_repository.get_summarized_metrics(
-            groupby_variable_1=row_output.risk_segment_column.rename(
-                "Current Iter Result"
-            ),
-            groupby_variable_2=col_output.risk_segment_column.rename(
-                "Previous Iter Result"
-            ),
+            groupby_variables=[
+                row_output.risk_segment_column.rename("Current Iter Result"),
+                col_output.risk_segment_column.rename("Previous Iter Result"),
+            ],
             data_filter=self.__filter_repository.get_mask(filter_ids),
             metrics=[all_metrics[metric_id] for metric_id in metric_ids],
         )

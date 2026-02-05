@@ -3,6 +3,7 @@ import typing as t
 import streamlit as st
 from pydantic import ValidationError
 
+from risc_tool.data.models.asset_path import AssetPath
 from risc_tool.data.models.data_source import DataSource
 from risc_tool.data.session import Session
 from risc_tool.pages.data_importer import data_importer_page
@@ -138,17 +139,24 @@ def import_json_page():
         )
 
         for invalid_source, edited_source, error in data_source_edits:
+            st.space()
             st.markdown(
                 f"#### Data Source #{invalid_source.uid} - {invalid_source.label}"
             )
 
-            col1, col2 = st.columns(2)
+            col1, col2, col3 = st.columns(
+                spec=[0.485, 0.03, 0.485],
+                vertical_alignment="center",
+            )
 
             with col1:
                 st.markdown("##### Config from `.json` file:")
                 file_selector(invalid_source, disabled=True)
 
             with col2:
+                st.image(AssetPath.ARROW_RIGHT, width=50)
+
+            with col3:
                 if edited_source is None:
                     edited_source = invalid_source
 

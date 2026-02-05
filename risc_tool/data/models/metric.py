@@ -403,7 +403,8 @@ class Metric:
         scope["max"] = element_wise_max
         scope["std"] = element_wise_std
 
-        result = eval(self.processed_query, {"__builtins__": {}}, scope)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            result = eval(self.processed_query, {"__builtins__": {}}, scope)
 
         if not np.isscalar(result) or not isinstance(result, (int, float, np.number)):
             raise ValueError(

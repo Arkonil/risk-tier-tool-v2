@@ -47,7 +47,12 @@ def grid_layout_widget(iteration_id: IterationID, default: bool, key: str):
         editable_grid_widget(iteration_id=iteration_id, key=key, default=default)
 
     metric_views, errors, warnings = iterations_vm.get_metric_grids(
-        iteration_id, default, show_controls_idx="alternate"
+        iteration_id,
+        default,
+        show_controls_idx="alternate",
+        show_total_row=True,
+        show_total_column=True,
+        theme=st.context.theme.type or "dark",
     )
 
     if first_metric_container:
@@ -59,7 +64,11 @@ def grid_layout_widget(iteration_id: IterationID, default: bool, key: str):
                 data_source_names=metric_view["data_source_names"],
             )
 
-            st.dataframe(metric_view["metric_styler"], hide_index=True)
+            st.dataframe(
+                metric_view["metric_styler"],
+                hide_index=True,
+                height="content",
+            )
 
     with status_container:
         error_and_warning_widget(errors, warnings)
@@ -83,6 +92,7 @@ def grid_layout_widget(iteration_id: IterationID, default: bool, key: str):
             st.dataframe(
                 metric_view["metric_styler"],
                 hide_index=True,
+                height="content",
             )
 
 
@@ -96,7 +106,12 @@ def liner_layout_widget(iteration_id: IterationID, default: bool, key: str):
         st.markdown("#### Editable Grid")
 
     metric_views, errors, warnings = iterations_vm.get_metric_grids(
-        iteration_id, default, show_controls_idx="all"
+        iteration_id,
+        default,
+        show_controls_idx="all",
+        show_total_row=True,
+        show_total_column=True,
+        theme=st.context.theme.type or "dark",
     )
 
     editable_grid_widget(iteration_id=iteration_id, key=key, default=default)

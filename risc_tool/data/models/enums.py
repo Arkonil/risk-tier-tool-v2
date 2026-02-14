@@ -7,10 +7,10 @@ class RowIndex(IntEnum):
 
 
 class Colors(StrEnum):
-    F_TABLE_TOTAL_LIGHT = "#000000"
-    B_TABLE_TOTAL_LIGHT = "#EEF1F5"
-    F_TABLE_TOTAL_DARK = "#FFFFFF"
-    B_TABLE_TOTAL_DARK = "#292B34"
+    F_TABLE_TOTAL_LIGHT = "#7D8088"
+    B_TABLE_TOTAL_LIGHT = "#F8F9FB"
+    F_TABLE_TOTAL_DARK = "#A0A1A4"
+    B_TABLE_TOTAL_DARK = "#1A1C24"
 
 
 class StrEnumMeta(EnumMeta):

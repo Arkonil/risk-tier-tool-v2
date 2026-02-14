@@ -94,7 +94,15 @@ class IterationsRepository(BaseRepository):
         ] = {}
 
         self.__metric_grid_cache: dict[
-            tuple[IterationID, bool, tuple[FilterID, ...], tuple[MetricID, ...], bool],
+            tuple[
+                IterationID,
+                bool,
+                tuple[FilterID, ...],
+                tuple[MetricID, ...],
+                bool,
+                bool,
+                bool,
+            ],
             tuple[list[GridMetricSummary], list[str], list[str]],
         ] = {}
 
@@ -959,8 +967,8 @@ class IterationsRepository(BaseRepository):
         bg_color_df = risk_segment_details[[RSDetCol.BG_COLOR]]
 
         if show_total_row:
-            font_color_df.loc[RowIndex.TOTAL, RSDetCol.FONT_COLOR] = "black"
-            bg_color_df.loc[RowIndex.TOTAL, RSDetCol.BG_COLOR] = "white"
+            font_color_df.at[RowIndex.TOTAL, RSDetCol.FONT_COLOR] = "black"
+            bg_color_df.at[RowIndex.TOTAL, RSDetCol.BG_COLOR] = "white"
 
         return font_color_df, bg_color_df
 
@@ -1196,6 +1204,8 @@ class IterationsRepository(BaseRepository):
         filter_ids: list[FilterID],
         metric_ids: list[MetricID],
         scalars_enabled: bool,
+        show_total_row: bool,
+        show_total_column: bool,
     ):
         key = (
             iteration_id,
@@ -1203,6 +1213,8 @@ class IterationsRepository(BaseRepository):
             tuple(sorted(filter_ids)),
             tuple(metric_ids),
             scalars_enabled,
+            show_total_row,
+            show_total_column,
         )
 
         if key in self.__metric_grid_cache:
@@ -1237,6 +1249,43 @@ class IterationsRepository(BaseRepository):
             metrics=[all_metrics[metric_id] for metric_id in metric_ids],
         )
 
+        total_series = pd.Series(
+            RowIndex.TOTAL, index=row_output.risk_segment_column.index, name="Total"
+        )
+
+        if show_total_column:
+            metric_col_df = self.__data_repository.get_summarized_metrics(
+                groupby_variables=[
+                    row_output.risk_segment_column.rename("Current Iter Result"),
+                    total_series,
+                ],
+                data_filter=self.__filter_repository.get_mask(filter_ids),
+                metrics=[all_metrics[metric_id] for metric_id in metric_ids],
+            )
+            metric_df = pd.concat([metric_df, metric_col_df], axis=0)
+
+        if show_total_row:
+            metric_row_df = self.__data_repository.get_summarized_metrics(
+                groupby_variables=[
+                    total_series,
+                    col_output.risk_segment_column.rename("Previous Iter Result"),
+                ],
+                data_filter=self.__filter_repository.get_mask(filter_ids),
+                metrics=[all_metrics[metric_id] for metric_id in metric_ids],
+            )
+            metric_df = pd.concat([metric_df, metric_row_df], axis=0)
+
+        if show_total_column and show_total_row:
+            metric_total_df = self.__data_repository.get_summarized_metrics(
+                groupby_variables=[
+                    total_series,
+                    total_series,
+                ],
+                data_filter=self.__filter_repository.get_mask(filter_ids),
+                metrics=[all_metrics[metric_id] for metric_id in metric_ids],
+            )
+            metric_df = pd.concat([metric_df, metric_total_df], axis=0)
+
         if scalars_enabled and (
             (MetricID.DLR_BAD_RATE in metric_ids)
             or (MetricID.UNT_BAD_RATE in metric_ids)
@@ -1258,7 +1307,23 @@ class IterationsRepository(BaseRepository):
                 right_index=True,
                 how="left",
             )
-            scalar_df = scalar_df.reindex(index=metric_df.index)
+
+            if show_total_row:
+                scalar_row_df = risk_segment_details[
+                    [RSDetCol.MAF_DLR, RSDetCol.MAF_ULR]
+                ]
+                scalar_row_df = scalar_row_df.rename_axis(
+                    index="Previous Iter Result"
+                ).reset_index()
+
+                scalar_row_df["Current Iter Result"] = RowIndex.TOTAL
+                scalar_row_df.set_index(
+                    ["Current Iter Result", "Previous Iter Result"], inplace=True
+                )
+
+                scalar_df = pd.concat([scalar_df, scalar_row_df], axis=0)
+
+            scalar_df = scalar_df.reindex(index=metric_df.index, fill_value=1)
 
             if MetricID.DLR_BAD_RATE in metric_ids:
                 scalar = self.__scalar_repository.get_scalar(LossRateTypes.DLR)
@@ -1285,7 +1350,7 @@ class IterationsRepository(BaseRepository):
 
             metric_outputs.append(
                 GridMetricSummary(
-                    metric_grid=metric_df[metric_name].unstack(1),
+                    metric_grid=metric_df[metric_name].unstack(1, sort=False),
                     metric_name=metric_name,
                     data_source_names=[
                         self.__data_repository.data_sources[ds_id].label

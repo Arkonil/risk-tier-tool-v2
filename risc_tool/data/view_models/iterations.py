@@ -13,6 +13,7 @@ from risc_tool.data.models.enums import (
     IterationType,
     LossRateTypes,
     RangeColumn,
+    RowIndex,
     RSDetCol,
     Signature,
     VariableType,
@@ -655,6 +656,9 @@ class IterationsViewModel(ChangeTracker):
         iteration_id: IterationID,
         default: bool,
         show_controls_idx: t.Literal["all", "alternate"] | list[int],
+        show_total_row: bool = False,
+        show_total_column: bool = False,
+        theme: ColorTheme = "dark",
     ) -> tuple[list[GridMetricView], list[str], list[str]]:
         metadata = self.get_iteration_metadata(iteration_id)
 
@@ -666,6 +670,8 @@ class IterationsViewModel(ChangeTracker):
                 filter_ids=metadata.current_filter_ids,
                 metric_ids=metadata.metric_ids,
                 scalars_enabled=metadata.scalars_enabled,
+                show_total_row=show_total_row,
+                show_total_column=show_total_column,
             )
         )
         font_color_grid = self.__iterations_repository.get_risk_segment_grid(
@@ -674,6 +680,10 @@ class IterationsViewModel(ChangeTracker):
         bg_color_grid = self.__iterations_repository.get_risk_segment_grid(
             iteration_id, default, RSDetCol.BG_COLOR
         )
+
+        if show_total_row:
+            font_color_grid.loc[RowIndex.TOTAL, :] = "black"
+            bg_color_grid.loc[RowIndex.TOTAL, :] = "white"
 
         # Return Empty if no metric is selected
         if len(metric_summaries) == 0:
@@ -691,6 +701,11 @@ class IterationsViewModel(ChangeTracker):
 
         # Setting Control columns
         control_df = self.__iterations_repository.get_controls(iteration_id, default)
+        if show_total_row:
+            if len(control_df.columns) == 1:
+                control_df.at[RowIndex.TOTAL, control_df.columns[0]] = ["Total"]
+            else:
+                control_df.at[RowIndex.TOTAL, control_df.columns[0]] = "Total"
 
         # Setup for previous iteration groups
         show_prev_iter_details = (
@@ -718,13 +733,24 @@ class IterationsViewModel(ChangeTracker):
                 previous_iteration.get_group_display().to_list(),
             ])
 
+            if show_total_column:
+                metric_grid_columns = metric_grid_columns.append(
+                    pd.MultiIndex.from_arrays([
+                        [" "],
+                        ["Total"],
+                    ])
+                )
+
         else:
             # Setting columns
             control_df_columns = control_df.columns
             metric_grid_columns = font_color_grid.columns
 
+            if show_total_column:
+                metric_grid_columns = metric_grid_columns.append(pd.Index(["Total"]))
+
         combined_df_columns = control_df_columns.append(metric_grid_columns)
-        styler_subset = metric_grid_columns
+        styler_subset = font_color_grid.columns
 
         metric_df_views: list[GridMetricView] = []
 
@@ -744,6 +770,14 @@ class IterationsViewModel(ChangeTracker):
                 subset=styler_subset,
                 font_df=font_color_grid,
                 bg_df=bg_color_grid,
+            )
+
+            metric_df_styled = metric_df_styled.apply(
+                style_df_edge,
+                axis=None,
+                style_row=show_total_row,
+                style_col=show_total_column,
+                color_theme=theme,
             )
 
             metric_df_views.append(

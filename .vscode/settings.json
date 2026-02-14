@@ -15,7 +15,7 @@
     "**/__pycache__/": true
   },
   "python.analysis.diagnosticMode": "workspace",
-  "python.analysis.exclude": ["**/tests/**"],
+  "python.analysis.exclude": ["**/tests/**", ".venv/**"],
   "python.analysis.ignore": [
     "**/tests/**",
     ".venv/**"
@@ -40,9 +40,16 @@
     "isscalar",
     "jsons",
     "Mult",
+    "numpy",
+    "openpyxl",
     "printoptions",
+    "pyarrow",
+    "pydantic",
+    "pytest",
     "qcut",
     "selectbox",
-    "simplebezier"
+    "simplebezier",
+    "sortables",
+    "streamlit"
   ]
 }

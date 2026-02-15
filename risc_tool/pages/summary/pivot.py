@@ -2,8 +2,8 @@ import streamlit as st
 
 
 def pivot():
-    st.header("(Coming Soon)")
-    st.balloons()
+    st.header("(Not Implemented Yet)")
+    # st.balloons()
 
 
 __all__ = ["pivot"]

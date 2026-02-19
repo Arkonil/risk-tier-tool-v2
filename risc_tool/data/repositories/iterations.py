@@ -963,8 +963,8 @@ class IterationsRepository(BaseRepository):
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         risk_segment_details = self.get_risk_segment_details(iteration_id)
 
-        font_color_df = risk_segment_details[[RSDetCol.FONT_COLOR]]
-        bg_color_df = risk_segment_details[[RSDetCol.BG_COLOR]]
+        font_color_df = risk_segment_details[[RSDetCol.FONT_COLOR]].copy()
+        bg_color_df = risk_segment_details[[RSDetCol.BG_COLOR]].copy()
 
         if show_total_row:
             font_color_df.at[RowIndex.TOTAL, RSDetCol.FONT_COLOR] = "black"

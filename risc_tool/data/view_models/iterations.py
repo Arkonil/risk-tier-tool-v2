@@ -705,6 +705,7 @@ class IterationsViewModel(ChangeTracker):
             if len(control_df.columns) == 1:
                 control_df.at[RowIndex.TOTAL, control_df.columns[0]] = ["Total"]
             else:
+                control_df = control_df.astype(str)
                 control_df.at[RowIndex.TOTAL, control_df.columns[0]] = "Total"
 
         # Setup for previous iteration groups

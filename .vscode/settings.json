@@ -15,7 +15,7 @@
     "**/__pycache__/": true
   },
   "python.analysis.diagnosticMode": "workspace",
-  "python.analysis.exclude": ["**/tests/**", ".venv/**"],
+  "python.analysis.exclude": ["**/tests/**", ".venv/**", "**/node_modules", "**/__pycache__", "**/.*"],
   "python.analysis.ignore": [
     "**/tests/**",
     ".venv/**"

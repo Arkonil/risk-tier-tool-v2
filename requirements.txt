@@ -88,7 +88,7 @@ six==1.17.0
     # via python-dateutil
 smmap==5.0.2
     # via gitdb
-streamlit==1.52.0
+streamlit==1.54.0
     # via
     #   risk-tier-tool (pyproject.toml)
     #   streamlit-antd-components

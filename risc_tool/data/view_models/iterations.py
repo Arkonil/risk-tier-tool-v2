@@ -703,7 +703,7 @@ class IterationsViewModel(ChangeTracker):
         control_df = self.__iterations_repository.get_controls(iteration_id, default)
         if show_total_row:
             if len(control_df.columns) == 1:
-                control_df.at[RowIndex.TOTAL, control_df.columns[0]] = ["Total"]
+                control_df.at[RowIndex.TOTAL, control_df.columns[0]] = ["Total"]  # type: ignore
             else:
                 control_df = control_df.astype(str)
                 control_df.at[RowIndex.TOTAL, control_df.columns[0]] = "Total"

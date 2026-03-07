@@ -1163,7 +1163,7 @@ class IterationsRepository(BaseRepository):
         risk_segment_details = self.get_risk_segment_details(iteration_id)
         column_mapping: dict[int, str] = risk_segment_details[
             RSDetCol.RISK_SEGMENT
-        ].to_dict()
+        ].to_dict()  # type: ignore
         inv_column_mapping = {v: k for k, v in column_mapping.items()}
 
         risk_segment_grid = risk_segment_grid.copy().map(

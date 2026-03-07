@@ -114,8 +114,8 @@ class IterationBase(ABC):
             uid=self.uid,
             name=self.name,
             variable_name=str(self._variable.name),
-            groups=self._groups.to_dict(),
-            default_groups=self._default_groups.to_dict(),
+            groups=self._groups.to_dict(),  # type: ignore
+            default_groups=self._default_groups.to_dict(),  # type: ignore
         )
 
     def generate_sas_code_for_groups(
@@ -408,7 +408,7 @@ class DoubleVarIteration(IterationBase):
     def to_dict(self):
         dict_data = super().to_dict()
 
-        dict_data.groups_mask = self._groups_mask.to_dict()
+        dict_data.groups_mask = self._groups_mask.to_dict()  # type: ignore
         dict_data.risk_segment_grid = DataFrameTightJSON.model_validate(
             self._risk_segment_grid.to_dict(orient="tight")
         )

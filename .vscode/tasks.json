@@ -12,6 +12,16 @@
       }
     },
     {
+      "label": "Run Streamlit App (Windows)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [".\\scripts\\run-win.ps1"],
+      "group": "test",
+      "presentation": {
+        "reveal": "silent"
+      }
+    },
+    {
       "label": "Debug Streamlit App",
       "type": "shell",
       "command": "bash",

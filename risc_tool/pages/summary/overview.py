@@ -29,6 +29,19 @@ def sidebar_widgets():
         summary_vm.ov_filter_ids = selected_filter_ids
         st.rerun()
 
+    # Outlier Toggle
+    current_remove_outliers = summary_vm.ov_remove_outliers
+
+    remove_outliers = st.checkbox(
+        label="Remove Outliers",
+        value=current_remove_outliers,
+        help="Remove Outliers",
+    )
+
+    if remove_outliers != current_remove_outliers:
+        summary_vm.ov_remove_outliers = remove_outliers
+        st.rerun()
+
     # Scalar Toggle
     current_scalars_enabled = summary_vm.ov_scalars_enabled
 
@@ -72,6 +85,7 @@ def overview():
         filter_ids=summary_vm.ov_filter_ids,
         metric_ids=summary_vm.ov_metric_ids,
         scalars_enabled=summary_vm.ov_scalars_enabled,
+        remove_outliers=summary_vm.ov_remove_outliers,
         key="summary-overview-iteration-metric-table",
     )
 

@@ -46,6 +46,7 @@ def single_var_iteration():
         filter_ids=metadata.current_filter_ids,
         metric_ids=metadata.metric_ids,
         scalars_enabled=metadata.scalars_enabled,
+        remove_outliers=metadata.remove_outliers,
         key="range-grid-default",
     )
 
@@ -59,6 +60,7 @@ def single_var_iteration():
         filter_ids=metadata.current_filter_ids,
         metric_ids=metadata.metric_ids,
         scalars_enabled=metadata.scalars_enabled,
+        remove_outliers=metadata.remove_outliers,
         key="range-grid-editable",
     )
 

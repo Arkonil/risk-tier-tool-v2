@@ -5,6 +5,7 @@ from risc_tool.data.models.enums import DataExplorerTabName
 from risc_tool.data.session import Session
 from risc_tool.pages.components.load_data_prompt import load_data_prompt
 from risc_tool.pages.data_explorer.iv_analysis import iv_analysis
+from risc_tool.pages.data_explorer.outlier import outlier_rules
 
 
 def data_explorer() -> None:
@@ -32,6 +33,8 @@ def data_explorer() -> None:
 
     if current_tab_name == DataExplorerTabName.IV_ANALYSIS:
         iv_analysis()
+    elif current_tab_name == DataExplorerTabName.OUTLIER_RULES:
+        outlier_rules()
 
 
 data_explorer_page = st.Page(

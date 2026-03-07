@@ -110,6 +110,12 @@ def iv_analysis():
             format_func=lambda filter_uid: all_filters[filter_uid].name,
         )
 
+        remove_outliers = st.checkbox(
+            label="Remove Outliers",
+            value=de_view_model.iv_remove_outliers,
+            help="Remove all outlier instances from calculations",
+        )
+
         if st.button(
             label="Save Config",
             width="stretch",
@@ -120,10 +126,12 @@ def iv_analysis():
                 de_view_model.iv_current_target != target_variable,
                 de_view_model.iv_current_variables != input_variables,
                 de_view_model.iv_current_filter_ids != filter_ids,
+                de_view_model.iv_remove_outliers != remove_outliers,
             ]):
                 de_view_model.iv_current_target = target_variable
                 de_view_model.iv_current_variables = input_variables
                 de_view_model.iv_current_filter_ids = filter_ids
+                de_view_model.iv_remove_outliers = remove_outliers
                 st.rerun()
 
     with chart_container:
@@ -131,6 +139,7 @@ def iv_analysis():
             target_variable=target_variable,
             input_variables=input_variables,
             filter_ids=filter_ids,
+            remove_outliers=remove_outliers,
         )
 
         if iv_df is not None:

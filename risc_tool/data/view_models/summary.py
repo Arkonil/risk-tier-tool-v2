@@ -41,6 +41,7 @@ class SummaryViewModel(ChangeNotifier):
         ]
         self.ov_filter_ids: list[FilterID] = []
         self.ov_scalars_enabled = True
+        self.ov_remove_outliers = False
         self.ov_selected_iteration_id: IterationID | None = None
         self.ov_selected_iteration_default: bool = False
 
@@ -52,6 +53,7 @@ class SummaryViewModel(ChangeNotifier):
         ]
         self.cv_filter_ids: list[FilterID] = []
         self.cv_scalars_enabled = True
+        self.cv_remove_outliers = False
         self.cv_selected_iterations: dict[UUID, tuple[IterationID, bool]] = (
             t.OrderedDict()
         )

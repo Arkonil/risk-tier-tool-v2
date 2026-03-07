@@ -1,5 +1,6 @@
 import ast
 import re
+import typing as t
 
 import pandas as pd
 
@@ -81,10 +82,11 @@ class Filter:
             name=self.name,
             query=self.query,
             used_columns=self.used_columns,
+            is_outlier=False,
         )
 
     @classmethod
-    def from_dict(cls, data: FilterJSON) -> "Filter":
+    def from_dict(cls, data: FilterJSON, variable: pd.Series | None = None) -> "Filter":
         """
         Creates a Filter instance from a dictionary.
         Validates the input type and restores the object.
@@ -188,7 +190,9 @@ class Filter:
                     f"Following columns are not found in the data: {', '.join(missing_columns)}",
                 )
 
-    def create_mask(self, data: pd.DataFrame) -> None:
+    def create_mask(
+        self, data: pd.DataFrame, fillna: bool = False, na_value: t.Any = None
+    ) -> None:
         # if self.mask is not None:
         #     return
 
@@ -213,6 +217,9 @@ class Filter:
             raise ValueError(
                 f"Length Mismatch: len(mask) != len(data) ({len(mask)} != {len(data)}). The query is not applicable to the data."
             )
+
+        if fillna:
+            mask = mask.fillna(na_value)
 
         self.mask = mask
 

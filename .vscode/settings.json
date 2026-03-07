@@ -42,6 +42,7 @@
     "Mult",
     "numpy",
     "openpyxl",
+    "PERC",
     "printoptions",
     "pyarrow",
     "pydantic",

@@ -62,4 +62,5 @@ class DefaultOptions(Singleton):
             initial_filter_ids=[],
             current_filter_ids=[],
             show_prev_iter_details=True,
+            remove_outliers=True,
         )

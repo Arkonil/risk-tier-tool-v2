@@ -286,6 +286,7 @@ class IterationsViewModel(ChangeTracker):
         loss_rate_type: LossRateTypes | None = None,
         filter_ids: list[FilterID] | None = None,
         show_prev_iter_details: bool | None = None,
+        remove_outliers: bool | None = None,
     ):
         metadata = self.get_iteration_metadata(iteration_id)
 
@@ -298,6 +299,7 @@ class IterationsViewModel(ChangeTracker):
             loss_rate_type=loss_rate_type,
             current_filter_ids=filter_ids,
             show_prev_iter_details=show_prev_iter_details,
+            remove_outliers=remove_outliers,
         )
 
         if (
@@ -364,6 +366,7 @@ class IterationsViewModel(ChangeTracker):
         filter_ids: list[FilterID],
         auto_band: bool,
         use_scalar: bool,
+        remove_outliers: bool,
     ):
         iteration = self.__iterations_repository.add_single_var_iteration(
             name,
@@ -374,6 +377,7 @@ class IterationsViewModel(ChangeTracker):
             filter_ids,
             auto_band,
             use_scalar,
+            remove_outliers,
         )
 
         self.__metadata[iteration.uid] = (
@@ -394,6 +398,7 @@ class IterationsViewModel(ChangeTracker):
         variable_dtype: VariableType,
         auto_band: bool,
         use_scalar: bool,
+        remove_outliers: bool,
         upgrade_limit: int | None = None,
         downgrade_limit: int | None = None,
         auto_rank_ordering: bool | None = None,
@@ -411,6 +416,7 @@ class IterationsViewModel(ChangeTracker):
             filter_ids,
             auto_band,
             use_scalar,
+            remove_outliers,
             upgrade_limit,
             downgrade_limit,
             auto_rank_ordering,
@@ -435,6 +441,7 @@ class IterationsViewModel(ChangeTracker):
         filter_ids: list[FilterID],
         metric_ids: list[MetricID],
         scalars_enabled: bool,
+        remove_outliers: bool,
         show_total_row: bool = False,
         theme: ColorTheme = "dark",
     ) -> tuple[Styler, list[str], list[str]]:
@@ -463,6 +470,7 @@ class IterationsViewModel(ChangeTracker):
             filter_ids=filter_ids,
             metric_ids=metric_ids,
             scalars_enabled=scalars_enabled,
+            remove_outliers=remove_outliers,
             show_total_row=show_total_row,
         )
 
@@ -670,6 +678,7 @@ class IterationsViewModel(ChangeTracker):
                 filter_ids=metadata.current_filter_ids,
                 metric_ids=metadata.metric_ids,
                 scalars_enabled=metadata.scalars_enabled,
+                remove_outliers=metadata.remove_outliers,
                 show_total_row=show_total_row,
                 show_total_column=show_total_column,
             )

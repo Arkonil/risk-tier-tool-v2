@@ -33,6 +33,19 @@ def sidebar_widgets():
         summary_vm.cv_filter_ids = selected_filter_ids
         st.rerun()
 
+    # Outlier Toggle
+    current_remove_outliers = summary_vm.cv_remove_outliers
+
+    remove_outliers = st.checkbox(
+        label="Remove Outliers",
+        value=current_remove_outliers,
+        help="Remove Outliers",
+    )
+
+    if remove_outliers != current_remove_outliers:
+        summary_vm.cv_remove_outliers = remove_outliers
+        st.rerun()
+
     # Layout Toggle
     selected = sac.segmented(
         [
@@ -99,6 +112,7 @@ def iteration_table(view_idx: UUID, iteration_id: IterationID, default: bool):
         filter_ids=summary_vm.cv_filter_ids,
         metric_ids=summary_vm.cv_metric_ids,
         scalars_enabled=summary_vm.cv_scalars_enabled,
+        remove_outliers=summary_vm.cv_remove_outliers,
         key=f"summary-comparison-iteration-metric-table-{view_idx}",
     )
 

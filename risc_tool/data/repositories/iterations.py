@@ -83,25 +83,27 @@ class IterationsRepository(BaseRepository):
 
         self.__metric_range_cache: dict[
             tuple[
-                IterationID,
-                bool,
-                tuple[FilterID, ...],
-                tuple[MetricID, ...],
-                bool,
-                bool,
+                IterationID,  # iteration_id
+                bool,  # default
+                tuple[FilterID, ...],  # filter_ids
+                tuple[MetricID, ...],  # metric_ids
+                bool,  # scalars_enabled
+                bool,  # remove_outliers
+                bool,  # show_total_row
             ],
             tuple[pd.DataFrame, list[str], list[str]],
         ] = {}
 
         self.__metric_grid_cache: dict[
             tuple[
-                IterationID,
-                bool,
-                tuple[FilterID, ...],
-                tuple[MetricID, ...],
-                bool,
-                bool,
-                bool,
+                IterationID,  # iteration_id
+                bool,  # default
+                tuple[FilterID, ...],  # filter_ids
+                tuple[MetricID, ...],  # metric_ids
+                bool,  # scalars_enabled
+                bool,  # remove_outliers
+                bool,  # show_total_row
+                bool,  # show_total_column
             ],
             tuple[list[GridMetricSummary], list[str], list[str]],
         ] = {}
@@ -464,6 +466,7 @@ class IterationsRepository(BaseRepository):
         filter_ids: list[FilterID],
         auto_band: bool,
         use_scalar: bool,
+        remove_outliers: bool,
     ) -> NumericalSingleVarIteration | CategoricalSingleVarIteration:
         # Validation
         common_columns = self.__data_repository.common_columns
@@ -500,7 +503,9 @@ class IterationsRepository(BaseRepository):
             raise ValueError(f"Invalid variable type: {variable_dtype}")
 
         if auto_band:
-            filter_mask = self.__filter_repository.get_mask(filter_ids=filter_ids)
+            filter_mask = self.__filter_repository.get_mask(
+                filter_ids=filter_ids, remove_outliers=remove_outliers
+            )
             data_source_mask = self.__data_repository.get_data_source_mask(
                 data_source_ids=self.__metric_repository.data_source_ids
             )
@@ -582,6 +587,7 @@ class IterationsRepository(BaseRepository):
         filter_ids: list[FilterID],
         auto_band: bool,
         use_scalar: bool,
+        remove_outliers: bool,
         upgrade_limit: int | None = None,
         downgrade_limit: int | None = None,
         auto_rank_ordering: bool | None = None,
@@ -622,7 +628,9 @@ class IterationsRepository(BaseRepository):
             raise ValueError(f"Invalid variable type: {variable_dtype}")
 
         if auto_band:
-            filter_mask = self.__filter_repository.get_mask(filter_ids=filter_ids)
+            filter_mask = self.__filter_repository.get_mask(
+                filter_ids=filter_ids, remove_outliers=remove_outliers
+            )
             data_source_mask = self.__data_repository.get_data_source_mask(
                 data_source_ids=self.__metric_repository.data_source_ids
             )
@@ -1046,6 +1054,7 @@ class IterationsRepository(BaseRepository):
         filter_ids: list[FilterID],
         metric_ids: list[MetricID],
         scalars_enabled: bool,
+        remove_outliers: bool,
         show_total_row: bool,
     ) -> tuple[pd.DataFrame, list[str], list[str]]:
         key = (
@@ -1054,6 +1063,7 @@ class IterationsRepository(BaseRepository):
             tuple(sorted(filter_ids)),
             tuple(metric_ids),
             scalars_enabled,
+            remove_outliers,
             show_total_row,
         )
 
@@ -1074,7 +1084,7 @@ class IterationsRepository(BaseRepository):
 
         metric_df = self.__data_repository.get_summarized_metrics(
             groupby_variables=[iteration_output.risk_segment_column],
-            data_filter=self.__filter_repository.get_mask(filter_ids),
+            data_filter=self.__filter_repository.get_mask(filter_ids, remove_outliers),
             metrics=valid_metrics,
         )
 
@@ -1083,7 +1093,9 @@ class IterationsRepository(BaseRepository):
         if show_total_row:
             total_metric_df_row = self.__data_repository.get_summarized_metrics(
                 groupby_variables=[],
-                data_filter=self.__filter_repository.get_mask(filter_ids),
+                data_filter=self.__filter_repository.get_mask(
+                    filter_ids, remove_outliers
+                ),
                 metrics=valid_metrics,
             )
             metric_df = pd.concat([metric_df, total_metric_df_row], axis=0)
@@ -1204,6 +1216,7 @@ class IterationsRepository(BaseRepository):
         filter_ids: list[FilterID],
         metric_ids: list[MetricID],
         scalars_enabled: bool,
+        remove_outliers: bool,
         show_total_row: bool,
         show_total_column: bool,
     ):
@@ -1213,6 +1226,7 @@ class IterationsRepository(BaseRepository):
             tuple(sorted(filter_ids)),
             tuple(metric_ids),
             scalars_enabled,
+            remove_outliers,
             show_total_row,
             show_total_column,
         )
@@ -1245,7 +1259,7 @@ class IterationsRepository(BaseRepository):
                 row_output.risk_segment_column.rename("Current Iter Result"),
                 col_output.risk_segment_column.rename("Previous Iter Result"),
             ],
-            data_filter=self.__filter_repository.get_mask(filter_ids),
+            data_filter=self.__filter_repository.get_mask(filter_ids, remove_outliers),
             metrics=[all_metrics[metric_id] for metric_id in metric_ids],
         )
 
@@ -1259,7 +1273,9 @@ class IterationsRepository(BaseRepository):
                     row_output.risk_segment_column.rename("Current Iter Result"),
                     total_series,
                 ],
-                data_filter=self.__filter_repository.get_mask(filter_ids),
+                data_filter=self.__filter_repository.get_mask(
+                    filter_ids, remove_outliers
+                ),
                 metrics=[all_metrics[metric_id] for metric_id in metric_ids],
             )
             metric_df = pd.concat([metric_df, metric_col_df], axis=0)
@@ -1270,7 +1286,9 @@ class IterationsRepository(BaseRepository):
                     total_series,
                     col_output.risk_segment_column.rename("Previous Iter Result"),
                 ],
-                data_filter=self.__filter_repository.get_mask(filter_ids),
+                data_filter=self.__filter_repository.get_mask(
+                    filter_ids, remove_outliers
+                ),
                 metrics=[all_metrics[metric_id] for metric_id in metric_ids],
             )
             metric_df = pd.concat([metric_df, metric_row_df], axis=0)
@@ -1281,7 +1299,9 @@ class IterationsRepository(BaseRepository):
                     total_series,
                     total_series,
                 ],
-                data_filter=self.__filter_repository.get_mask(filter_ids),
+                data_filter=self.__filter_repository.get_mask(
+                    filter_ids, remove_outliers
+                ),
                 metrics=[all_metrics[metric_id] for metric_id in metric_ids],
             )
             metric_df = pd.concat([metric_df, metric_total_df], axis=0)
@@ -1339,8 +1359,6 @@ class IterationsRepository(BaseRepository):
                     scalar_df[RSDetCol.MAF_ULR]
                 )
 
-        metric_df = metric_df.rename(mapper=column_mapping, axis=0, level=1)
-
         metric_outputs: list[GridMetricSummary] = []
 
         for metric_id in metric_ids:
@@ -1350,7 +1368,9 @@ class IterationsRepository(BaseRepository):
 
             metric_outputs.append(
                 GridMetricSummary(
-                    metric_grid=metric_df[metric_name].unstack(1, sort=False),
+                    metric_grid=metric_df[metric_name]
+                    .unstack(1)
+                    .rename(columns=column_mapping),
                     metric_name=metric_name,
                     data_source_names=[
                         self.__data_repository.data_sources[ds_id].label

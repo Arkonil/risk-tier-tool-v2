@@ -14,6 +14,7 @@ class IterationMetadata:
         initial_filter_ids: list[FilterID],
         current_filter_ids: list[FilterID],
         metric_ids: list[MetricID],
+        remove_outliers: bool,
     ):
         self.editable: bool = editable
         self.scalars_enabled: bool = scalars_enabled
@@ -23,6 +24,7 @@ class IterationMetadata:
         self.initial_filter_ids: list[FilterID] = initial_filter_ids
         self.current_filter_ids: list[FilterID] = current_filter_ids
         self.metric_ids: list[MetricID] = metric_ids
+        self.remove_outliers: bool = remove_outliers
 
     def to_dict(self) -> IterationMetadataJSON:
         return IterationMetadataJSON(
@@ -34,6 +36,7 @@ class IterationMetadata:
             initial_filter_ids=self.initial_filter_ids,
             current_filter_ids=self.current_filter_ids,
             metric_ids=self.metric_ids,
+            remove_outliers=self.remove_outliers,
         )
 
     @classmethod
@@ -47,6 +50,7 @@ class IterationMetadata:
             initial_filter_ids=data.initial_filter_ids,
             current_filter_ids=data.current_filter_ids,
             metric_ids=data.metric_ids,
+            remove_outliers=data.remove_outliers,
         )
 
     def update(
@@ -59,6 +63,7 @@ class IterationMetadata:
         initial_filter_ids: list[FilterID] | None = None,
         current_filter_ids: list[FilterID] | None = None,
         metric_ids: list[MetricID] | None = None,
+        remove_outliers: bool | None = None,
     ) -> None:
         if editable is not None:
             self.editable = editable
@@ -84,6 +89,9 @@ class IterationMetadata:
         if show_prev_iter_details is not None:
             self.show_prev_iter_details = show_prev_iter_details
 
+        if remove_outliers is not None:
+            self.remove_outliers = remove_outliers
+
     def with_changes(
         self,
         editable: bool | None = None,
@@ -94,6 +102,7 @@ class IterationMetadata:
         initial_filter_ids: list[FilterID] | None = None,
         current_filter_ids: list[FilterID] | None = None,
         metric_ids: list[MetricID] | None = None,
+        remove_outliers: bool | None = None,
     ):
         if editable is None:
             editable = self.editable
@@ -119,6 +128,9 @@ class IterationMetadata:
         if show_prev_iter_details is None:
             show_prev_iter_details = self.show_prev_iter_details
 
+        if remove_outliers is None:
+            remove_outliers = self.remove_outliers
+
         return IterationMetadata(
             editable=editable,
             scalars_enabled=scalars_enabled,
@@ -128,6 +140,7 @@ class IterationMetadata:
             initial_filter_ids=initial_filter_ids,
             current_filter_ids=current_filter_ids,
             metric_ids=metric_ids,
+            remove_outliers=remove_outliers,
         )
 
 

@@ -299,7 +299,7 @@ def iteration_creator():
 
     st.title("Create New Iteration")
 
-    col1, col2 = st.columns([1, 2])
+    col1, col2 = st.columns([3, 4])
 
     # Left Column Controls
     with col1:
@@ -309,7 +309,7 @@ def iteration_creator():
 
         col11, col12 = st.columns(2)
 
-        auto_band = col11.checkbox("Create Automatic Banding", value=True)
+        auto_band = col11.checkbox("Automatic Banding", value=True)
         auto_rank_ordering, upgrade_limit, downgrade_limit = True, 1, 1
 
         if auto_band:
@@ -332,6 +332,8 @@ def iteration_creator():
             loss_rate_type = DefaultOptions().default_iteration_metadata.loss_rate_type
 
         filter_ids: list[FilterID] = filter_selector()
+
+        remove_outliers = st.checkbox("Remove Outliers", value=True)
 
     # Right Column Controls
     with col2:
@@ -367,6 +369,7 @@ def iteration_creator():
                 filter_ids=filter_ids,
                 auto_band=auto_band,
                 use_scalar=use_scalars,
+                remove_outliers=remove_outliers,
             )
 
             iterations_vm.set_current_status("view", iteration.uid)
@@ -384,6 +387,7 @@ def iteration_creator():
                 variable_dtype=variable_dtype,
                 auto_band=auto_band,
                 use_scalar=use_scalars,
+                remove_outliers=remove_outliers,
                 upgrade_limit=upgrade_limit if auto_band else None,
                 downgrade_limit=downgrade_limit if auto_band else None,
                 auto_rank_ordering=auto_rank_ordering if auto_band else None,

@@ -157,6 +157,11 @@ class FilterViewModel(ChangeTracker):
     def filters(self):
         return self.__filter_repository.filters
 
+    def get_filters(
+        self, filter_ids: list[FilterID] | None = None, outliers: bool = False
+    ):
+        return self.__filter_repository.get_filters(filter_ids, outliers)
+
     def duplicate_filter(self, filter_id: FilterID) -> None:
         self.__filter_repository.duplicate_filter(filter_id)
 

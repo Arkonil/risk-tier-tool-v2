@@ -16,6 +16,7 @@ def iteration_metric_table(
     filter_ids: list[FilterID],
     metric_ids: list[MetricID],
     scalars_enabled: bool,
+    remove_outliers: bool,
     editable: bool,
     key: str,
 ):
@@ -31,6 +32,7 @@ def iteration_metric_table(
         filter_ids=filter_ids,
         metric_ids=metric_ids,
         scalars_enabled=scalars_enabled,
+        remove_outliers=remove_outliers,
         show_total_row=show_total_row,
         theme=st.context.theme.type or "dark",
     )

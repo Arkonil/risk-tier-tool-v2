@@ -3,7 +3,13 @@ import typing as t
 
 from pydantic import UUID4, BaseModel, ConfigDict
 
-from risc_tool.data.models.enums import IterationType, LossRateTypes, VariableType
+from risc_tool.data.models.enums import (
+    ComparisonOperation,
+    IterationType,
+    LossRateTypes,
+    PercentileOptions,
+    VariableType,
+)
 from risc_tool.data.models.types import (
     DataSourceID,
     FilterID,
@@ -50,6 +56,10 @@ class FilterJSON(BaseJSON):
     name: str
     query: str
     used_columns: list[str]
+    variable_name: str = ""
+    comparison_op: ComparisonOperation = ComparisonOperation.GT
+    comparison_base: PercentileOptions | float = PercentileOptions.PERC_99
+    is_outlier: bool = False
 
 
 class FilterRepositoryJSON(BaseJSON):
@@ -140,6 +150,7 @@ class IterationMetadataJSON(BaseJSON):
     initial_filter_ids: list[FilterID]
     current_filter_ids: list[FilterID]
     metric_ids: list[MetricID]
+    remove_outliers: bool
 
 
 class IterationsViewModelJSON(BaseJSON):

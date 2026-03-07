@@ -1,7 +1,14 @@
 import pandas as pd
 
 from risc_tool.data.models.changes import ChangeTracker
-from risc_tool.data.models.enums import DataExplorerTabName, Signature, VariableType
+from risc_tool.data.models.enums import (
+    ComparisonOperation,
+    DataExplorerTabName,
+    PercentileOptions,
+    Signature,
+    VariableType,
+)
+from risc_tool.data.models.outlier import OutlierRule
 from risc_tool.data.models.types import ChangeIDs, DataSourceID, FilterID
 from risc_tool.data.repositories.data import DataRepository
 from risc_tool.data.repositories.filter import FilterRepository
@@ -24,7 +31,10 @@ class DataExplorerViewModel(ChangeTracker):
         self.filter_repository = filter_repository
 
         # Tab navigation
-        self.tab_names: list[DataExplorerTabName] = [DataExplorerTabName.IV_ANALYSIS]
+        self.tab_names: list[DataExplorerTabName] = [
+            DataExplorerTabName.IV_ANALYSIS,
+            DataExplorerTabName.OUTLIER_RULES,
+        ]
         self.current_tab_name = self.tab_names[0]
 
         # IV
@@ -32,9 +42,13 @@ class DataExplorerViewModel(ChangeTracker):
         self.iv_current_target: str | None = None
         self.iv_current_variables: list[str] = []
         self.iv_current_filter_ids: list[FilterID] = []
+        self.iv_remove_outliers: bool = True
         self.__iv_cache: pd.DataFrame = self.__empty_iv_cache
         self.iv_errors: list[Exception] = []
         self.iv_warnings: list[str] = []
+
+        # Outlier
+        self.ol_errors: dict[FilterID, Exception] = {}
 
     @property
     def __empty_iv_cache(self):
@@ -90,6 +104,10 @@ class DataExplorerViewModel(ChangeTracker):
         return self.data_repository.common_columns
 
     @property
+    def all_columns(self) -> list[str]:
+        return self.data_repository.all_columns
+
+    @property
     def all_filters(self):
         return self.filter_repository.get_filters()
 
@@ -132,6 +150,7 @@ class DataExplorerViewModel(ChangeTracker):
         target_variable: str | None,
         input_variables: list[str],
         filter_ids: list[FilterID],
+        remove_outliers: bool,
     ) -> pd.DataFrame | None:
         self.iv_errors.clear()
         self.iv_warnings.clear()
@@ -188,7 +207,9 @@ class DataExplorerViewModel(ChangeTracker):
             else:
                 filter_ids_available.append(filter_id)
 
-        mask = self.filter_repository.get_mask(filter_ids=filter_ids_available)
+        mask = self.filter_repository.get_mask(
+            filter_ids=filter_ids_available, remove_outliers=remove_outliers
+        )
         mask_hash = hash_boolean_series(mask)
 
         iv_df = pd.DataFrame(columns=["variable", "iv"])
@@ -261,3 +282,82 @@ class DataExplorerViewModel(ChangeTracker):
         iv_df.sort_values("iv", ascending=False, inplace=True)
 
         return iv_df
+
+    # Outlier
+    @property
+    def current_outlier_rules(self):
+        return [
+            outlier_obj
+            for outlier_obj in self.filter_repository.filters.values()
+            if isinstance(outlier_obj, OutlierRule)
+        ]
+
+    @property
+    def total_outlier_count(self):
+        return (
+            ~self.filter_repository.get_mask(filter_ids=[], remove_outliers=True)
+        ).sum()
+
+    def validate_outlier(
+        self,
+        outlier_id: FilterID,
+        variable_name: str,
+        comparison_op: ComparisonOperation,
+        comparison_base: PercentileOptions | str,
+    ):
+        if variable_name == "":
+            raise ValueError("Variable name cannot be empty.")
+
+        comparison_base_f: PercentileOptions | float
+
+        if isinstance(comparison_base, PercentileOptions):
+            comparison_base_f = comparison_base
+        elif comparison_base.isdecimal():
+            comparison_base_f = float(comparison_base)
+        else:
+            raise ValueError(
+                f"comparison_base is neither a PercentileEnum nor a float: {comparison_base}"
+            )
+
+        outlier_cache = self.filter_repository.validate_outlier_rule(
+            variable_name, comparison_op, comparison_base_f
+        )
+
+        outlier_cache.uid = outlier_id
+
+        return outlier_cache
+
+    def save_outlier(
+        self,
+        outlier_id: FilterID,
+        variable_name: str,
+        comparison_op: ComparisonOperation,
+        comparison_base: PercentileOptions | str,
+    ):
+        try:
+            validated_outlier_rule = self.validate_outlier(
+                outlier_id, variable_name, comparison_op, comparison_base
+            )
+        except Exception as e:
+            self.ol_errors[outlier_id] = e
+            return
+
+        if outlier_id == FilterID.TEMPORARY:
+            self.filter_repository.create_outlier_rule(
+                variable_name=validated_outlier_rule.variable_name,
+                comparison_op=validated_outlier_rule.comparison_op,
+                comparison_base=validated_outlier_rule.comparison_base,
+            )
+        else:
+            self.filter_repository.modify_outlier_rule(
+                filter_id=outlier_id,
+                variable_name=validated_outlier_rule.variable_name,
+                comparison_op=validated_outlier_rule.comparison_op,
+                comparison_base=validated_outlier_rule.comparison_base,
+            )
+
+            if outlier_id in self.ol_errors:
+                del self.ol_errors[outlier_id]
+
+    def delete_outlier_rule(self, outlier_id: FilterID):
+        self.filter_repository.remove_filter(outlier_id)

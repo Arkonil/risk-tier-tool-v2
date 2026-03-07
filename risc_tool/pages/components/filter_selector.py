@@ -6,7 +6,7 @@ from risc_tool.data.session import Session
 
 def filter_selector(key: str, filter_ids: list[FilterID] | None = None):
     session: Session = st.session_state["session"]
-    filters = session.filter_repository.filters
+    filters = session.filter_repository.get_filters()
 
     options = list(filters.keys())
 

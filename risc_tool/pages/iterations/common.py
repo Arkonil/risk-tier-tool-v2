@@ -163,6 +163,24 @@ def iteration_sidebar_components(iteration_id: IterationID):
         )
         st.rerun()
 
+    # Outlier Toggle
+    current_remove_outliers = iterations_vm.get_iteration_metadata(
+        iteration_id
+    ).remove_outliers
+
+    remove_outliers = st.checkbox(
+        label="Remove Outliers",
+        value=current_remove_outliers,
+        help="Remove Outliers",
+    )
+
+    if remove_outliers != current_remove_outliers:
+        iterations_vm.set_metadata(
+            iteration_id=iteration_id,
+            remove_outliers=remove_outliers,
+        )
+        st.rerun()
+
     # Editable Toggle
     if iteration.iter_type == IterationType.DOUBLE:
         current_editable = iterations_vm.get_iteration_metadata(iteration_id).editable

@@ -1,5 +1,6 @@
 import streamlit as st
 
+from risc_tool.data.models.outlier import OutlierRule
 from risc_tool.data.models.types import FilterID
 from risc_tool.data.session import Session
 from risc_tool.pages.filters.no_filter_placeholder import no_filter_placeholder
@@ -43,7 +44,7 @@ def filter_list():
     session: Session = st.session_state["session"]
     filter_editor_vm = session.filter_editor_view_model
 
-    if not filter_editor_vm.filters:
+    if not filter_editor_vm.get_filters():
         no_filter_placeholder()
         return
 
@@ -52,7 +53,12 @@ def filter_list():
     with st.sidebar:
         sidebar_widgets()
 
+    show_outliers = st.sidebar.checkbox("Show Outlier Filters", value=False)
+
     for filter_id, filter_obj in filter_editor_vm.filters.items():
+        if isinstance(filter_obj, OutlierRule) and not show_outliers:
+            continue
+
         with st.container(key=f"filter_{filter_id}_container", border=True):
             col1, col2 = st.columns([6, 1], vertical_alignment="center", gap="medium")
 

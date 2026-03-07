@@ -191,6 +191,7 @@ def double_var_iteration():
                 filter_ids=metadata.current_filter_ids,
                 metric_ids=metadata.metric_ids,
                 scalars_enabled=metadata.scalars_enabled,
+                remove_outliers=metadata.remove_outliers,
                 editable=False,
                 key=f"chain-{chain_iteration_id}",
             )

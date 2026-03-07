@@ -68,6 +68,7 @@ def grid_layout_widget(iteration_id: IterationID, default: bool, key: str):
                 metric_view["metric_styler"],
                 hide_index=True,
                 height="content",
+                placeholder="-",
             )
 
     with status_container:
@@ -93,6 +94,7 @@ def grid_layout_widget(iteration_id: IterationID, default: bool, key: str):
                 metric_view["metric_styler"],
                 hide_index=True,
                 height="content",
+                placeholder="-",
             )
 
 

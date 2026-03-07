@@ -103,6 +103,7 @@ def iteration_metric_table(
         key=key,
         placeholder="-",
         on_change=control_edit_handler,
+        height="content",
     )
 
     if editable:
